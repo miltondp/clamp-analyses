@@ -39,7 +39,7 @@ The `nbs/` tree is a pipeline staged by number — directories run in order, fil
 - `01_model_building/{archs4,gtex,recount2}/` — download → preprocess → SVD → CLAMPbase → CLAMPfull → multi-model variants (`_M` suffix = with M matrix; `multimodel` = ensemble of MULTICLAMP runs)
 - `02_model_comparisons/` — Rmd comparisons across hyperparameters/methods
 - `03_model_performance/` — held-out evaluation
-- `04_model_biology/` — biological interpretation: projection (GTEx ↔ ARCHS4), clustering of latent variables, CRISPR/disease association
+- `03_model_biology/` and `04_model_biology/` — biological interpretation. Both exist side-by-side: `04_model_biology/{archs4,gtex}/` holds the older projection/clustering/CRISPR work; `03_model_biology/00_archs4/` holds the newer drug-disease association pipeline (which has its own scoped `CLAUDE.md`). The numbering collision is historical — neither subtree supersedes the other; check both when looking for biology-stage analyses.
 
 `old/` subdirs contain superseded `.Rmd`/`.html` versions — read for context, don't extend.
 
