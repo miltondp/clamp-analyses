@@ -12,7 +12,7 @@ If you need to run python or R commands, use the `clamp-analyses` conda environm
 
 A drug→disease association pipeline that projects two external signature sources (S-PrediXcan TWAS results across 49 tissues; LINCS L1000 perturbation signatures) into CLAMP latent space, then scores candidate (drug, disease) pairs against the **PharmacotherapyDB** gold standard (998 pairs: 755 positive / 243 negative, 87 DOIDs).
 
-Despite living under `00_archs4/`, the pipeline evaluates **three** CLAMP models in parallel: ARCHS4, GTEx, recount2. The directory name is the source-tree location only; outputs are per-dataset (see issue H2 below).
+Despite living under `00_archs4/`, the pipeline evaluates **three** CLAMP models in parallel: ARCHS4, GTEx, recount2. The directory name is the source-tree location only; outputs are written per-notebook (grep outputs by notebook number, not dataset name).
 
 All 14 notebooks use the `clamp-analyses` env — they are Python, not R (R is only used inside cells that wrap `CLAMP.projectCLAMP` via `rpy2`).
 
@@ -48,12 +48,9 @@ Output schema for prediction HDF5s is the same across 06–09: `metadata` key + 
 
 These are documented in full in `REVIEW.md` (commit `dd0e59b`). The ones that affect day-to-day work:
 
-- **Output paths mislabel GTEx and recount2 as `00_archs4`** (REVIEW H2). `02/03/04/05` write to `output/03_model_biology/00_archs4/02_drug_disease_associations/...` even though they operate on GTEx/recount2 models. Don't grep for outputs by dataset name — grep by notebook number.
-- **NB 07 is missing the LV-index alignment assertion** that NB 08/09 have (REVIEW H3). If you touch any of `07/08/09`, keep `assert tissue_proj.index.equals(lincs_projection.index)` symmetric across the three.
 - **Hardcoded paths bypass `config.R`** (REVIEW M1) for S-PrediXcan results, LINCS signatures, PharmacotherapyDB, and the CLAMP `.rds` model files. NB 12 in particular hardcodes a six-segment path to one specific `CLAMPfull_hall.rds` — if model selection changes, NB 12 silently uses the wrong model.
 
 ## Conventions specific to this directory
 
 - Gene mapping is **SYMBOL→ENSEMBL via `clusterProfiler.bitr`** (not biomaRt). Filter to 1:1 unambiguous mappings (`~dup_symbols & ~dup_ensembl`) — done consistently across projection NBs; keep it that way.
-- NB 00 deduplicates raw S-PrediXcan input with `keep='first'`; NBs `02/04` inherit that file. If you change the dedup policy, change it in all three (REVIEW M2).
 - Statistical tests on cross-method AUROC differences (NB 10/11/13) are **not** currently in the pipeline. If you publish a figure that compares ARCHS4 vs GTEx vs recount2 vs gene-baseline AUROC, add a paired bootstrap first (REVIEW H4).
