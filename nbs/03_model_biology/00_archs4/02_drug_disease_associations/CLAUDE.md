@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Read the **project-root** `CLAUDE.md` first for repo-wide conventions (envs, `config.R`, notebook numbering rule). This file only covers what is specific to this directory.
 
+## Running commands
+
+If you need to run python or R commands, use the `clamp-analyses` conda environment (e.g. `conda run -n clamp-analyses <cmd>`). Its setup and the pinned CLAMP install are documented in the project-root `README.md`.
+
 ## What this directory is
 
 A drug→disease association pipeline that projects two external signature sources (S-PrediXcan TWAS results across 49 tissues; LINCS L1000 perturbation signatures) into CLAMP latent space, then scores candidate (drug, disease) pairs against the **PharmacotherapyDB** gold standard (998 pairs: 755 positive / 243 negative, 87 DOIDs).
