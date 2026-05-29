@@ -44,13 +44,13 @@ The minus sign encodes the standard "drug *reverses* disease signature → high 
 
 Output schema for prediction HDF5s is the same across 06–09: `metadata` key + `prediction` key. Keep this — `10` reads all four into a single comparison frame.
 
-## Known issues (read before extending)
+## Open issues to focus on (read before extending)
 
-These are documented in full in `REVIEW.md` (commit `dd0e59b`). The ones that affect day-to-day work:
+Full write-ups in `REVIEW.md` (commit `dd0e59b`). In priority order:
 
-- **Hardcoded paths bypass `config.R`** (REVIEW M1) for S-PrediXcan results, LINCS signatures, PharmacotherapyDB, and the CLAMP `.rds` model files. NB 12 in particular hardcodes a six-segment path to one specific `CLAMPfull_hall.rds` — if model selection changes, NB 12 silently uses the wrong model.
+1. **No significance test on cross-method AUROC differences** (REVIEW H4) — **top priority.** NB 10/11/13 report aggregate AUROC (gene-based ~0.583, ARCHS4 ~0.625, GTEx ~0.602, recount2 ~0.612) with **no paired test**. The ~4-pp gap that the analysis hinges on could be within bootstrap-CI overlap, so any "model X beats Y" claim is currently unsupported. Before publishing any cross-method figure, add a **paired bootstrap** (resample (drug, disease) pairs, recompute each method's AUROC on the *same* resample, report a 95% CI on the *difference*) and BH-correct across the method-pair grid.
+2. **Hardcoded paths bypass `config.R`** (REVIEW M1) for S-PrediXcan results, LINCS signatures, PharmacotherapyDB, and the CLAMP `.rds` model files. NB 12 in particular hardcodes a six-segment path to one specific `CLAMPfull_hall.rds` — if model selection changes, NB 12 silently uses the wrong model.
 
 ## Conventions specific to this directory
 
 - Gene mapping is **SYMBOL→ENSEMBL via `clusterProfiler.bitr`** (not biomaRt). Filter to 1:1 unambiguous mappings (`~dup_symbols & ~dup_ensembl`) — done consistently across projection NBs; keep it that way.
-- Statistical tests on cross-method AUROC differences (NB 10/11/13) are **not** currently in the pipeline. If you publish a figure that compares ARCHS4 vs GTEx vs recount2 vs gene-baseline AUROC, add a paired bootstrap first (REVIEW H4).
