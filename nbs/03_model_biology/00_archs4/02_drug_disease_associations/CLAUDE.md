@@ -48,7 +48,6 @@ Output schema for prediction HDF5s is the same across 06–09: `metadata` key + 
 
 These are documented in full in `REVIEW.md` (commit `dd0e59b`). The ones that affect day-to-day work:
 
-- **`libs/drug_disease_utils.py` is missing from the repo** (REVIEW H1). NB `06/07/08/09/12` all do `from drug_disease_utils import ...` against a `libs/` dir that does **not** exist in the working tree and is not tracked in git. A fresh clone cannot re-execute the prediction half of the pipeline. If you need to run these notebooks, the file must be recovered from a collaborator before anything downstream of projection will work.
 - **Output paths mislabel GTEx and recount2 as `00_archs4`** (REVIEW H2). `02/03/04/05` write to `output/03_model_biology/00_archs4/02_drug_disease_associations/...` even though they operate on GTEx/recount2 models. Don't grep for outputs by dataset name — grep by notebook number.
 - **NB 07 is missing the LV-index alignment assertion** that NB 08/09 have (REVIEW H3). If you touch any of `07/08/09`, keep `assert tissue_proj.index.equals(lincs_projection.index)` symmetric across the three.
 - **Hardcoded paths bypass `config.R`** (REVIEW M1) for S-PrediXcan results, LINCS signatures, PharmacotherapyDB, and the CLAMP `.rds` model files. NB 12 in particular hardcodes a six-segment path to one specific `CLAMPfull_hall.rds` — if model selection changes, NB 12 silently uses the wrong model.
