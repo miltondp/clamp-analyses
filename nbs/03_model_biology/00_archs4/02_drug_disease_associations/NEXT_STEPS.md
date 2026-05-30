@@ -18,6 +18,44 @@ lose the reasoning. See `REVIEW.md` for the earlier write-up; this extends it.
 - **Significance testing (REVIEW H4) is done and correct.** `signif_test/`
   implements a properly paired bootstrap (see "Previous concerns" below).
 
+## What we're doing now: bootstrap ordering-stability
+
+The paired bootstrap (Previous #1) finds **no** pairwise AUROC difference
+significant at α=0.05. But a strict p<0.05 gate discards two real patterns in the
+effect sizes, and we want to characterize them *without* dichotomizing:
+1. **All three LV methods point positive vs the gene baseline** (Δ = +0.019 to
+   +0.042) — consistent direction.
+2. **AUROC is ordered by model size**: ARCHS4 (0.625) > recount2 (0.612) >
+   GTEx (0.602) > gene (0.583), matching training-corpus size exactly.
+
+**What we compute** (appended to `signif_test/01_paired_bootstrap_test.ipynb`,
+reusing the already-computed, cross-method-aligned per-resample metric arrays —
+no re-bootstrapping):
+- **Pairwise dominance probabilities** `P(AUROC_A > AUROC_B)` across resamples
+  (a threshold-free complement to the existing two-sided p-values).
+- **Ordering-preservation fraction**: fraction of resamples where the full
+  size-ordered chain holds (4-method `archs4>recount2>gtex>gene` and the LV-only
+  `archs4>recount2>gtex`), plus the adjacent-pair decomposition and the
+  "all three LV > gene simultaneously" fraction.
+- **Spearman size-rank vs AUROC** per resample → observed value, bootstrap mean,
+  95% CI, fraction == 1.0 (perfect concordance), fraction > 0.
+
+Output: `output/.../signif_test/ordering_stability.csv` + a dominance-probability
+heatmap `ordering_stability.png`.
+
+**Interpretation guardrails** (stated in the notebook too, so the result isn't
+over-read):
+- The three models share the same gold-standard pairs and the same S-PrediXcan /
+  LINCS input signatures — this is **correlated** corroboration, *not* three
+  independent replications.
+- "Size" is confounded with (a) dataset diversity/heterogeneity and (b) latent
+  dimensionality (LV count is **not** fixed in `config.R`, so larger datasets
+  likely yield more LVs / more capacity).
+- n=3 models is weak for a trend (random ordering matches by chance with
+  p≈1/6). This is **descriptive / hypothesis-generating**, not confirmatory; the
+  definitive test is a within-dataset size gradient (subsample ARCHS4) — see
+  "Worth exploring".
+
 ## Active concerns, ranked by impact on the conclusions
 
 ### 1. "max across 49 tissues" aggregation is a winner's-curse confound
