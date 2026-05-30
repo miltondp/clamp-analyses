@@ -15,46 +15,9 @@ lose the reasoning. See `REVIEW.md` for the earlier write-up; this extends it.
 - **Single-gene baseline (NB 06) is the right control** — isolates whether the
   latent representation adds value beyond gene-level signal. Keep it central.
 - **Three models in parallel give internal replication** (ARCHS4/GTEx/recount2).
-- **Significance testing (REVIEW H4) is done and correct.** `signif_test/`
-  implements a properly paired bootstrap (see "Previous concerns" below).
-
-## What we're doing now: bootstrap ordering-stability
-
-The paired bootstrap (Previous #1) finds **no** pairwise AUROC difference
-significant at α=0.05. But a strict p<0.05 gate discards two real patterns in the
-effect sizes, and we want to characterize them *without* dichotomizing:
-1. **All three LV methods point positive vs the gene baseline** (Δ = +0.019 to
-   +0.042) — consistent direction.
-2. **AUROC is ordered by model size**: ARCHS4 (0.625) > recount2 (0.612) >
-   GTEx (0.602) > gene (0.583), matching training-corpus size exactly.
-
-**What we compute** (appended to `signif_test/01_paired_bootstrap_test.ipynb`,
-reusing the already-computed, cross-method-aligned per-resample metric arrays —
-no re-bootstrapping):
-- **Pairwise dominance probabilities** `P(AUROC_A > AUROC_B)` across resamples
-  (a threshold-free complement to the existing two-sided p-values).
-- **Ordering-preservation fraction**: fraction of resamples where the full
-  size-ordered chain holds (4-method `archs4>recount2>gtex>gene` and the LV-only
-  `archs4>recount2>gtex`), plus the adjacent-pair decomposition and the
-  "all three LV > gene simultaneously" fraction.
-- **Spearman size-rank vs AUROC** per resample → observed value, bootstrap mean,
-  95% CI, fraction == 1.0 (perfect concordance), fraction > 0.
-
-Output: `output/.../signif_test/ordering_stability.csv` + a dominance-probability
-heatmap `ordering_stability.png`.
-
-**Interpretation guardrails** (stated in the notebook too, so the result isn't
-over-read):
-- The three models share the same gold-standard pairs and the same S-PrediXcan /
-  LINCS input signatures — this is **correlated** corroboration, *not* three
-  independent replications.
-- "Size" is confounded with (a) dataset diversity/heterogeneity and (b) latent
-  dimensionality (LV count is **not** fixed in `config.R`, so larger datasets
-  likely yield more LVs / more capacity).
-- n=3 models is weak for a trend (random ordering matches by chance with
-  p≈1/6). This is **descriptive / hypothesis-generating**, not confirmatory; the
-  definitive test is a within-dataset size gradient (subsample ARCHS4) — see
-  "Worth exploring".
+- **Significance testing (REVIEW H4) + ordering-stability are done.**
+  `signif_test/` implements a properly paired bootstrap and a threshold-free
+  ordering-stability analysis (see "Previous concerns" below).
 
 ## Active concerns, ranked by impact on the conclusions
 
@@ -144,6 +107,35 @@ the claim is defensible. Absent that, the honest headline is "latent and
 gene-based methods are comparable; differences are within CI."
 
 ## Previous concerns (resolved / superseded)
+
+### [DONE] Bootstrap ordering-stability (beyond p-values)
+Follow-up to the H4 null: instead of dichotomizing at p<0.05, characterize the
+two effect-size patterns the gate discards — (1) all three LV methods point
+positive vs gene, (2) AUROC is ordered by model size (ARCHS4 0.625 > recount2
+0.612 > GTEx 0.602 > gene 0.583). Implemented as cells appended to
+`signif_test/01_paired_bootstrap_test.ipynb`, reusing the cross-method-aligned
+per-resample `boot_metric` arrays (no re-bootstrapping). Outputs:
+`output/.../signif_test/ordering_stability.csv` + dominance heatmap
+`ordering_stability.png`.
+
+**Findings (AUROC, 10k resamples):**
+- **Directional consistency is strong.** P(each LV > gene): ARCHS4 0.97,
+  recount2 0.88, GTEx 0.80; all three LV > gene *simultaneously* in **0.75** of
+  resamples.
+- **Size gradient holds link-by-link.** P(archs4>recount2)=0.74,
+  P(recount2>gtex)=0.70 — both clearly >0.5.
+- **The strict 4-way chain is fragile.** Full ordering preserved in only **0.33**
+  of resamples (= frac_rho==1, by construction). Spearman(size, AUROC): observed
+  ρ=1.0, bootstrap mean 0.74, **frac ρ>0 = 0.97**, but 95% CI lower bound = 0.0
+  (not bounded away from zero — consistent with n=3 being weak for a trend).
+
+**Verdict:** supports the defensible framing "LV methods directionally and
+consistently beat the gene baseline, and performance is size-ordered" — *without*
+overclaiming, since no single difference clears p<0.05 and the strict ordering is
+not resample-stable. Guardrails (correlated not independent replication; size
+confounded with diversity + LV dimensionality; n=3 weak) are stated in the
+notebook. **The definitive confirmation remains the within-dataset size-gradient
+experiment (subsample ARCHS4)** — still listed under "Worth exploring".
 
 ### [RESOLVED] No significance test on AUROC differences (REVIEW H4)
 **This was originally listed as the top priority.** It is already addressed by
