@@ -67,17 +67,6 @@ significant ordering is the honest framing — see Previous: ordering-stability)
   (755/243 globally, smaller after join), report **AUPRC** and an early-enrichment
   metric (precision@k, EF, or BEDROC). (AUPRC is already in `signif_test`; extend
   to early-enrichment.)
-- **Per-disease AUROC *and AUPRC*, not just pooled** — *planned next experiment.*
-  Computing AUROC/AUPRC within each disease (across its candidate drugs) removes
-  disease-level popularity *by construction* (the disease node is fixed) — this is
-  the rigorous version of "restrict to popular diseases." Report the distribution
-  across diseases (+ a mixed-effects / macro-mean summary), per method and vs a
-  drug-popularity baseline. **Preliminary (quick check):** macro-mean per-disease
-  AUROC archs4 ≈ 0.649 (>0.5 in 71% of diseases), gene ≈ 0.598 — i.e. signal
-  survives once disease-popularity is gone. **Limitation:** only **17 of 57**
-  diseases have ≥3 positives *and* ≥3 negatives (PharmacotherapyDB is ~78%
-  positive), so the per-disease view is thin; AUPRC will be near the high base
-  rate and must be read as Δ vs that base rate.
 - **Interpret tissue selection as validation.** Record which tissue wins for each
   correct prediction. Mechanistically sensible winners (e.g., cardiac drugs →
   heart tissue) corroborate; random winners argue the max is noise-fishing (ties
@@ -86,14 +75,57 @@ significant ordering is the honest framing — see Previous: ordering-stability)
 ## Suggested order of attack
 
 The controls that would most change confidence, in order:
-1. **Per-disease AUROC + AUPRC** (Worth exploring) — pooled AUROC may hide where,
-   if anywhere, biology helps; removes disease-popularity by construction.
-2. **Ablate max-over-tissues aggregation** (Active #1).
-3. **Compare latent spaces (CLAMP vs PCA/NMF/PLIER)** (Worth exploring) — the test
+1. **Ablate max-over-tissues aggregation** (Active #1).
+2. **Compare latent spaces (CLAMP vs PCA/NMF/PLIER)** (Worth exploring) — the test
    that CLAMP's *structure* matters, not just having a latent space.
 
 
 ## Previous concerns (resolved / superseded)
+
+### [DONE] Per-disease AUROC + AUPRC
+Implemented in `per_disease_test/` (NB00 metrics → NB01 summary + disease-level
+cluster bootstrap). Computes AUROC/AUPRC *within* each disease (across its candidate
+drugs), removing **disease**-level popularity by construction. Reuses the aligned
+685-pair × 4-method frame `signif_test/predictions_paired.pkl`. AUPRC headline =
+`log2(AUPRC / base_rate)` (fold-enrichment over the per-disease prior; raw AUPRC just
+reads the ~0.36–0.95 base rate). Significance via a **disease-level cluster bootstrap**
+(resample *diseases* — the independent unit once the disease node is fixed — recompute
+each method's **equal-weight** macro-mean on the same resampled set; paired across
+methods, N=10k, seed 42; BH within each metric × eligibility family). No drug-popularity
+baseline (dropped — disease popularity is already removed by construction; residual
+*drug*-degree is not considered a relevant concern). A mixed-effects model was rejected
+as over-parameterized for 17–33 heteroscedastic AUROC clusters.
+
+**Disease universe:** of 57 diseases, **33** are AUROC-eligible (≥1 pos & ≥1 neg), **17**
+strict (≥3 & ≥3); 24 are AUROC-undefined (19 all-positive, 5 all-negative). The undefined
+diseases are the most label-imbalanced, so the per-disease view is conditioned on a
+non-random subset (ties to Active #3).
+
+**Findings (macro-mean per-disease AUROC):**
+- **Reproduces the preliminary on the strict-17 subset:** ARCHS4 ≈ 0.649, gene ≈ 0.598,
+  ARCHS4 >0.5 in 71%. Pooled AUROC also reproduces NB10 (gene 0.583 / archs4 0.625) from
+  the same frame — the input is correct.
+- **The ordering is threshold-sensitive.** On the full **33**-disease set the ordering
+  *flips*: gene ≈ 0.658 ≥ ARCHS4 ≈ 0.636 ≈ GTEx 0.640 > recount2 0.622. The 16
+  thinly-sampled diseases (1 pos or 1 neg) add noise that erases ARCHS4's edge.
+- **Significance:** the **only** BH-significant differences are **ARCHS4 > GTEx on the
+  strict-17 subset** — AUROC diff +0.084 (BH p=0.022) and log2-AUPRC-enrichment +0.104
+  (BH p=0.006). **ARCHS4-vs-gene is directional but n.s.** (strict AUROC +0.051, BH 0.274;
+  null on the full set). So the headline "LV beats single-gene" claim stays within noise,
+  consistent with the H4 null; the one robust per-disease signal is *intra-LV*
+  (ARCHS4 > GTEx among well-powered diseases), and it too is absent on the full 33-disease
+  set.
+
+**Verdict:** per-disease analysis **does not rescue** a significant LV-vs-gene advantage
+once disease popularity is removed — it confirms the H4 / ordering-stability framing
+(directional, consistent, not significant). The contribution is the *construction*
+(disease popularity removed by construction + AUPRC enrichment + a correctly-clustered
+bootstrap), not a new p-value. **Guardrails:** small per-disease n (median ~14, min 4)
+makes individual AUROCs near-categorical — only distributions/macro-means are
+interpretable; n=17–33 clusters is weak power (wide CIs); methods are correlated (shared
+inputs), not independent replications. Outputs: `output/.../per_disease_test/`
+(`per_disease_metrics.csv`, `per_disease_macro_summary.csv`,
+`per_disease_bootstrap_results.csv`, `figures/`, `FINDINGS.md`).
 
 ### [EXPLORED — SET ASIDE, not relevant] Degree / popularity null
 We built a degree/popularity null (gold-standard degree-only baselines + an
@@ -112,8 +144,12 @@ confound is **not a relevant concern** for this pipeline:
   ~equal *drug*-degree correlation (0.27 vs 0.26) but archs4 wins on *label*
   correlation (0.18 vs 0.12) → **archs4 > gene is real signal, not popularity**
   (the most degree-correlated method, gene, is the *worst* performer).
-- **Per-disease holds** (disease fixed ⇒ disease-popularity removed): macro-mean
-  per-disease AUROC archs4 ≈ 0.649, >0.5 in 71% of the 17 eligible diseases.
+- **Per-disease** (disease fixed ⇒ disease-popularity removed): macro-mean
+  per-disease AUROC archs4 ≈ 0.649 on the strict-17 subset, >0.5 in 71%. NOTE: the
+  full analysis (see [DONE] Per-disease AUROC + AUPRC) shows this is threshold-
+  sensitive — on all 33 AUROC-eligible diseases the ordering flips (gene ≈ archs4)
+  and archs4-vs-gene is not significant; the per-disease view confirms rather than
+  overturns the H4 null.
 
 A residual *drug*-degree correlation (ρ≈0.26) inflates the *absolute* pooled
 AUROC, **but MP does not consider this drug-degree aspect a relevant concern.**
