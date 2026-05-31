@@ -33,19 +33,13 @@ systematically higher score for non-biological reasons.
 - Same max-aggregation reappears in the **UKB→DOID collapse**
   (`map_traits_to_doid` keeps max when many UKB traits hit one DOID) — compounds.
 
-### 2. Raw dot product confounds direction with magnitude
-Large-norm drug/disease vectors yield extreme dot products regardless of biology.
-With `use_abs=True` on top, partly scoring "vector magnitude." Test **cosine
-similarity** (normalize both vectors); if the gene→latent advantage disappears,
-the signal was magnitude, not learned structure.
-
-### 3. `use_abs=True` is in tension with the reversal narrative
+### 2. `use_abs=True` is in tension with the reversal narrative
 Reversal is a *negative, sign-preserved* dot product. Taking absolute values at
 top-LV selection discards the direction being claimed — it tests "shared loading
 magnitude in the same LVs," not "opposite direction." Ablate `use_abs` True vs
 False (one-line change, conceptual stakes).
 
-### 4. Report the evaluation set after the inner join; confirm identical across methods
+### 3. Report the evaluation set after the inner join; confirm identical across methods
 The inner join drops every pair lacking a LINCS drug signature *or* a UKB disease
 trait — non-random dropout that tracks how well-studied a drug/disease is, which
 tracks label. Report final N (pos/neg) out of 998, the DOID coverage of the
@@ -54,7 +48,7 @@ universe (currently only a convention). NOTE: `signif_test/00_aggregate_predicti
 already enforces a shared `(trait, drug)` index across methods — partially
 covers this; the reporting of N and DOID coverage is the remaining gap.
 
-### 5. Soften method-comparison prose in NB 10/11/13
+### 4. Soften method-comparison prose in NB 10/11/13
 Given the null significance result (Previous: H4), audit NB 10/11/13 for any
 sentence/figure that states or implies one method *significantly* beats another.
 Reword to "comparable; differences within bootstrap CI" (the consistent-but-not-
@@ -92,16 +86,12 @@ significant ordering is the honest framing — see Previous: ordering-stability)
 ## Suggested order of attack
 
 The controls that would most change confidence, in order:
-1. **Cosine vs dot product** (Active #2) — does a magnitude-free score change the
-   gene→latent picture?
-2. **Per-disease AUROC + AUPRC** (Worth exploring) — pooled AUROC may hide where,
+1. **Per-disease AUROC + AUPRC** (Worth exploring) — pooled AUROC may hide where,
    if anywhere, biology helps; removes disease-popularity by construction.
-3. **Ablate max-over-tissues aggregation** (Active #1).
-4. **Compare latent spaces (CLAMP vs PCA/NMF/PLIER)** (Worth exploring) — the test
+2. **Ablate max-over-tissues aggregation** (Active #1).
+3. **Compare latent spaces (CLAMP vs PCA/NMF/PLIER)** (Worth exploring) — the test
    that CLAMP's *structure* matters, not just having a latent space.
 
-The honest current headline is "latent and gene-based methods are comparable;
-the consistent, size-ordered LV>gene advantage is suggestive but not significant."
 
 ## Previous concerns (resolved / superseded)
 
@@ -186,3 +176,22 @@ further into null; it cannot overturn or rescue the conclusion. It would be, at
 most, a low-value robustness footnote on a null. Skip it. (Clustering would only
 matter if we had *found* significance and wanted to defend it against
 non-independence — not the situation here.)
+
+### [RESOLVED] Raw dot product confounds direction with magnitude (cosine test)
+The worry: large-norm drug/disease vectors yield extreme dot products regardless
+of biology, so the score partly measures "vector magnitude." Proposed test: cosine
+similarity (normalize both vectors); if the gene→latent advantage disappears, the
+signal was magnitude, not learned structure.
+
+**Done in `null_adjust_test/` (NB04/05, 49 tissues × 5 top-N, 685-pair universe,
+paired bootstrap).** Added **cosine** (`−(L_d·x)/‖L_d‖‖x‖`, removes the norms and
+nothing else) alongside raw / pearson / background. Result: removing the magnitude
+*lowers* AUROC for both methods and erases the gap — cosine gene 0.527, ARCHS4
+0.525 (vs raw 0.583 / 0.625; cosine-vs-raw BH-sig), ARCHS4-vs-gene under cosine
+−0.003 (n.s.). And **cosine ≈ pearson** (diff ≈+0.001 / −0.0001, n.s.), so the
+masked vectors are effectively mean-zero and the earlier Pearson result already
+answered this. **Conclusion (reframed):** magnitude is *signal*, not a confound —
+the dot-product norm encodes transcriptional response strength (Connectivity-Map
+reading), and keeping it is the correct modeling choice. The concern's implicit
+"if it disappears under normalization it was never learned structure" is a false
+dichotomy. See `output/.../null_adjust_test/FINDINGS_multitissue.md`.

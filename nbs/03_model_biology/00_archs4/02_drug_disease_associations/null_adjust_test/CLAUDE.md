@@ -63,19 +63,26 @@ the DOID by `max` (mirroring `map_traits_to_doid`).
 
 ### NB04/05 — multi-tissue scope (Phase 2)
 
-NB04 recomputes **raw**, **pearson**, and **background** scores per tissue × threshold (reusing the
-NB10 rank→merge→mean→max aggregation), for gene-based + module ARCHS4 only. The per-cell
-**permutation** null is infeasible at 49-tissue scale, so the scalable adjustment is **analytic
-Pearson** `−corr(L_d, x_masked)` (centered over all genes/LVs, zeros included) — which is *exactly*
-the masked permute-disease NES; NB04 asserts this with a B=200 permutation spot-check, and asserts
-recomputed **raw** reproduces the published AUROCs (gene 0.583 / ARCHS4 0.625) on the same 685-pair
-universe. NB05 runs the `signif_test` paired bootstrap on the AUROC/AUPRC differences.
+NB04 recomputes **raw**, **cosine**, **pearson**, and **background** scores per tissue × threshold
+(reusing the NB10 rank→merge→mean→max aggregation), for gene-based + module ARCHS4 only. They form a
+normalization ladder: **raw** keeps both vector norms and the mean; **cosine** `−(L_d·x)/(‖L_d‖‖x‖)`
+removes only the norms (the magnitude); **pearson** `−corr(L_d, x_masked)` removes norms *and* the
+mean (= cosine of centered vectors). The per-cell **permutation** null is infeasible at 49-tissue
+scale, so the scalable adjustment is **analytic Pearson** (centered over all genes/LVs, zeros
+included) — which is *exactly* the masked permute-disease NES; NB04 asserts this with a B=200
+permutation spot-check, and asserts recomputed **raw** reproduces the published AUROCs (gene 0.583 /
+ARCHS4 0.625) on the same 685-pair universe. NB05 runs the `signif_test` paired bootstrap on the
+AUROC/AUPRC differences.
 
-**Phase-2 result (load-bearing): per-cell null adjustment HURTS.** Both Pearson and background
-significantly *lower* AUROC (gene 0.583→0.53/0.48; ARCHS4 0.625→0.52/0.52; all BH-sig) and AUPRC,
-and erase the ARCHS4-over-gene gap (raw +0.042 borderline → pearson ≈ 0). The raw dot product's
-magnitude carries real signal here; normalizing it away removes it. Don't "fix" this by re-tuning —
-it is the finding. Z-shuffle (NB03) was **not** scaled to 49 tissues (needs B re-projections/tissue).
+**Phase-2 result (load-bearing): removing the dot product's magnitude HURTS.** cosine, pearson, and
+background all significantly *lower* AUROC (gene 0.583→0.527/0.526/0.485; ARCHS4 0.625→0.525/0.525/
+0.518; all BH-sig) and AUPRC, and erase the ARCHS4-over-gene gap (raw +0.042 borderline →
+cosine/pearson ≈ 0, n.s.). The raw dot product's magnitude carries real signal here; normalizing it
+away removes it. Don't "fix" this by re-tuning — it is the finding. **cosine ≈ pearson** (diff
+≈0.001/−0.0001, n.s.): the masked gene/LV vectors are effectively mean-zero, so the two
+normalizations are interchangeable and cosine adds no new behavior beyond pearson — it is the clean,
+literal test of NEXT_STEPS concern #2 ("is the signal just magnitude?"), answered: no, magnitude *is*
+the signal. Z-shuffle (NB03) was **not** scaled to 49 tissues (needs B re-projections/tissue).
 
 ### NB03 efficiency / correctness note (load-bearing)
 
