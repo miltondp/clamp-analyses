@@ -22,24 +22,13 @@ lose the reasoning. See `REVIEW.md` for the earlier write-up; this extends it.
 
 ## Active concerns, ranked by impact on the conclusions
 
-### 1. "max across 49 tissues" aggregation is a winner's-curse confound
-Max of 49 values is an order statistic whose expectation grows with the number
-of samples. Any pair with more available tissues / larger-variance scores gets a
-systematically higher score for non-biological reasons.
-- Check: does tissue coverage (or score variance) correlate with `true_class`?
-- Asymmetry is unjustified: **mean** over `n_top_genes` but **max** over tissues.
-  Ablate. Alternatives: per-tissue AUROC then aggregate; tissue-relevance-weighted
-  combination.
-- Same max-aggregation reappears in the **UKB→DOID collapse**
-  (`map_traits_to_doid` keeps max when many UKB traits hit one DOID) — compounds.
-
-### 2. `use_abs=True` is in tension with the reversal narrative
+### 1. `use_abs=True` is in tension with the reversal narrative
 Reversal is a *negative, sign-preserved* dot product. Taking absolute values at
 top-LV selection discards the direction being claimed — it tests "shared loading
 magnitude in the same LVs," not "opposite direction." Ablate `use_abs` True vs
 False (one-line change, conceptual stakes).
 
-### 3. Report the evaluation set after the inner join; confirm identical across methods
+### 2. Report the evaluation set after the inner join; confirm identical across methods
 The inner join drops every pair lacking a LINCS drug signature *or* a UKB disease
 trait — non-random dropout that tracks how well-studied a drug/disease is, which
 tracks label. Report final N (pos/neg) out of 998, the DOID coverage of the
@@ -48,7 +37,7 @@ universe (currently only a convention). NOTE: `signif_test/00_aggregate_predicti
 already enforces a shared `(trait, drug)` index across methods — partially
 covers this; the reporting of N and DOID coverage is the remaining gap.
 
-### 4. Soften method-comparison prose in NB 10/11/13
+### 3. Soften method-comparison prose in NB 10/11/13
 Given the null significance result (Previous: H4), audit NB 10/11/13 for any
 sentence/figure that states or implies one method *significantly* beats another.
 Reword to "comparable; differences within bootstrap CI" (the consistent-but-not-
@@ -75,12 +64,60 @@ significant ordering is the honest framing — see Previous: ordering-stability)
 ## Suggested order of attack
 
 The controls that would most change confidence, in order:
-1. **Ablate max-over-tissues aggregation** (Active #1).
-2. **Compare latent spaces (CLAMP vs PCA/NMF/PLIER)** (Worth exploring) — the test
+1. **Compare latent spaces (CLAMP vs PCA/NMF/PLIER)** (Worth exploring) — the test
    that CLAMP's *structure* matters, not just having a latent space.
 
 
 ## Previous concerns (resolved / superseded)
+
+### [DONE] "max across 49 tissues" aggregation (winner's-curse / asymmetry)
+Implemented in `tissue_agg_test/` (NB00 per-tissue metrics → NB01 summary + tissue-cluster
+bootstrap). Two reframings set the approach (do not relitigate):
+- **The "order statistic grows with n" mechanism is absent.** Coverage is a *constant* 49 tissues
+  per pair (asserted in `signif_test/00`), so "more tissues → higher max" and the proposed
+  "coverage vs `true_class`" check are moot.
+- **Mean/median-of-scores is not a clean ablation** — `max` encodes "one relevant tissue per pair";
+  mean assumes broad sharing, a *different* model. The standalone variance-vs-label diagnostic was
+  also **dropped**: across-tissue variance is mechanistically entangled with the legitimate
+  one-relevant-tissue signal, so it cannot separate confound from signal.
+
+So we used the memo's own suggested alternative: **per-tissue AUROC/AUPRC, then aggregate** (removes
+per-pair tissue selection entirely), with a tissue-cluster paired bootstrap (resample the 49
+tissues; `seed=42`, N=10k; BH within metric). AUPRC headline = `log2(AUPRC/base_rate)`.
+
+**Findings:**
+- **The max extracts genuine per-pair signal — it is not noise-fishing.** Max-aggregate AUROC sits
+  well above mean-per-tissue for *every* method (selection gain +0.042 gene, +0.071 ARCHS4, +0.076
+  GTEx, +0.065 recount2). If the max were a pure order-statistic artifact on noise, mean-per-tissue
+  would be ~0.5 with no method ordering; instead single-tissue AUROC is 0.527–0.555 and the ordering
+  is preserved. **Verdict: max is a legitimate, signal-extracting aggregation.** Notably the *LV*
+  methods gain more from selection than the gene baseline (consistent with LVs capturing
+  tissue-specific structure the max can exploit).
+- **ARCHS4 ≥ gene is NOT a max artifact.** Per-tissue ordering ARCHS4 > recount2 > gene > GTEx;
+  max-aggregate ordering ARCHS4 > recount2 > GTEx > gene. ARCHS4 tops both. ARCHS4 beats gene
+  per-tissue (+0.0132; wins in **30/49** tissues; Wilcoxon p=0.002), i.e. the LV-vs-gene direction
+  is present in the *average single tissue*, before any selection.
+- **The one selection-manufactured effect is GTEx-vs-gene.** GTEx is *below* gene per-tissue
+  (−0.0148) but *above* gene under max-aggregate — its apparent edge over the baseline comes entirely
+  from tissue selection.
+- **Significance is bootstrap-optimistic.** The tissue-cluster bootstrap flags ARCHS4>gene (BH≈0),
+  GTEx<gene, GTEx<ARCHS4, recount2>GTEx as "significant," but the 49 tissues are **correlated**
+  (shared 685 pairs, shared genes/LVs, GTEx inter-tissue correlation), so the bootstrap is
+  anti-conservative. The robust, distribution-free claim is the consistent **direction** (30/49,
+  Wilcoxon), not the p-value.
+
+**Verdict:** the max-over-tissues step is defensible (it recovers real per-pair tissue-specific
+signal, not a winner's curse), and the cross-method ordering — including ARCHS4 ≥ gene — is **robust
+to removing it**. This *nuances* the H4 null: the pooled max-aggregate paired test was underpowered
+(ARCHS4-vs-gene +0.042, BH 0.31), whereas the per-tissue decomposition shows ARCHS4 consistently
+beats gene across tissues — though we do not over-claim significance given the correlated-tissue
+caveat. **Guardrails:** anti-conservative cluster bootstrap; n=49 correlated clusters; methods share
+inputs (not independent replication); mean-per-tissue and max-aggregate are *different estimands*.
+**Out of scope (flagged):** the tissue-selection biological validation (analysis B — which tissue
+wins per correct prediction; `per_tissue_scores.pkl` retains the tissue axis for it) and the second
+max (UKB-trait→DOID collapse in `map_traits_to_doid`, which "compounds"). Outputs:
+`output/.../tissue_agg_test/` (`per_tissue_metrics.csv`, `per_tissue_macro_summary.csv`,
+`per_tissue_ordering.csv`, `per_tissue_bootstrap_results.csv`, `figures/`, `FINDINGS.md`).
 
 ### [DONE] Per-disease AUROC + AUPRC
 Implemented in `per_disease_test/` (NB00 metrics → NB01 summary + disease-level
