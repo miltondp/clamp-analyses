@@ -15,9 +15,10 @@ lose the reasoning. See `REVIEW.md` for the earlier write-up; this extends it.
 - **Single-gene baseline (NB 06) is the right control** — isolates whether the
   latent representation adds value beyond gene-level signal. Keep it central.
 - **Three models in parallel give internal replication** (ARCHS4/GTEx/recount2).
-- **Significance testing (REVIEW H4) + ordering-stability are done.**
-  `signif_test/` implements a properly paired bootstrap and a threshold-free
-  ordering-stability analysis (see "Previous concerns" below).
+- **Significance test (H4) and ordering-stability are done.** `signif_test/`
+  implements a properly paired bootstrap and a threshold-free ordering-stability
+  analysis (see "Previous concerns"). A degree/popularity null was also explored
+  and **set aside as not relevant** (see "Previous concerns").
 
 ## Active concerns, ranked by impact on the conclusions
 
@@ -32,30 +33,19 @@ systematically higher score for non-biological reasons.
 - Same max-aggregation reappears in the **UKB→DOID collapse**
   (`map_traits_to_doid` keeps max when many UKB traits hit one DOID) — compounds.
 
-### 2. Degree bias in the gold standard
-Popular drugs / well-studied diseases have more curated indications; a predictor
-tracking popularity scores well with zero biology. Add a **degree-only baseline**
-(score = f(drug degree, disease degree) in the gold standard) and/or a
-**degree-preserving permutation null** (Himmelstein 2017). If degree-only
-approaches the model's AUROC, the latent model isn't adding biological signal.
-Most likely "result is real but not for the claimed reason" failure mode.
-Elevated in importance: now that the methods are statistically indistinguishable
-on AUROC (see Previous #1), "does *any* method beat a degree null" is the live
-question.
-
-### 3. Raw dot product confounds direction with magnitude
+### 2. Raw dot product confounds direction with magnitude
 Large-norm drug/disease vectors yield extreme dot products regardless of biology.
 With `use_abs=True` on top, partly scoring "vector magnitude." Test **cosine
 similarity** (normalize both vectors); if the gene→latent advantage disappears,
 the signal was magnitude, not learned structure.
 
-### 4. `use_abs=True` is in tension with the reversal narrative
+### 3. `use_abs=True` is in tension with the reversal narrative
 Reversal is a *negative, sign-preserved* dot product. Taking absolute values at
 top-LV selection discards the direction being claimed — it tests "shared loading
 magnitude in the same LVs," not "opposite direction." Ablate `use_abs` True vs
 False (one-line change, conceptual stakes).
 
-### 5. Report the evaluation set after the inner join; confirm identical across methods
+### 4. Report the evaluation set after the inner join; confirm identical across methods
 The inner join drops every pair lacking a LINCS drug signature *or* a UKB disease
 trait — non-random dropout that tracks how well-studied a drug/disease is, which
 tracks label. Report final N (pos/neg) out of 998, the DOID coverage of the
@@ -64,10 +54,12 @@ universe (currently only a convention). NOTE: `signif_test/00_aggregate_predicti
 already enforces a shared `(trait, drug)` index across methods — partially
 covers this; the reporting of N and DOID coverage is the remaining gap.
 
-### 6. Soften "model X beats Y" prose in NB 10/11/13
-Given the null significance result (Previous #1), audit NB 10/11/13 for any
-sentence/figure that states or implies one method beats another. Reword to
-"comparable, differences within bootstrap CI." (Not yet checked — flagged.)
+### 5. Soften method-comparison prose in NB 10/11/13
+Given the null significance result (Previous: H4), audit NB 10/11/13 for any
+sentence/figure that states or implies one method *significantly* beats another.
+Reword to "comparable; differences within bootstrap CI" (the consistent-but-not-
+significant ordering is the honest framing — see Previous: ordering-stability).
+(Not yet edited — flagged.)
 
 ## Worth exploring (higher-value science, not just fixes)
 
@@ -81,32 +73,62 @@ sentence/figure that states or implies one method beats another. Reword to
   (755/243 globally, smaller after join), report **AUPRC** and an early-enrichment
   metric (precision@k, EF, or BEDROC). (AUPRC is already in `signif_test`; extend
   to early-enrichment.)
-- **Per-disease (or per-drug) AUROC, not just pooled.** Pooled AUROC can be
-  dominated by a few easy diseases. Compute AUROC within each disease across its
-  candidate drugs, then look at the distribution (+ a mixed-effects summary).
-  Now more important: a per-disease view may reveal real separation that pooled
-  AUROC (statistically null between methods) hides.
+- **Per-disease AUROC *and AUPRC*, not just pooled** — *planned next experiment.*
+  Computing AUROC/AUPRC within each disease (across its candidate drugs) removes
+  disease-level popularity *by construction* (the disease node is fixed) — this is
+  the rigorous version of "restrict to popular diseases." Report the distribution
+  across diseases (+ a mixed-effects / macro-mean summary), per method and vs a
+  drug-popularity baseline. **Preliminary (quick check):** macro-mean per-disease
+  AUROC archs4 ≈ 0.649 (>0.5 in 71% of diseases), gene ≈ 0.598 — i.e. signal
+  survives once disease-popularity is gone. **Limitation:** only **17 of 57**
+  diseases have ≥3 positives *and* ≥3 negatives (PharmacotherapyDB is ~78%
+  positive), so the per-disease view is thin; AUPRC will be near the high base
+  rate and must be read as Δ vs that base rate.
 - **Interpret tissue selection as validation.** Record which tissue wins for each
   correct prediction. Mechanistically sensible winners (e.g., cardiac drugs →
   heart tissue) corroborate; random winners argue the max is noise-fishing (ties
   to Active #1).
-- **Degree-preserving permutation null** (Active #2) doubles as the principled
-  significance framework for the whole pipeline, not just pairwise AUROC diffs.
 
 ## Suggested order of attack
 
 The controls that would most change confidence, in order:
-1. **Degree-only baseline / permutation null** (Active #2) — now the central
-   "is there any signal at all" test.
-2. **Cosine vs dot product** (Active #3).
+1. **Cosine vs dot product** (Active #2) — does a magnitude-free score change the
+   gene→latent picture?
+2. **Per-disease AUROC + AUPRC** (Worth exploring) — pooled AUROC may hide where,
+   if anywhere, biology helps; removes disease-popularity by construction.
 3. **Ablate max-over-tissues aggregation** (Active #1).
-4. **Per-disease AUROC + early-enrichment metrics** (Worth exploring).
+4. **Compare latent spaces (CLAMP vs PCA/NMF/PLIER)** (Worth exploring) — the test
+   that CLAMP's *structure* matters, not just having a latent space.
 
-If a method survives the degree null and beats a matched PCA/NMF latent space,
-the claim is defensible. Absent that, the honest headline is "latent and
-gene-based methods are comparable; differences are within CI."
+The honest current headline is "latent and gene-based methods are comparable;
+the consistent, size-ordered LV>gene advantage is suggestive but not significant."
 
 ## Previous concerns (resolved / superseded)
+
+### [EXPLORED — SET ASIDE, not relevant] Degree / popularity null
+We built a degree/popularity null (gold-standard degree-only baselines + an
+incremental-value test). **The notebook and its outputs were removed; this entry
+is the sole record.** It was set aside because, on investigation, the degree
+confound is **not a relevant concern** for this pipeline:
+
+- **The initial headline was misleading.** A label-derived popularity baseline
+  scored *higher* in absolute AUROC (count-degree 0.66, prior-rate 0.79 vs methods
+  0.58–0.62) — but that baseline peeks at the gold standard's own label graph,
+  which the methods never see, so it is a *null model*, not a competing predictor.
+- **Methods do NOT track *disease* popularity.** ρ(method score, disease-degree)
+  ≈ 0.01–0.07; a popular disease does not get systematically higher scores. The
+  "popular-disease" confound is empirically absent.
+- **The cross-method ordering is popularity-independent.** gene and archs4 have
+  ~equal *drug*-degree correlation (0.27 vs 0.26) but archs4 wins on *label*
+  correlation (0.18 vs 0.12) → **archs4 > gene is real signal, not popularity**
+  (the most degree-correlated method, gene, is the *worst* performer).
+- **Per-disease holds** (disease fixed ⇒ disease-popularity removed): macro-mean
+  per-disease AUROC archs4 ≈ 0.649, >0.5 in 71% of the 17 eligible diseases.
+
+A residual *drug*-degree correlation (ρ≈0.26) inflates the *absolute* pooled
+AUROC, **but MP does not consider this drug-degree aspect a relevant concern.**
+The fair, popularity-controlled question is taken up properly by the planned
+per-disease AUROC + AUPRC analysis (see "Worth exploring").
 
 ### [DONE] Bootstrap ordering-stability (beyond p-values)
 Follow-up to the H4 null: instead of dichotomizing at p<0.05, characterize the

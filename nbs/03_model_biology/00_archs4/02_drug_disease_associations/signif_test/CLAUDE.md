@@ -63,6 +63,11 @@ from here.
   - **BH is applied within each metric family** (the 6 AUROC comparisons together, the 6 AUPRC
     separately) via `results.groupby('metric')['p_value'].transform(bh_correct)` — AUROC and AUPRC are
     distinct hypothesis families, so they are not pooled into one correction set.
+  - **Ordering-stability appendix** (`beyond p-values`): extra cells reuse the cross-method-aligned
+    `boot_metric` arrays (no re-bootstrapping) to report pairwise dominance probabilities
+    `P(metric_A > metric_B)`, the fraction of resamples preserving the size ordering
+    `archs4>recount2>gtex>gene`, and the per-resample Spearman(model-size, AUROC). Saves
+    `ordering_stability.csv` + `ordering_stability.png`. (Results recorded in `../NEXT_STEPS.md`.)
 
 ## Paths
 
