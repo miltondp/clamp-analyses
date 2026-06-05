@@ -51,11 +51,6 @@ significant ordering is the honest framing — see Previous: ordering-stability)
   space of equal dimension**, not just CLAMP > single gene. Shows CLAMP's
   *structure* matters, not merely dimensionality reduction. Low-hanging given
   existing models.
-- **Switch headline metric to early-enrichment.** AUROC weights all thresholds
-  equally; repurposing cares about the top of the list. With class imbalance
-  (755/243 globally, smaller after join), report **AUPRC** and an early-enrichment
-  metric (precision@k, EF, or BEDROC). (AUPRC is already in `signif_test`; extend
-  to early-enrichment.)
 - **Interpret tissue selection as validation.** Record which tissue wins for each
   correct prediction. Mechanistically sensible winners (e.g., cardiac drugs →
   heart tissue) corroborate; random winners argue the max is noise-fishing (ties
@@ -69,6 +64,44 @@ The controls that would most change confidence, in order:
 
 
 ## Previous concerns (resolved / superseded)
+
+### [DONE] Switch headline metric to early-enrichment (BEDROC / EF / precision@k)
+Implemented in `early_enrichment_test/` (NB00 observed metrics → NB01 paired bootstrap +
+plots + FINDINGS). Scores the **pooled global** 685-pair ranking (the same list `signif_test`
+scores with AUROC) with **BEDROC** (α=20, headline), **EF@{1,5,10%}**, and **precision@{10,20,50}**.
+Reuses the `signif_test` paired bootstrap verbatim (resample pairs, recompute each metric on the
+same resample, diffs by subtraction; `seed=42`, N=10k; BH within each of the 7 metric families →
+42 rows). `rdkit` is absent from the env, so the three metrics are hand-rolled in numpy (verified:
+random≈0.775, perfect=1.0, worst=0.0). Ties broken deterministically by stable-sort input order.
+
+**Load-bearing caveat — high prevalence, low headroom.** The pooled base rate is 531/685 = **77.5%
+positive**, the *inverse* of the rare-positive regime early-enrichment was designed for. So
+**BEDROC's null = base rate ≈ 0.775 (not 0.5)**, **EF is capped at 1/0.775 ≈ 1.29**, and
+precision@k's null = 0.775. This does **not** manufacture a stronger result — it reports the
+right metric for the use case. The interpretable quantity is the **paired difference** between
+methods at the top (both face the same ceiling).
+
+**Findings:**
+- **No pairwise difference is BH-significant for any of the 7 metrics** (every 95% CI crosses 0) —
+  reinforces the H4 null.
+- **Early enrichment tells a *different* story than AUROC, and it does not favor the LV models.**
+  Pooled AUROC ordered ARCHS4 > recount2 > GTEx > gene; the observed **BEDROC** ordering is
+  **gene 0.944 > recount2 0.910 > ARCHS4 0.902 > GTEx 0.890** — the single-gene baseline
+  concentrates true treatments at the very top at least as densely as the LV models. Switching the
+  headline to the repurposing-relevant early region does not hand the LV models an advantage.
+- **All four methods sit well above the 0.775 BEDROC null** (the top of the list is genuinely
+  enriched), but the high prevalence caps how much daylight any method can open. **EF@1% = the 1.29
+  ceiling for *every* method** (the top-7 is all-positive everywhere) — a vivid illustration of the
+  low-headroom point.
+
+**Verdict:** the headline-metric switch is the correct framing for repurposing, but at this base
+rate it confirms rather than overturns the H4 null. **Guardrails:** high-prevalence/low-headroom
+(read differences, not absolute enrichment); precision@k is coarse under the bootstrap (P@10 takes
+11 values); the pooled list mixes diseases of very different size (a few large/easy diseases can
+dominate the global top-k — `per_disease_test` is the complementary use-case view); methods share
+inputs (paired bootstrap handles correlation, not independent replication). Outputs:
+`output/.../early_enrichment_test/` (`early_enrichment_observed.csv`,
+`early_enrichment_bootstrap_results.csv`, `figures/`, `FINDINGS.md`).
 
 ### [DONE] "max across 49 tissues" aggregation (winner's-curse / asymmetry)
 Implemented in `tissue_agg_test/` (NB00 per-tissue metrics → NB01 summary + tissue-cluster
