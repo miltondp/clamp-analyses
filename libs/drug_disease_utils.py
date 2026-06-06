@@ -63,6 +63,25 @@ def _zero_nontop_genes(trait_vector, n_top, use_abs=True):
     return result
 
 
+def _zero_nontop_by_ranking(trait_vector, ranked_labels, n_top):
+    """Keep the top `n_top` rows of `trait_vector` chosen by an external ordering
+    `ranked_labels` (best first); zero the rest.
+
+    Used to select LVs by an external LV-disease association ranking (e.g. GLS
+    p-value, smallest first) instead of by the projected value magnitude.
+    """
+    index = trait_vector.index
+    top_idx = []
+    for lbl in ranked_labels:
+        if lbl in index:
+            top_idx.append(lbl)
+            if len(top_idx) >= n_top:
+                break
+    result = trait_vector.copy()
+    result[~result.index.isin(top_idx)] = 0.0
+    return result
+
+
 def predict_dotprod_neg(
     drug_gene_data,
     gene_trait_data_filename,
@@ -75,9 +94,17 @@ def predict_dotprod_neg(
     do_xrefs,
     n_top_conditions=None,
     use_abs=True,
+    selection_ranking=None,
 ):
     """
     Computes drug-disease predictions as: score = -1 * drug^T * disease
+
+    `selection_ranking` (optional): dict mapping a trait/column label to an ordered
+    list of row labels (e.g. LVs ordered by external LV-disease association, best
+    first). When provided, top-`n_top_conditions` selection for a column uses this
+    external ranking; columns absent from the dict fall back to the default
+    value-magnitude ranking (`_zero_nontop_genes`). Default `None` keeps the
+    original value-magnitude behaviour for every column.
 
     Saves an HDF5 file with keys:
     - full_prediction: all traits
@@ -97,9 +124,20 @@ def predict_dotprod_neg(
 
     disease_data = gene_trait_data.copy()
     if n_top_conditions is not None:
-        disease_data = disease_data.apply(
-            lambda x: _zero_nontop_genes(x, n_top_conditions, use_abs)
-        )
+        if selection_ranking is None:
+            disease_data = disease_data.apply(
+                lambda x: _zero_nontop_genes(x, n_top_conditions, use_abs)
+            )
+        else:
+            def _select(col):
+                if col.name in selection_ranking:
+                    return _zero_nontop_by_ranking(
+                        col, selection_ranking[col.name], n_top_conditions
+                    )
+                # fallback for columns without external ranking data
+                return _zero_nontop_genes(col, n_top_conditions, use_abs)
+
+            disease_data = disease_data.apply(_select)
 
     scores = -1.0 * drug_gene_data.T.dot(disease_data)
     print(f'    shape: {scores.shape}')
