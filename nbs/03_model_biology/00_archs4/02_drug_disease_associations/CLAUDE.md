@@ -19,8 +19,8 @@ All 14 notebooks use the `clamp-analyses` env — they are Python, not R (R is o
 ## Pipeline shape
 
 ```
-00 spredixcan→archs4 ┐                            ┌─ 07 module pred (archs4) ┐
-02 spredixcan→gtex   ├─→ projections (LVs)        ├─ 08 module pred (gtex)   ├─→ 10 perf → 11 plots
+00 spredixcan→archs4  ┐                           ┌─ 07 module pred (archs4) ┐
+02 spredixcan→gtex    ├─→ projections (LVs)       ├─ 08 module pred (gtex)   ├─→ 10 perf → 11 plots
 04 spredixcan→recount2┘                           └─ 09 module pred (recount2)┘     │
 01/03/05 lincs→{archs4,gtex,recount2}                                               │
                                                   06 single-gene baseline ──────────┘
