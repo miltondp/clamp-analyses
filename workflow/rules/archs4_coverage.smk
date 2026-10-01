@@ -221,7 +221,7 @@ rule clampbase_bp_coverage_cell:
         fbm=lambda wc: a4_cov_fbm(a4_cov_fraction_of(wc.cell), a4_cov_seed_of(wc.cell)),
         svd=rules.svd_bp_coverage_cell.output.svd,
         k=rules.svd_bp_coverage_cell.output.k,
-        script="scripts/archs4/clamp.R",
+        script=ancient("scripts/archs4/clamp.R"),
         common="scripts/archs4/common.R",
     output:
         rds=f"{{cell}}/CLAMPbase.rds",

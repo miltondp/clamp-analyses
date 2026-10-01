@@ -78,6 +78,11 @@ snakemake --cores 4 --use-conda --snakefile workflow/Snakefile biology_gtex
 CLAMP fit across the full ARCHS4 human RNA-seq compendium (~605k samples). Its largest
 fits need ~500 GB RAM and run on Slurm, not a workstation.
 
+`download_archs4` fetches the raw HDF5 and `preprocess_archs4` builds the filtered,
+z-scored matrix under `output/01_model_building/02_archs4/00_preprocess/` that every
+ARCHS4 fit reads. The full-compendium SVD and CLAMPbase are the 100% cells of the
+coverage campaign.
+
 The GO:BP coverage and saturation campaigns are maintained independently. Their
 published full-data models remain under `output/98_final_models/clampfull/bp/`.
 
