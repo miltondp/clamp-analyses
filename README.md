@@ -101,6 +101,25 @@ from their dedicated workflows. See [Canonical model + ORA](#canonical-model--or
 
 Configuration: `workflow/config/archs4.yaml` and `workflow/config/recount2.yaml`.
 
+### Trait recovery (PhenoPLIER GLS)
+
+LV–trait association runs `pivlab/phenoplier-cli` GLS on the coverage, saturation
+and final CLAMP models, and the trait-recovery reports aggregate the per-model
+summaries. phenoplier-cli is pinned to **v0.5.2** and runs in its own conda env
+(`scripts/phenoplier/setup_env.sh`, once per machine; every job checks the installed
+version); `workflow/rules/phenoplier.smk` drives it one model at a time from this
+DAG. Configuration: `workflow/config/phenoplier.yaml`; details in
+`scripts/phenoplier/README.md`.
+
+```bash
+snakemake -n --snakefile workflow/Snakefile archs4_traits      # models -> GLS -> reports
+snakemake -n --snakefile workflow/Snakefile phenoplier_finals  # GLS on the published finals
+```
+
+Dry-run first: a GLS job takes hours to a day per model, and any model that is not
+already published under `output/98_final_models` is fitted first (the ARCHS4 fits
+need a cluster, see above).
+
 ### Canonical model + ORA
 
 The canonical workflow is evaluation-only: it consumes the published model RDS,
@@ -116,6 +135,38 @@ recomputing them:
 ```bash
 snakemake --touch --cores 1 --snakefile workflow/Snakefile archs4_canonical_ora
 ```
+
+## Running on a Slurm cluster
+
+`workflow/profiles/slurm/config.yaml` holds the portable part of a cluster setup
+(executor, job limits, memory pools, per-rule overrides for the ARCHS4 fits). Account,
+partition and QOS are site-specific and stay out of the repo: derive a user-owned
+profile from it, e.g. `~/.config/snakemake/clamp-slurm/config.yaml`, and add
+
+```yaml
+default-resources:
+  - slurm_account=<account>
+  - slurm_partition=<partition>
+```
+
+plus any `set-resources` a partition needs. The `snakemake` env already includes
+`snakemake-executor-plugin-slurm`. Run the scheduler from a login node inside
+`tmux`/`screen` (it lives for the whole DAG), always dry-running first:
+
+```bash
+conda activate snakemake
+snakemake --profile ~/.config/snakemake/clamp-slurm -n <target>
+snakemake --profile ~/.config/snakemake/clamp-slurm <target>
+```
+
+The conda envs must be visible from the compute nodes; `use-conda` looks them up by
+name. `scripts/phenoplier/README.md` §6 has the complete site-profile example
+(including the PhenoPLIER GLS jobs) and the monitoring/resume notes.
+
+<!-- [MARC: ARCHS4 on a cluster — required staged inputs (raw h5, 00_preprocess
+outputs, data/pathways gene sets), memory partition for the 500 GB fits, and how
+precomputed models are adopted (the local profile mentions `--touch
+archs4_precomputed`, which does not exist as a rule).] -->
 
 ## Running a single notebook
 
