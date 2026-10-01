@@ -14,9 +14,8 @@ import yaml
 
 REPO = Path(__file__).resolve().parents[2]
 SNAKEFILE = REPO / "workflow" / "Snakefile"
-MANUAL = "nbs/MANUAL_NOTEBOOKS.txt"
 EXECUTED = ".executed.ipynb"
-ALLOWED_EXTRA = {".gitkeep", "MANUAL_NOTEBOOKS.txt"}
+ALLOWED_EXTRA = {".gitkeep"}
 ASSIGNMENT = re.compile(r"^([A-Z][A-Z0-9_]*)\s*=\s*(.+)$")
 NOTEBOOK_LITERAL = re.compile(r"""(f?)(["'])([^"'\n]*\.ipynb)\2""")
 PLACEHOLDER = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
@@ -84,19 +83,6 @@ def referenced_notebooks() -> tuple[set[str], list[str]]:
     return refs, unresolved
 
 
-# Reads the notebooks allowed to run outside Snakemake.
-def manual_notebooks() -> set[str]:
-    path = REPO / MANUAL
-    if not path.exists():
-        return set()
-    entries = set()
-    for line in path.read_text().splitlines():
-        entry = line.split("#", 1)[0].strip()
-        if entry:
-            entries.add(entry)
-    return entries
-
-
 # Lists files tracked by git under nbs/.
 def tracked_files() -> list[str]:
     out = subprocess.run(
@@ -111,7 +97,6 @@ def main() -> int:
     sources = {p for p in tracked if p.endswith(".ipynb") and not p.endswith(EXECUTED)}
     executed = {p for p in tracked if p.endswith(EXECUTED)}
     refs, unresolved = referenced_notebooks()
-    manual = manual_notebooks()
     errors = [f"cannot resolve notebook path in {item}" for item in unresolved]
 
     for path in sorted(refs):
@@ -122,20 +107,12 @@ def main() -> int:
         elif path.removesuffix(".ipynb") + EXECUTED not in tracked_set:
             errors.append(f"{path}: run by Snakemake but its {EXECUTED} copy is not tracked")
 
-    for path in sorted(sources - refs - manual):
-        errors.append(
-            f"{path}: not run by any Snakemake rule; add a rule, delete it, or list it in {MANUAL}"
-        )
+    for path in sorted(sources - refs):
+        errors.append(f"{path}: not run by any Snakemake rule")
 
     for path in sorted(executed):
         if path.removesuffix(EXECUTED) + ".ipynb" not in tracked_set:
             errors.append(f"{path}: executed copy without its source notebook")
-
-    for path in sorted(manual):
-        if path in refs:
-            errors.append(f"{MANUAL}: {path} is run by Snakemake; remove it from the list")
-        elif path not in tracked_set:
-            errors.append(f"{MANUAL}: {path} is not tracked; remove it from the list")
 
     for path in tracked:
         name = os.path.basename(path)
@@ -147,7 +124,7 @@ def main() -> int:
         for error in errors:
             print(f"  {error}", file=sys.stderr)
         return 1
-    print(f"OK: {len(sources)} notebooks, {len(refs & sources)} run by Snakemake, {len(manual)} manual")
+    print(f"OK: {len(sources)} notebooks, all run by Snakemake")
     return 0
 
 

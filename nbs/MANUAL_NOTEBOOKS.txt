@@ -1,6 +1,0 @@
-nbs/00_setup/00_check_setup.ipynb  # environment check linked from the README setup steps
-nbs/99_panels/fig3.ipynb  # Snakemake rule pending on final_figures
-nbs/99_panels/supp4.ipynb  # Snakemake rule pending on final_figures
-nbs/99_panels/supp5.ipynb  # Snakemake rule pending on final_figures
-nbs/99_panels/supp6.ipynb  # Snakemake rule pending on final_figures
-nbs/99_panels/supp7.ipynb  # Snakemake rule pending on final_figures
