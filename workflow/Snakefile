@@ -28,6 +28,7 @@ include: "rules/archs4_canonical.smk"
 # aggregates, so it sits between them.
 include: "rules/phenoplier.smk"
 include: "rules/archs4_traits.smk"
+include: "rules/archs4_technical_noise.smk"
 include: "rules/archs4_drug_diseases.smk"
 include: "rules/archs4_crispercas.smk"
 include: "rules/projections.smk"
@@ -61,5 +62,6 @@ rule all:
         rules.computational_timing_analysis_gtex.input,
         rules.biology_gtex.input,
         rules.archs4_canonical_ora.input,
+        rules.technical_noise_report_archs4.output.complete,
         rules.archs4_drug_diseases.input,
         rules.biology_archs4_crispercas.input,
