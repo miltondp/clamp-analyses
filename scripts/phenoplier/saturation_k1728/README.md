@@ -38,7 +38,7 @@ Estimated cost: **35 SLURM allocations** (1 register + 17 GLS + 17 store tasks),
 
 Results land in `<workspace>/projects/sat_rs<f>_k1728_seed<s>_CLAMPfull_bp/`; HDF5
 stores in `<workspace>/clamp_saturation_stores/`. Inspect them with
-`nbs/03_model_biology/00_phenoplier/01_saturation_k1728.ipynb`.
+`nbs/03_model_biology/03_phenoplier/01_saturation_k1728.ipynb`.
 
 ## Customizing
 

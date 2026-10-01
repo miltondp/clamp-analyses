@@ -42,4 +42,4 @@ each script's header.
 ## Outputs
 - GLS summaries: `<workspace>/projects/cov_rs<f>_seed<s>_CLAMPfull_bp/results/gls/phenoplier/`
 - HDF5 stores: `<coverage-dir>/stores/cov_rs<f>_seed<s>_CLAMPfull_bp.h5`
-- Inspect: `nbs/03_model_biology/00_phenoplier/02_coverage.ipynb` (recovery vs coverage).
+- Inspect: `nbs/03_model_biology/03_phenoplier/02_coverage.ipynb` (recovery vs coverage).
