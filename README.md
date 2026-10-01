@@ -81,13 +81,7 @@ fits need ~500 GB RAM and run on Slurm, not a workstation.
 `download_archs4` fetches the raw HDF5 and `preprocess_archs4` builds the filtered,
 z-scored matrix under `output/01_model_building/02_archs4/00_preprocess/` that every
 ARCHS4 fit reads. The full-compendium SVD and CLAMPbase are the 100% cells of the
-coverage campaign. To keep an existing preprocessed matrix instead of rebuilding it:
-
-```bash
-snakemake --snakefile workflow/Snakefile --cleanup-metadata \
-  output/01_model_building/02_archs4/00_preprocess/{metadata,metadata_filtered,all_samples}.rds \
-  output/01_model_building/02_archs4/00_preprocess/fbm_filtered.bk
-```
+coverage campaign.
 
 The GO:BP coverage and saturation campaigns are maintained independently. Their
 published full-data models remain under `output/98_final_models/clampfull/bp/`.
