@@ -75,7 +75,8 @@ rule computational_timing_report_pseudobulk:
         summary=f"{RUNTIME_ROOT}/runtime_summary.csv",
         complete=touch(f"{RUNTIME_ROOT}/notebook.complete"),
     log:
-        notebook=f"{RUNTIME_ROOT}/00_computational_timing.executed.ipynb"
+        notebook=os.path.join(os.path.dirname(RUNTIME_NB),
+                              "00_computational_timing.executed.ipynb")
     params:
         datasets=DATASETS,
         methods=RUNTIME_METHODS,

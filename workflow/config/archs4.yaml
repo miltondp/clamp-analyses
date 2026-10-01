@@ -7,7 +7,6 @@ archs4:
   paths:
     production: output/01_model_building/02_archs4
     biology: output/03_model_biology/02_archs4
-    model_notebooks: nbs/01_model_building/02_archs4
     biology_notebooks: nbs/03_model_biology/02_archs4
 
   raw_data:
