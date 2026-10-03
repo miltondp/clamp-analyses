@@ -35,6 +35,8 @@ BLOCK_SIZE <- 1000L
 MAX_SPAN <- 2500L
 TH <- list(cor = 0.2, fdr = 0.2, robust_z = 4, annot_auc = 0.7, annot_fdr = 0.05)
 R2_CUT <- 0.25
+CV_FOLDS <- 5L
+CV_SEED <- 0L
 if (stage == "gene_properties") {
 gtf_attr <- function(x, key) {
   out <- sub(paste0('.*', key, ' "([^"]*)".*'), "\\1", x)
@@ -306,18 +308,52 @@ sample_level_for_model <- function(model, chunk_size = 20000L) {
   rownames(spearman) <- rownames(B)
   for (v in NUMERIC_QC) long[[v]] <- data.table(LV = rownames(B), covariate = v, measure = "spearman", value = spearman[, v])
 
-  design <- do.call(cbind, c(list(intercept = rep(1, n)),
-    lapply(names(cat_vars), function(v) {
-      x <- cat_vars[[v]]; lev <- sort(unique(x)); ref <- names(which.max(table(x)))
-      d <- vapply(setdiff(lev, ref), function(l) as.numeric(x == l), numeric(n))
-      colnames(d) <- paste0(v, ":", setdiff(lev, ref)); d
-    }), list(scale(num_mat))))
-  qrd <- qr(design); Q <- qr.Q(qrd)[, seq_len(qrd$rank), drop = FALSE]
-  rm(design, qrd)
-  proj <- matrix(0, nrow(B), ncol(Q))
-  for (j in chunks) proj <- proj + B[, j, drop = FALSE] %*% Q[j, , drop = FALSE]
-  long[["technical_joint"]] <- data.table(LV = rownames(B), covariate = "technical_joint", measure = "r2",
-                                          value = (rowSums(proj^2) - n * mu^2) / sst)
+  num_raw <- as.matrix(meta[, ..NUMERIC_QC])
+  impute <- function(m, med) {
+    for (k in seq_len(ncol(m))) { x <- m[, k]; x[!is.finite(x)] <- med[k]; m[, k] <- x }
+    m
+  }
+  fit_design <- function(train) {
+    med <- apply(num_raw[train, , drop = FALSE], 2, function(x) median(x[is.finite(x)]))
+    num_tr <- impute(num_raw[train, , drop = FALSE], med)
+    ctr <- colMeans(num_tr); scl <- apply(num_tr, 2, sd)
+    rm(num_tr)
+    lev <- lapply(cat_vars, function(x) { cnt <- table(x[train]); setdiff(names(cnt), names(which.max(cnt))) })
+    function(rows) {
+      num <- sweep(sweep(impute(num_raw[rows, , drop = FALSE], med), 2, ctr), 2, scl, "/")
+      do.call(cbind, c(list(intercept = rep(1, length(rows))),
+        lapply(names(cat_vars), function(v) {
+          x <- cat_vars[[v]][rows]
+          d <- matrix(vapply(lev[[v]], function(l) as.numeric(x == l), numeric(length(rows))),
+                      nrow = length(rows))
+          colnames(d) <- paste0(v, ":", lev[[v]]); d
+        }), list(num)))
+    }
+  }
+
+  set.seed(CV_SEED)
+  fold <- sample(rep_len(seq_len(CV_FOLDS), n))
+  sse <- numeric(nrow(B))
+  for (k in seq_len(CV_FOLDS)) {
+    train <- which(fold != k); test <- which(fold == k)
+    design_for <- fit_design(train)
+    qrd <- qr(design_for(train)); r <- qrd$rank; piv <- qrd$pivot[seq_len(r)]
+    Q <- qr.Q(qrd)[, seq_len(r), drop = FALSE]
+    R <- qr.R(qrd)[seq_len(r), seq_len(r), drop = FALSE]
+    rm(qrd)
+    qty <- matrix(0, nrow(B), r)
+    for (j in split(seq_along(train), ceiling(seq_along(train) / chunk_size)))
+      qty <- qty + B[, train[j], drop = FALSE] %*% Q[j, , drop = FALSE]
+    coef <- backsolve(R, t(qty))
+    rm(Q, qty)
+    for (j in split(test, ceiling(seq_along(test) / chunk_size))) {
+      pred <- design_for(j)[, piv, drop = FALSE] %*% coef
+      sse <- sse + rowSums((B[, j, drop = FALSE] - t(pred))^2)
+    }
+    cat("CV fold", k, "of", CV_FOLDS, "| train:", length(train), "| test:", length(test), "| rank:", r, "\n")
+  }
+  long[["technical_joint"]] <- data.table(LV = rownames(B), covariate = "technical_joint", measure = "cv_r2",
+                                          value = 1 - sse / sst)
   out <- rbindlist(long)
   out[, model := model]
   out
@@ -332,7 +368,7 @@ sample_all <- fread(file.path(OUT, "lv_sample_metadata_canonical.csv"))
 sample_wide <- dcast(sample_all, model + LV ~ covariate, value.var = "value")
 sample_flags <- sample_wide[, .(model, LV, technical_joint, series_eta2 = get(STUDY))]
 sample_flags[, sample_flag := is.finite(technical_joint) & technical_joint >= R2_CUT]
-cat("Sample-level cut: joint multiple-regression technical R2 >=", R2_CUT, "\n")
+cat("Sample-level cut: joint multiple-regression technical", CV_FOLDS, "fold cross-validated R2 >=", R2_CUT, "\n")
 flagged <- merge(gene_all[, .(model, LV, gene_flag, annotated, top_pathway, n_nonzero)],
                  sample_flags, by = c("model", "LV"))
 flagged[, any_flag := gene_flag | sample_flag]
