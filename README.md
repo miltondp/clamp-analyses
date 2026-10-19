@@ -26,7 +26,18 @@ Installs Conda if needed, creates all three environments, and installs the pinne
 3. Create the environments:
    ```bash
    conda create --name clamp-analyses --file envs/clamp-analyses.lock
-   conda run -n clamp-analyses python -m pip install -r envs/clamp-analyses.pip.lock
+   conda run -n clamp-analyses python -c '
+   import subprocess
+   import sys
+   import yaml
+   with open(sys.argv[1]) as handle:
+       dependencies = yaml.safe_load(handle)["dependencies"]
+   requirements = [requirement for dependency in dependencies if isinstance(dependency, dict)
+                   for requirement in dependency.get("pip", [])]
+   if not requirements:
+       raise SystemExit("No pip requirements found in the environment YAML")
+   subprocess.check_call([sys.executable, "-m", "pip", "install", *requirements])
+   ' envs/clamp-analyses.yaml
    conda create --name gpu-kmeans --file envs/gpu-kmeans.lock
    conda env create -n snakemake -f envs/snakemake.yaml
    ```
@@ -38,12 +49,57 @@ Installs Conda if needed, creates all three environments, and installs the pinne
    ```
 </details>
 
+`envs/clamp-analyses.lock` pins the Conda packages and builds. Pip package
+versions are read from the `pip:` section of `envs/clamp-analyses.yaml`; there
+is no separate pip lock. `envs/snakemake.yaml` defines the separate workflow
+runner environment.
+
 Each notebook states its required environment in its first cell. Run all `snakemake`
 commands from the repo root with `conda activate snakemake` and `--use-conda`:
 
 ```bash
 snakemake --cores 4 --use-conda --snakefile workflow/Snakefile <target>
 ```
+
+## Fresh checkout
+
+After setup and staging the external inputs below, run from the repository root:
+
+```bash
+conda activate snakemake
+snakemake --snakefile workflow/Snakefile --use-conda --cores 16 all
+```
+
+`all` is also the default target. It includes publication figures and eight
+supplementary tables, canonical model ORA, coverage/saturation reports, trait
+recovery, drug–disease analysis, and the CRISPR metaLV analysis. Full ARCHS4 fits
+require a high-memory cluster; use a site profile as described below. GPU
+clustering requires the `gpu-kmeans` environment and a compatible NVIDIA GPU.
+Figure 4 requires Inkscape on PATH.
+
+The repository does not contain the large scientific inputs. Stage these before
+starting; paths and column mappings are defined in `workflow/config/*.yaml`.
+Snakemake downloads ARCHS4 v2.5, GTEx v8 expression, recount2, the configured GEO
+and EBI projection datasets, DrugBank, and the configured Ensembl reference files.
+It generates the two distinct GO:BP files through their existing rules.
+
+| External input | Required local location and version |
+| --- | --- |
+| MSigDB pathways | `data/pathways/{c2.all,c2.cp,c2.cp.reactome,c5.go.cc,c8.all,h.all}.v2026.1.Hs.symbols.gmt`, obtained from MSigDB using its access requirements. Keep this release fixed. |
+| Cell and tissue references | `data/pathways/Cell_marker_Human.xlsx` (sheet `human`, columns `cell_name`, `Symbol`), `Allen_Brain_Atlas_10x_scRNA_2021.gmt`, and `data/archs4/GTEx_Tissues_pathMat.rds`. Azimuth 2023 and ARCHS4 Cell-lines have download rules. |
+| ARCHS4 gene lengths | `data/archs4/gene_lengths.rds`: the named gene-symbol length vector for the Ensembl 107 preprocessing input. This is an external reference input, not a fitted model. |
+| Pseudobulk cohorts | Raw matrices and cell metadata at the exact paths in `workflow/config/pseudobulk.yaml`. For datasets with `build_pseudobulk: false`, also supply `bulk_expr.csv`, `patient_info.csv`, `truthFrac_v0.csv`, and, where used, `truthFrac_v1.csv` in their configured `pseudobulk_dir`. These fixed cohort inputs preserve the original sample selections. |
+| Cell labels | `data/pseudobulk/cell_type_labels.csv`, used by Supplementary Figure 1. |
+| GTEx annotations | `data/gtex/GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt` and `GTEx_Analysis_v8_xCell_scores_7_celltypes.txt`. |
+| PhenoPLIER reference bundle | Set up phenoplier-cli v0.5.2 with `bash scripts/phenoplier/setup_env.sh`, initialize its workspace, and link the `phenoplier_full_data` bundle as described in `scripts/phenoplier/README.md`. Set `phenoplier.workspace` or `PHENOPLIER_HOME` for your machine. |
+| PhenomeXcan | Stage its `phenomexcan` directory at `data/phenomexcan`, including phenotype metadata, S-MultiXcan P values/z-scores, fastENLOC RCPs, and gene mappings. Set `archs4.crispercas.phenomexcan_dir` to override it. S-PrediXcan needs the 49 tissue pickles under `data/phenomexcan/gene_assoc/spredixcan/pkl`. |
+| Drug–disease inputs | `data/drug_disease_associations/{lincs-data.pkl,gold_standard.pkl,phenomexcan_traits_fullcode_to_efo.tsv,term_id_xrefs.tsv.gz,xrefs-prop-slim.tsv}`. |
+| CRISPR screen | `data/archs4/crispr_cas9/lipid_DEG.csv` and `data/archs4/drug_diseases_associations/smultixcan-mashr-zscores.pkl`, as configured in `archs4.crispercas`. |
+| Timing evidence | The recorded CoGAPS evidence files specified by `workflow/config/runtime_benchmark*.yaml`. |
+
+Keep site-specific accounts, partitions, and storage paths in your own profile
+or configuration override. Existing outputs and local symlinks are conveniences;
+a fresh checkout must stage the listed external inputs itself.
 
 ## Pseudobulk
 
@@ -60,7 +116,7 @@ snakemake --cores 4 --use-conda --snakefile workflow/Snakefile biology_pseudobul
 
 # Donor-bulk extension
 snakemake --cores 8 --resources donor_bulk_io=1 --use-conda \
-  --snakefile workflow/Snakefile donor_bulk_report donor_bulk_figure2
+  --snakefile workflow/Snakefile donor_bulk_report fig2_panel
 ```
 
 ## GTEx
@@ -83,10 +139,9 @@ z-scored matrix under `output/01_model_building/02_archs4/00_preprocess/` that e
 ARCHS4 fit reads. The full-compendium SVD and CLAMPbase are the 100% cells of the
 coverage campaign.
 
-The GO:BP coverage and saturation campaigns are maintained independently. Their
-published full-data models remain under `output/98_final_models/clampfull/bp/`.
+The coverage and saturation campaigns fit CLAMPbase only.
 
-These fits require `data/pathways/go_bp.Hs.symbols.gmt` (SHA-256
+The GO:BP ORA database is `data/pathways/go_bp.Hs.symbols.gmt` (SHA-256
 `33e559df968d0d8c2028c0f735624555dc2edbebe955648c3351dfa31cfd2e2a`).
 Snakemake generates this file when missing from the GOALL Biological Process
 mapping in `org.Hs.eg.db` 3.20.0 and term names in `GO.db` 3.20.0, then verifies
@@ -97,7 +152,7 @@ Canonical-prior CLAMPfull models are published under
 `output/98_final_models/clampfull/canonical/`, one each for ARCHS4, GTEx, and
 recount2. They are evaluated by ORA against GO:BP, canonical, Reactome, and
 CellMarker. Drug--disease and projection analyses consume these canonical artifacts
-from their dedicated workflows. See [Canonical model + ORA](#canonical-model--ora).
+from their dedicated workflows. Missing models are fitted by Snakemake. See [Canonical model + ORA](#canonical-model--ora).
 
 Configuration: `workflow/config/archs4.yaml` and `workflow/config/recount2.yaml`.
 
@@ -122,18 +177,49 @@ need a cluster, see above).
 
 ### Canonical model + ORA
 
-The canonical workflow is evaluation-only: it consumes the published model RDS,
-loadings, model manifest, and adoption-validation record for each compendium. It does
-not fit, adopt, or republish a model. ORA results live beside each model at
-`output/98_final_models/clampfull/canonical/<compendium>/ora/` and the aggregated
-tables are `ora.csv`, `ora_cross.csv`, and `ora_panel.csv`.
-
-LINCS and S-PrediXcan projections are run by the drug--disease workflow against these
-published canonical models. To register the existing canonical ORA outputs without
-recomputing them:
+`canonical_models` builds the shared C2-all + Reactome + CellMarker prior, then
+fits one canonical CLAMPfull model for ARCHS4, GTEx, and recount2 using their
+workflow-produced expression matrices, SVDs, ranks, and CLAMPbase fits. The
+`archs4_canonical_ora` target evaluates those models. Coverage and saturation
+remain CLAMPbase-only. Drug–disease analyses use only canonical CLAMPfull models,
+plus the gene-space prediction baseline.
 
 ```bash
-snakemake --touch --cores 1 --snakefile workflow/Snakefile archs4_canonical_ora
+snakemake --cores 16 --use-conda --snakefile workflow/Snakefile canonical_models
+snakemake --cores 4 --use-conda --snakefile workflow/Snakefile archs4_canonical_ora
+```
+
+Complete existing canonical and stability CLAMPfull bundles are reused without
+requiring their training inputs. A bundle contains the model RDS, `B.csv`,
+`Z.csv`, `summary.csv`, `manifest.json`, and `complete`. Partial bundles cause an
+error: restore their missing files or move the bundle aside before rebuilding.
+Do not force these fitting rules on an existing bundle.
+
+The canonical prior has 11,107 sets (7,670 C2-all, 1,839 Reactome, 1,598
+CellMarker), MD5 `8ea2e09825753a90273eaa2dc03176f6`. Historical fit manifests
+record `e668595a34ec9da67b69c87fc95a5c29`: that GMT has identical terms and gene
+memberships, with `CellMarker` instead of `CellMarker_Human` in its description
+field. Historical adoption records remain as records; downstream rules use the
+fit manifest. ARCHS4 uses seed 123 and 5,000 iterations; GTEx/recount2 use seed
+124 and 500 iterations, all with multiplier 100. Rebuilds record their actual
+software versions and are not guaranteed to produce byte-identical models.
+
+### Pathway replicates (Figure 3a, c, d)
+
+Pathway recovery uses ten CLAMPbase replicates per group (`coverage.pathway` in
+`workflow/config/archs4.yaml`). Study subsamples at 1-75% use sampling seeds 123, 124, 125,
+33 and 1001-1006; each is fitted at its estimated K (SVD start) and at each fixed K (random
+start). ARCHS4 100% (seeded SVD and random start for replicates 2-10) and GTEx use seeds
+123, 456, 789 and 1001-1007. Replicates 1-3 are the coverage and
+saturation cells; replicates 4-10 are fitted by `clampbase_pathway_cell`,
+`clampbase_full_pathway_cell`, `fit_saturation_pathway_base` and `clampbase_gtex_pathway_replicate`, which keep only
+`CLAMPbase/Z.csv` and `manifest.json`. Where a subsample's SVD has fewer components than the
+requested K (1% at K = 1,728, `extended_svd`), `svd_saturation_extended` computes an
+additional SVD with K components; the original SVD and estimated-K fit are unchanged.
+
+```bash
+snakemake --profile workflow/profiles/local coverage_pathway_ora saturation_pathway_ora
+snakemake --profile workflow/profiles/local fig3_panel
 ```
 
 ## Running on a Slurm cluster
@@ -163,10 +249,7 @@ The conda envs must be visible from the compute nodes; `use-conda` looks them up
 name. `scripts/phenoplier/README.md` §6 has the complete site-profile example
 (including the PhenoPLIER GLS jobs) and the monitoring/resume notes.
 
-<!-- [MARC: ARCHS4 on a cluster — required staged inputs (raw h5, 00_preprocess
-outputs, data/pathways gene sets), memory partition for the 500 GB fits, and how
-precomputed models are adopted (the local profile mentions `--touch
-archs4_precomputed`, which does not exist as a rule).] -->
+
 
 ## Running a single notebook
 
@@ -197,6 +280,15 @@ done
 ```
 
 Each notebook writes PDF, PNG, and SVG files to `output/99_panels/<name>/`.
+The committed `figures/` folder is a copy of these outputs and of
+`output/99_panels/tables/`; do not edit it by hand. Refresh it with the
+`publish_figures` rule after regenerating any figure or table, then copy
+`figures/<name>/<name>.*` into `clamp-manuscript/content/images/final_figures/`:
+
+```bash
+snakemake publish_figures --snakefile workflow/Snakefile --cores 1 --allowed-rules publish_figures
+```
+
 Figure 2 can also run through its Snakemake rule:
 
 ```bash
@@ -205,17 +297,21 @@ snakemake output/99_panels/fig2/fig2.pdf --snakefile workflow/Snakefile --cores 
 
 | Figure | Required upstream data |
 | --- | --- |
-| Figure 2 | Pseudobulk benchmark, grouped cross-validation, cell-type recovery, donor-bulk recovery, and GTEx panel tables listed in its input-path cell and `workflow/rules/panels.smk`. |
-| Figure 3 | ARCHS4 coverage, saturation, drug-disease, projection, and CRISPR-Cas9 results under `output/03_model_biology/02_archs4/`. |
-| Supplements 1 and 3 | Pseudobulk benchmark and recovery tables, GTEx clustering and biology tables; Supplement 1 also uses pseudobulk runtime data, and Supplement 3 uses GTEx runtime data. |
+| Figure 2 | Pseudobulk benchmark, grouped cross-validation, eight-by-eight hard-pair marker ORA grid, donor-bulk recovery, Perez single-cell projection, and GTEx xCell tables listed in its input-path cell and `workflow/rules/panels.smk`. |
+| Figure 3 | ARCHS4 coverage and saturation tables under `output/03_model_biology/02_archs4/00_coverage` and `01_saturation`. |
+| Figure 4 | `scripts/panels/assets/projection_scheme.svg` (rasterized with Inkscape), cytokine projection aggregates under `03_projections/aggregate`, and drug-disease tables under `02_drug_diseases_canonical/three_model_comparison/data`. |
+| Figure 5 | CRISPR-Cas9 metaLV tables under `output/03_model_biology/02_archs4/04_crispercas/03_metalv/fig5/` (rule `crispercas_fig5_data`): metaLVs clustered across the ten CLAMP-full canonical models, PhenoPLIER GLS traits, ARCHS4 activity and PhenomeXcan S-MultiXcan P values and fastENLOC RCPs. |
+| Supplements 1 and 3 | Pseudobulk benchmark and marker-recovery tables, and GTEx clustering, held-out subtissue confusion, and composition tables, respectively. |
 | Supplement 2 | Donor-bulk recovery and UMAP tables under `output/03_model_biology/00_pseudobulk/06_donor_bulk_recovery/`. |
-| Supplement 4 | ARCHS4 coverage and saturation tables under `output/03_model_biology/02_archs4/`. |
-| Supplement 5 | ARCHS4 projection aggregate results, model loadings under `output/98_final_models/`, projection benchmark results, and pathway GMT/marker files under `data/pathways/` (or the sibling `clamp-analyses/data/pathways/`). The notebook regenerates its own `source_data` files. |
-| Supplement 6 | Drug-disease prediction pickle and per-tissue comparison tables under `output/03_model_biology/02_archs4/02_drug_diseases_canonical/`; the notebook converts the pickle with the environment's Python. |
-| Supplement 7 | CRISPR-Cas9 results under `output/03_model_biology/02_archs4/04_crispercas/`. |
+| Supplement 4 | Pseudobulk and GTEx computational timing outputs under `output/02_model_performance/`. |
+| Supplement 5 | ARCHS4 coverage and saturation tables under `output/03_model_biology/02_archs4/`. |
+| Supplement 6 | ARCHS4 projection aggregate results, model loadings under `output/98_final_models/`, projection benchmark results, and pathway GMT/marker files under `data/pathways/` (the required local input directory). The notebook regenerates its own `source_data` files. |
+| Supplement 7 | Drug-disease prediction pickle and per-tissue comparison tables under `output/03_model_biology/02_archs4/02_drug_diseases_canonical/`; the notebook converts the pickle with the environment's Python. |
+| Supplement 8 | metaLV clustering (`Z_all.npz`, `cluster_members.csv`) and CRISPR GSEA under `output/03_model_biology/02_archs4/04_crispercas/03_metalv/`. |
+| Supplementary Tables 1-8 | `scripts/tables/build_supplementary_tables.py` (rule `supplementary_tables`), writing to `output/99_panels/tables/`. |
 
-Figure 4 is not part of this notebook set; there is no `fig4.ipynb` in
-`nbs/99_panels/`.
+Figures 3-5 share the helpers in `scripts/panels/main_figure.R` (180 mm maximum width,
+170 mm maximum height, text clamped to 5-7 pt).
 
 ## Citation
 
@@ -228,3 +324,14 @@ This project is licensed under the [CC-BY 4.0 License](http://creativecommons.or
 Supported by the National Human Genome Research Institute,
 The Eunice Kennedy Shriver National Institute of Child Health and Human Development,
 the National Science Foundation, and the National Eye Institute.
+
+## Revised Supplementary Figure 6 projection workflow
+
+The Supplementary Figure 6 benchmarks (permutation-adjusted pseudobulk recovery,
+stratified gene nulls and GTEx ARI) are built by `projection_benchmark_figure` in
+`workflow/rules/projection_benchmarks.smk`; `supp6_panel` renders the figure.
+
+The benchmark uses `benchmark_project.R` for model preparation and projection,
+`benchmark.py` for scoring and clustering, and `benchmark_panels.R` for plotting.
+CRISPR metaLV scripts live directly under `scripts/archs4/crispercas/`; clustering,
+selection, and figure-data scripts expose subcommands for their smaller steps.

@@ -1,7 +1,5 @@
 # This file may be used to create an environment using:
 # $ conda create --name <env> --file <this file>
-# Then install the pinned PyPI packages with:
-# $ conda run -n <env> python -m pip install -r envs/clamp-analyses.pip.lock
 # platform: linux-64
 @EXPLICIT
 https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -843,3 +841,8 @@ https://conda.anaconda.org/bioconda/linux-64/r-archr-1.0.3-r44h503566f_4.conda
 https://conda.anaconda.org/conda-forge/noarch/r-ggpubr-0.6.2-r44hc72bb7e_0.conda
 https://conda.anaconda.org/bioconda/noarch/bioconductor-genomicsupersignature-1.14.0-r44hdfd78af_0.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/r-factoextra-2.0.0-r44hc72bb7e_0.conda
+https://conda.anaconda.org/bioconda/linux-64/bioconductor-affy-1.84.0-r44h3df3fcb_1.tar.bz2
+https://conda.anaconda.org/bioconda/linux-64/bioconductor-affyio-1.76.0-r44h15a9599_0.tar.bz2
+https://conda.anaconda.org/bioconda/linux-64/bioconductor-edger-4.4.0-r44h3df3fcb_0.tar.bz2
+https://conda.anaconda.org/bioconda/linux-64/bioconductor-vsn-3.74.0-r44h3df3fcb_1.tar.bz2
+https://conda.anaconda.org/conda-forge/noarch/r-biocmanager-1.30.27-r44hc72bb7e_0.conda

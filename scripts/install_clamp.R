@@ -1,3 +1,4 @@
+# Install or verify the repository-pinned CLAMP package.
 CLAMP_REPO <- "chikinalab/CLAMP"
 CLAMP_REF <- "748559ae6d4a9e2982d8f4488bae616fe390195a"
 
