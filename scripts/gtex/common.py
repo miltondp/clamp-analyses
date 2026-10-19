@@ -1,5 +1,4 @@
-"""Shared helpers for GTEx production scripts."""
-
+# Shared Python helpers for GTEx analyses.
 from __future__ import annotations
 
 from pathlib import Path
@@ -16,15 +15,12 @@ from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 
 
 def derive_donor_id(sampid: pd.Series) -> pd.Series:
-    """Derive the GTEx donor/subject ID from SAMPID (first two hyphen-delimited
-    components, e.g. 'GTEX-1117F-0226-SM-5GZZ7' -> 'GTEX-1117F'). Matches SUBJID
-    in GTEx_Analysis_v8_Annotations_SubjectPhenotypesDS.txt.
-    """
+
     return sampid.astype(str).str.split("-").str[:2].str.join("-")
 
 
 def extract_B_matrix(rds_obj) -> pd.DataFrame:
-    """Extract a B matrix from an RDS object (readRDS result) into a DataFrame."""
+
     B_matrix = rds_obj.rx2("B")
     with localconverter(ro.default_converter + pandas2ri.converter):
         B_values = ro.conversion.rpy2py(B_matrix)
@@ -36,7 +32,7 @@ def extract_B_matrix(rds_obj) -> pd.DataFrame:
 
 
 def extract_summary_matrix(rds_obj) -> pd.DataFrame:
-    """Extract a CLAMPfull summary table from an RDS object into a DataFrame."""
+
     summary_matrix = rds_obj.rx2("summary")
     with localconverter(ro.default_converter + pandas2ri.converter):
         summary_values = ro.conversion.rpy2py(summary_matrix)
@@ -58,15 +54,7 @@ def run_tissue_rf_shap(
     param_distributions: dict,
     extra_accuracy_fields_fn: Callable[[str], dict] | None = None,
 ) -> None:
-    """Per-tissue nested-CV RandomForest + SHAP training loop.
 
-    Body copied verbatim from 02_rf_kmeans/00_LV_importance_kmeans.ipynb and
-    03_rf_true_labels/00_LV_importance_true_labels.ipynb, which were
-    otherwise near-identical: label_fn and extra_accuracy_fields_fn are the
-    only seams, letting each caller supply its own tissue-label derivation
-    (k-means cluster majority vote vs. raw GTEx SMTSD) and its own extra
-    accuracy-row columns.
-    """
     (output_dir / "per_tissue").mkdir(parents=True, exist_ok=True)
 
     accuracy_list = []

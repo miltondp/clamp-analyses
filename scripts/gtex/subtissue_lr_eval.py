@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-# Evaluate donor-grouped GTEx anatomical subtissue recovery.
-# test recovery of detailed SMTSD labels within each broad tissue.
-
-
+# Evaluate GTEx anatomical subtissue recovery across donors.
 from __future__ import annotations
 
 import argparse
@@ -20,7 +17,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import extract_B_matrix  # noqa: E402
+from common import extract_B_matrix
 
 readRDS = ro.r["readRDS"]
 
@@ -137,12 +134,7 @@ def _permute_donor_profiles(
     donors: np.ndarray,
     rng: np.random.Generator,
 ) -> np.ndarray:
-    """Permute complete donor label profiles within donor-size strata.
 
-    Donor blocks remain intact.  Assigning each source profile exactly once
-    preserves global class counts, while random within-profile alignment
-    breaks the sample-level association between representation and SMTSD.
-    """
     donor_indices = {
         donor: np.flatnonzero(donors == donor)
         for donor in np.unique(donors)
@@ -638,7 +630,7 @@ def main() -> None:
             for label in labels
         }
 
-    # Fold audit includes explicit zero rows for sparse/excluded labels.
+
     audit_rows = []
     anatomical_pairs = set(map(tuple, anatomical_spec[["Tissue", "SMTSD"]].to_numpy()))
     all_pairs = {
@@ -666,8 +658,7 @@ def main() -> None:
     assert (fold_audit[fold_audit["Included_All_SMTSD"]]["N_Samples"] > 0).all()
     fold_audit.to_csv(output_dir / "fold_smtsd_audit.tsv", sep="\t", index=False)
 
-    # Evaluate each unique (tissue, label-set) task once; common anatomical/all
-    # tasks are reused byte-for-byte in both result sets.
+
     task_definitions = []
     seen_task_keys = set()
     for tissue, labels in anatomical_labels_by_tissue.items():

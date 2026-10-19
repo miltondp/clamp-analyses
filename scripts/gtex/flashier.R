@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# flashier GTEx models
+# Fit flashier on GTEx expression.
 suppressPackageStartupMessages({
   library(flashier)
   library(ebnm)

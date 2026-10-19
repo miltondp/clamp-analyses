@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# GTEx timming and RAM for all models, 3 seeds per each
-
+# Measure GTEx model fitting time and memory.
 from __future__ import annotations
 
 import argparse
@@ -13,9 +12,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-# CoGAPS is intentionally absent: rule cogaps_gtex was run on GTEx and killed at
-# its 7-day budget without converging.  See excluded_methods in
-# workflow/config/runtime_benchmark_gtex.yaml.
+
 METHODS = (
     "CLAMPfull",
     "CLAMPbase",

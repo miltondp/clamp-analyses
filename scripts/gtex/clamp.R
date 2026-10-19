@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# CLAMPbase and CLAMPfull GTEx models
+# Fit CLAMPbase and CLAMPfull models on GTEx.
 suppressPackageStartupMessages({
   library(bigstatsr)
   library(data.table)

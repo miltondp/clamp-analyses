@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-# GTEx tissue feature importance analysis (true GTEx SMTSD labels + SHAP).
-#
-# Load GTEx LV data and tissue metadata
-# Use true GTEx SMTSD tissue labels directly as one-vs-rest RF targets
-# For each tissue, train a binary RF classifier (tissue vs. rest)
-# Compute SHAP values to explain which LVs drive each tissue
-
+# Measure GTEx tissue feature importance with random forests and SHAP.
 from __future__ import annotations
 
 import argparse
@@ -18,7 +12,7 @@ import pandas as pd
 import rpy2.robjects as ro
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import extract_B_matrix, extract_summary_matrix, run_tissue_rf_shap  # noqa: E402
+from common import extract_B_matrix, extract_summary_matrix, run_tissue_rf_shap
 
 readRDS = ro.r["readRDS"]
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# GenomicSuperSignature GTEx models
+# Fit GenomicSuperSignature on GTEx expression.
 suppressPackageStartupMessages({
   library(matrixStats)
   library(factoextra)

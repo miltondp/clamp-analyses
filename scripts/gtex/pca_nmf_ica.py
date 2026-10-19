@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# GTEx model building with PCA, NMF and ICA.
-
+# Fit PCA, NMF, and ICA models on GTEx.
 from __future__ import annotations
 
 import argparse
