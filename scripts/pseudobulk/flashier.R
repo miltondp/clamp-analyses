@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
-# flashier pseudobulk models
-
+# Fit flashier on pseudobulk expression.
 suppressPackageStartupMessages({
   library(data.table)
   library(flashier)

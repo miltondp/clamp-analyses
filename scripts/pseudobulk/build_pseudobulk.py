@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-# Builds one dataset's pseudobulk matrix from raw single-cell counts (h5ad or
-# Matrix Market), keeping only samples in the cohort manifest. CPM-normalizes
-# each cell, then averages per sample. Also builds the matching ground-truth
-# cell-type composition table from the same cell labels.
-
+# Build pseudobulk expression and matched cell-type fractions.
 from __future__ import annotations
 
 import argparse

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""PCA, NMF, and ICA pseudobulk models"""
-
+# Fit PCA, NMF, and ICA models on pseudobulk expression.
 from __future__ import annotations
 
 import argparse

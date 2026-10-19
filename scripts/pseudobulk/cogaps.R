@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# CoGAPS pseudobulk models
+# Fit CoGAPS on pseudobulk expression.
 suppressPackageStartupMessages({
   library(data.table)
   library(CoGAPS)

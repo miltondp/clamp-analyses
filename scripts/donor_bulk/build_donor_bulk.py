@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Build donor-bulk libraries and matched sampled single-cell matrices."""
-
+# Build donor-bulk counts and matched single-cell samples.
 from __future__ import annotations
 
 import argparse

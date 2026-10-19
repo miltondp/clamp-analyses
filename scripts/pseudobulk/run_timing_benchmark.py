@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""runs all the models with 3 seeds for timing"""
-
+# Measure pseudobulk model fitting time and memory.
 from __future__ import annotations
 
 import argparse

@@ -176,7 +176,6 @@ preprocess:
   seed: 123
 module_recovery:
   top_gene_fraction: 0.01
-  retry_gene_fraction: 0.03
   fdr_threshold: 0.05
   top_terms: 3
 clamp:

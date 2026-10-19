@@ -1,8 +1,5 @@
 #!/usr/bin/env Rscript
-# Splits one dataset's samples into 5 cross-validation folds, keeping every
-# sample from the same donor in the same fold so training and test never
-# share a donor. Writes which sample goes in which fold, and how big each
-# fold is, for the fold-fitting scripts to use.
+# Assign donors to cross-validation folds.
 suppressPackageStartupMessages(library(data.table))
 
 script_dir <- dirname(normalizePath(sub("^--file=", "", commandArgs(FALSE)[grep("^--file=", commandArgs(FALSE))])))

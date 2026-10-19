@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# PLIER pseudobulk models.
+# Fit PLIER on pseudobulk expression.
 suppressPackageStartupMessages({
   library(CLAMP)
   library(PLIER)
