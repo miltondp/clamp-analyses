@@ -46,9 +46,7 @@ archs4:
       C8: data/pathways/c8.all.v2026.1.Hs.symbols.gmt
 
   coverage:
-    prior_gmt: data/pathways/go_bp.Hs.symbols.gmt
     databases: [canonical, cellmarker]
-    model_root: output/01_model_building/02_archs4/02_coverage_study/models
     ora_root: output/01_model_building/02_archs4/02_coverage_study/ora
     assignments: output/03_model_biology/02_archs4/00_coverage/assignments
     seeds: [1, 2, 3]
@@ -62,7 +60,14 @@ archs4:
       "75": 05_bp_coverage_study_75
       "100": 06_bp_coverage_study_100
     input_root: output/01_model_building/02_archs4/02_coverage_study
-    model_name: CLAMPfull_bp
+    # At 100% every seed trains on the same studies, and CLAMPbase started from
+    # the SVD is deterministic, so replicates 2-3 would duplicate replicate 1.
+    # Coverage therefore fits them independently in their cells (replicate: RNG
+    # seed): seeded randomized SVD with full_data_svd_k components, rank from
+    # Gavish-Donoho x 2 and CLAMPbase with a seeded random start. The stability
+    # workflow reuses these fits as its seeds 456 and 789.
+    full_data_replicates: {"2": 456, "3": 789}
+    full_data_svd_k: 4605
     resources:
       "1": {mem_mb: 32000, runtime: 5760}
       "5": {mem_mb: 64000, runtime: 8640}
@@ -75,26 +80,30 @@ archs4:
       gtex:
         label: GTEx
         fbm_rds: output/01_model_building/01_gtex/gtex_fbm_filt.rds
+        fbm_backing: output/01_model_building/01_gtex/FBMgtex_preproc_filtered.bk
         genes_rds: output/01_model_building/01_gtex/gtex_genes.rds
         samples_rds: output/01_model_building/01_gtex/gtex_samples.rds
         svd: output/01_model_building/01_gtex/gtex_svdRes.rds
         k: output/01_model_building/01_gtex/CLAMP_K_gtex.rds
         base: output/01_model_building/01_gtex/CLAMPbase.rds
         base_z: output/01_model_building/01_gtex/CLAMPbase/Z.csv
-        max_iter: 500
+        # CLAMPbase replicates 2-3 (replicate: RNG seed), fitted by coverage with the
+        # same design (scripts/gtex/fit_clampbase_seed.R) into
+        # <replicate_root>/rs100_seed_<replicate>; the published model is replicate 1 (seed 0).
+        replicate_root: output/01_model_building/02_archs4/02_coverage_study/comparators/gtex
+        replicate_seeds: {"2": 456, "3": 789}
       recount2:
         label: recount2
         fbm_rds: output/01_model_building/03_recount2/00_recount2/recount2_fbm_filt.rds
+        fbm_backing: output/01_model_building/03_recount2/00_recount2/FBMrecount2_preproc_filtered.bk
         genes_rds: output/01_model_building/03_recount2/00_recount2/recount2_genes.rds
         samples_rds: output/01_model_building/03_recount2/00_recount2/recount2_samples.rds
         svd: output/01_model_building/03_recount2/00_recount2/recount2_svdRes.rds
         k: output/01_model_building/03_recount2/00_recount2/CLAMP_K_recount2.rds
         base: output/01_model_building/03_recount2/00_recount2/CLAMPbase.rds
         base_z: output/01_model_building/03_recount2/00_recount2/CLAMPbase/Z.csv
-        max_iter: 500
     colors:
       model:
-        CLAMPfull: "#0072B2"
         CLAMPbase: "#777777"
       dataset:
         ARCHS4: "#0072B2"
@@ -108,8 +117,7 @@ archs4:
       retries: 2
       retry_mem_factors: [1.0, 1.5, 2.0]
       retry_mem_cap_mb: 800000
-    bp_models_root: output/98_final_models/clampfull/bp
-    bp_model_datasets: [archs4, gtex, recount2]
+    final_datasets: [archs4, gtex, recount2]
     clampbase_root: output/98_final_models/clampbase
     clampbase_seed: {archs4: 1, gtex: 0, recount2: 0}
     clampbase_source:
@@ -125,10 +133,24 @@ archs4:
         model: output/01_model_building/03_recount2/00_recount2/CLAMPbase.rds
         z: output/01_model_building/03_recount2/00_recount2/CLAMPbase/Z.csv
         b: output/01_model_building/03_recount2/00_recount2/CLAMPbase/B.csv
+    pathway:
+      subsample_seeds: [123, 124, 125, 33, 1001, 1002, 1003, 1004, 1005, 1006]
+      archs4_full_seeds: [123, 456, 789, 1001, 1002, 1003, 1004, 1005, 1006, 1007]
+      gtex_seeds: [123, 456, 789, 1001, 1002, 1003, 1004, 1005, 1006, 1007]
+      extended_svd: {"1": [1728]}
+
+  stability:
+    # Independent full-data ARCHS4 replicates: seeded randomized SVD, rank from
+    # Gavish-Donoho x 2, CLAMPbase with a seeded random start and canonical CLAMPfull.
+    # Together with coverage replicate 1 they
+    # give ten full-data models. Seeds 456 and 789 are coverage 100% replicates 2-3:
+    # their SVD and CLAMPbase come from the coverage cells and only CLAMPfull is fitted here.
+    root: output/01_model_building/02_archs4/05_stability
+    seeds: [456, 789, 1001, 1002, 1003, 1004, 1005, 1006, 1007]
+    svd_k: 4605
+    resources: {mem_mb: 400000, threads: 16, runtime: 10080}
 
   saturation:
-    prior_gmt: data/pathways/go_bp.Hs.symbols.gmt
-    model_root: output/01_model_building/02_archs4/01_saturation/models
     ora_root: output/01_model_building/02_archs4/01_saturation/ora
     seeds: [1, 2, 3]
     rng_seeds: [123, 124, 125]
@@ -147,8 +169,6 @@ archs4:
     input_leaf: study_coverage_rs{fraction}_seed_{seed}
     base_root: output/01_model_building/02_archs4/01_saturation
     base_leaf: study_saturation_rs{fraction}_k{k}_seed_{seed}
-    model_name: CLAMPfull_bp
-    max_iter: 5000
     n_samples:
       "1": 6109
       "5": 30308
@@ -211,19 +231,21 @@ archs4:
   traits:
     fdr: 0.05
     coverage:
-      clampfull_bp_dir: output/01_model_building/02_archs4/02_coverage_study/traits/summaries
       clampbase_dir: output/01_model_building/02_archs4/clampbase_coverage/summaries
+      comparators_clampbase_dir: output/01_model_building/02_archs4/clampbase_coverage/comparators/gtex/summaries
     finals:
-      clampfull_bp_dir: output/01_model_building/02_archs4/01_final_model/traits/summaries
       clampbase_dir: output/01_model_building/02_archs4/clampbase_finals/summaries
     saturation:
-      clampfull_bp_dir: output/01_model_building/02_archs4/01_saturation/traits/summaries
       clampbase_dir: output/01_model_building/02_archs4/clampbase_saturation/summaries
 
   canonical:
     model_name: CLAMPfull_canonical
     final_root: output/98_final_models/clampfull/canonical
     compendia: [archs4, gtex, recount2]
+    fits:
+      archs4: {seed: 123, max_iter: 5000, mem_mb: 320000, runtime: 54000}
+      gtex: {seed: 124, max_iter: 500, mem_mb: 96000, runtime: 2880}
+      recount2: {seed: 124, max_iter: 500, mem_mb: 200000, runtime: 2880}
     ora:
       databases: [bp, canonical, reactome, cellmarker]
 
@@ -232,7 +254,6 @@ archs4:
     drugbank_tsv: data/drug_disease_associations/drugbank.tsv
     drugbank_url: "https://raw.githubusercontent.com/dhimmel/drugbank/6b9ae386d6ba4a0eca2d66d4b0337a6e90fe81f4/data/drugbank.tsv"
     drugbank_sha256: 66050d51cb7a614ea6e951d630d2cf40893b75026ebe8f56c6cc37c0e73c3edd
-    lincs_tsv_priors: [bp, canonical]
     spredixcan_dir: data/phenomexcan/gene_assoc/spredixcan/pkl
     prior:
       c2_all: data/pathways/c2.all.v2026.1.Hs.symbols.gmt
@@ -253,12 +274,27 @@ archs4:
       seed: 42
 
   crispercas:
+    # CRISPR-Cas9 lipid screen interpreted with metaLVs: LVs of the ten CLAMP-full
+    # canonical models (S123 plus the stability seeds) clustered across seeds.
     lipid_deg: data/archs4/crispr_cas9/lipid_DEG.csv
     compute_root: output/03_model_biology/02_archs4/04_crispercas
-    network_root: output/03_model_biology/02_archs4/04_crispercas/02_network/figures
-    notebooks: nbs/03_model_biology/02_archs4/04_crispercas
+    metalv_root: output/03_model_biology/02_archs4/04_crispercas/03_metalv
+    noise_seeds_root: output/03_model_biology/02_archs4/06_technical_noise/seeds
+    symbol_ensembl: output/03_model_biology/02_archs4/04_crispercas/02_network/figures/symbol_ensembl.csv
+    min_cos: 0.5
+    min_models: 6
+    noise_r2: 0.25
     n_reps: 10
     fdr: 0.05
+    top_n: 185
+    min_cases: 1000
+    pathway_max_size: 100
+    pathway_jaccard: 0.4
+    lipid_regex: "LIPID|CHOLESTEROL|STEROL|FATTY|LIPOPROTEIN|TRIGLYCERIDE|EICOSANOID|PHOSPHOLIPID|BILE|PROSTAGLANDIN|LEUKOTRIENE|ARACHIDONIC|SPHINGO|PPAR|LDL|HDL"
+    # PhenoPLIER GLS of the GSEA-significant metaLVs, run on the pico cluster
+    # (scripts/phenoplier/metalv/README.md); metaLV-named summary.
+    gls_summary: output/03_model_biology/02_archs4/04_crispercas/03_metalv/phenoplier/gls_summary_metalv.tsv.gz
+    phenomexcan_dir: data/phenomexcan
     archs4_cell_lines_gmt: data/pathways/archs4_cell_lines.gmt
     archs4_cell_lines_url: "https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=ARCHS4_Cell-lines"
     archs4_cell_lines_max_size: 3000
@@ -266,10 +302,9 @@ archs4:
     azimuth_url: "https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=Azimuth_2023"
     azimuth_min_size: 5
     azimuth_max_size: 3000
-    canonical_gls: data/archs4/traits/archs4_canonical_prelim89/gls-summary-archs4_canonical_prelim89.tsv.gz
     smultixcan_zscores: data/archs4/drug_diseases_associations/smultixcan-mashr-zscores.pkl
-    lincs_top_pct: 0.01
-    drug_names: data/drug_disease_associations/indications-verbose.tsv
+    l1000_n_perm: 10000
+    l1000_seed: 7
 
   ora:
     databases:
@@ -308,11 +343,7 @@ archs4:
       gtex: {root: output/98_final_models/clampbase/gtex, rds: CLAMPbase.rds, b: B.csv, z: Z.csv}
       recount2: {root: output/98_final_models/clampbase/recount2, rds: CLAMPbase.rds, b: B.csv, z: Z.csv}
     clampfull:
-      bp:
-        archs4: {root: output/98_final_models/clampfull/bp/archs4/CLAMPfull_bp, rds: CLAMPfull_bp.rds, b: B.csv, z: Z.csv, summary: summary.csv}
-        gtex: {root: output/98_final_models/clampfull/bp/gtex/CLAMPfull_bp, rds: CLAMPfull_bp.rds, b: B.csv, z: Z.csv, summary: summary.csv}
-        recount2: {root: output/98_final_models/clampfull/bp/recount2/CLAMPfull_bp, rds: CLAMPfull_bp.rds, b: B.csv, z: Z.csv, summary: summary.csv}
       canonical:
-        archs4: {root: output/98_final_models/clampfull/canonical/archs4, rds: CLAMPfull_canonical.rds, b: B.csv, z: Z.csv, summary: summary.csv, provenance: adoption_validation.json}
-        gtex: {root: output/98_final_models/clampfull/canonical/gtex, rds: CLAMPfull_canonical.rds, b: B.csv, z: Z.csv, summary: summary.csv, provenance: adoption_validation.json}
-        recount2: {root: output/98_final_models/clampfull/canonical/recount2, rds: CLAMPfull_canonical.rds, b: B.csv, z: Z.csv, summary: summary.csv, provenance: adoption_validation.json}
+        archs4: {root: output/98_final_models/clampfull/canonical/archs4, rds: CLAMPfull_canonical.rds, b: B.csv, z: Z.csv, summary: summary.csv, provenance: manifest.json}
+        gtex: {root: output/98_final_models/clampfull/canonical/gtex, rds: CLAMPfull_canonical.rds, b: B.csv, z: Z.csv, summary: summary.csv, provenance: manifest.json}
+        recount2: {root: output/98_final_models/clampfull/canonical/recount2, rds: CLAMPfull_canonical.rds, b: B.csv, z: Z.csv, summary: summary.csv, provenance: manifest.json}

@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
-# Build a one-file HDF5 composite study store for one CLAMP model: the model's
-# .rds (Z matrix, hyperparameters, provenance) together with that model's GLS
-# results for one cohort. Wraps `phenoplier store build` (phenoplier-cli #70).
-# Driven by workflow/rules/phenoplier.smk; the project is the one run_gls.sh
-# created under the same --name, so the two stay in step.
-#
-# Built atomically: to a .tmp, verified to open with h5py, then renamed, so a
-# failed build never leaves a partial .h5 for Snakemake to mistake for done.
+# Combine a fitted model and its traits into a study store.
 set -euo pipefail
 
 usage() {
@@ -44,10 +37,8 @@ done
 workspace="${workspace_arg:-${PHENOPLIER_HOME:-$HOME/phenoplier}}"
 export PHENOPLIER_HOME="$workspace" PHENOPLIER_ROOT_DIR="$workspace"
 
-# shellcheck disable=SC1091
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "$conda_env"
-# Reading the .rds via `store build --clamp-rds` needs R on PATH too (rpy2).
 export PATH="${CONDA_PREFIX:-}/bin:${PATH}"
 
 installed="$(phenoplier --version 2>&1 | tail -1 | sed -E 's/.*v([0-9][0-9A-Za-z.+-]*).*/\1/')"
@@ -58,8 +49,6 @@ if [[ -n "$require_version" && "$installed" != "$require_version" ]]; then
 fi
 
 project="$workspace/projects/$name"
-# Per-phenotype GLS results live under the cohort-named subdir; the combined
-# gls-summary lives one level up (store build auto-discovers it there).
 gls_dir="$project/results/gls/phenoplier/${cohort}"
 if [[ ! -d "$gls_dir" ]]; then
   echo "[ERROR] $name: no GLS results dir at $gls_dir" >&2

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-
-# Runs a model command and records its resource metrics
-
+# Run a model command and record resource use.
 from __future__ import annotations
 
 import argparse
@@ -19,12 +17,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-# Returns the current UTC timestamp.
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-# Calculates a file checksum.
 def file_hash(path: Path, algorithm: str) -> str:
     digest = hashlib.new(algorithm)
     with path.open("rb") as handle:
@@ -33,7 +29,6 @@ def file_hash(path: Path, algorithm: str) -> str:
     return digest.hexdigest()
 
 
-# Looks up a Slurm job state when available.
 def slurm_state(job_id: str | None) -> str | None:
     if not job_id:
         return None
@@ -51,7 +46,6 @@ def slurm_state(job_id: str | None) -> str | None:
     return match.group(1) if match else None
 
 
-# Writes JSON without leaving a partial file.
 def atomic_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
@@ -65,7 +59,6 @@ def atomic_json(path: Path, payload: dict) -> None:
             os.unlink(temporary)
 
 
-# Runs the requested command and stores its metrics.
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--metrics-dir", required=True, type=Path)

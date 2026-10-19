@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-# Aggregate per-seed K=1728 saturation trait-recovery GLS summaries
-# (CLAMPfull_bp and CLAMPbase) into one long table.
-
+# Summarize trait recovery at a fixed model rank.
 suppressPackageStartupMessages({
   library(data.table)
 })
@@ -22,14 +20,12 @@ required_arg <- function(args, name) {
 }
 
 args <- parse_cli()
-clampfull_dir <- required_arg(args, "clampfull_dir")
 clampbase_dir <- required_arg(args, "clampbase_dir")
+full_clampbase_dir <- required_arg(args, "full_clampbase_dir")
 fdr_cutoff <- as.numeric(required_arg(args, "fdr"))
 traits_out <- required_arg(args, "traits_out")
 
-# Filenames are sat_rs<fraction>_k1728_seed<seed>.tsv.gz, optionally suffixed
-# with the model name (not consistently applied upstream) -- the directory a
-# file lives in, not its filename, is what determines its model here.
+
 scan_dir <- function(dir, model_label) {
   paths <- list.files(
     dir, pattern = "^sat_rs[0-9]+_k1728_seed[0-9]+(_[A-Za-z0-9]+)?\\.tsv\\.gz$", full.names = TRUE
@@ -53,9 +49,28 @@ scan_dir <- function(dir, model_label) {
   }))
 }
 
+scan_full_dir <- function(dir, model_label) {
+  paths <- list.files(dir, pattern = "^cov_rs100_seed[0-9]+\\.tsv\\.gz$", full.names = TRUE)
+  if (!length(paths)) stop("No 100% coverage trait GLS summaries found under ", dir)
+  rbindlist(lapply(paths, function(path) {
+    seed <- as.integer(sub("^cov_rs100_seed([0-9]+)\\.tsv\\.gz$", "\\1", basename(path)))
+    d <- fread(path, select = c("phenotype", "lv", "fdr"))
+    if (uniqueN(d$lv) != 1728L) stop("Expected 1728 LVs in ", path, ", found ", uniqueN(d$lv))
+    data.table(
+      fraction = 100L,
+      seed = seed,
+      model = model_label,
+      k = 1728L,
+      eligible_traits = uniqueN(d$phenotype),
+      recovered_traits = uniqueN(d[fdr < fdr_cutoff, phenotype]),
+      fdr = fdr_cutoff
+    )
+  }))
+}
+
 traits <- rbindlist(list(
-  scan_dir(clampfull_dir, "CLAMPfull_bp"),
-  scan_dir(clampbase_dir, "CLAMPbase")
+  scan_dir(clampbase_dir, "CLAMPbase"),
+  scan_full_dir(full_clampbase_dir, "CLAMPbase")
 ))
 if (anyDuplicated(traits[, .(fraction, seed, model)])) {
   stop("Duplicate fraction/seed/model saturation trait GLS summaries found")

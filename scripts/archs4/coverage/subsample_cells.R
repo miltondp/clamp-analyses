@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-
-# Builds one study-level sample of the filtered ARCHS4 compendium
-
+# Sample ARCHS4 studies and build their expression matrix.
 suppressPackageStartupMessages({
   library(bigstatsr)
   library(hdf5r)
@@ -103,7 +101,9 @@ saveRDS(
 saveRDS(sample_names, file.path(out_dir, "samples.rds"))
 
 if (fraction == 100) {
-  message("Fraction 100: reusing ", fbm_filtered_bk, "; no subsampled copy written")
+  backing <- file.path(out_dir, "fbm_subsampled.bk")
+  if (file.exists(backing)) unlink(backing)
+  if (!file.symlink(normalizePath(fbm_filtered_bk), backing)) stop("Cannot link filtered FBM: ", backing)
 } else {
   backing <- file.path(out_dir, "fbm_subsampled")
   if (file.exists(paste0(backing, ".bk"))) file.remove(paste0(backing, ".bk"))

@@ -1,20 +1,5 @@
 #!/usr/bin/env python
-"""Completeness/validity gate for a GLS combined summary.
-
-Exit 0 only if the summary is COMPLETE and clean:
-  - exactly EXPECT_PHENOS (default 2366) unique phenotypes,
-  - a full phenotype x LV grid: no duplicate (phenotype, lv) pair, and every
-    phenotype tested against the same LV set,
-  - every non-NaN p-value finite and in (0, 1] (a zero p-value is the SE
-    collapse artifact pivlab/phenoplier-cli#85 fixes),
-  - NaN p-values confined to rows flagged lv_degenerate=True.
-
-Summary existence alone is NOT enough: `summarize` concatenates whatever
-per-phenotype files exist, so an interrupted step 7 yields a smaller-but-valid-
-looking summary. The phenotype count and the grid check catch that.
-
-Usage: verify_summary.py <summary.tsv.gz> [expected_phenos]
-"""
+# Check trait-result completeness and statistical validity.
 import sys
 
 import numpy as np
@@ -25,7 +10,7 @@ expect = int(sys.argv[2]) if len(sys.argv) > 2 else 2366
 
 try:
     d = pd.read_csv(f, sep="\t", low_memory=False)
-except Exception as e:  # noqa: BLE001
+except Exception as e:
     print(f"FAIL read: {e}")
     sys.exit(1)
 
