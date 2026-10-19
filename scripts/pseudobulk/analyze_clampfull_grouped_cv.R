@@ -1,11 +1,5 @@
 #!/usr/bin/env Rscript
-# For every dataset, this script reads the five grouped-CV folds already fit
-# by clampfull_grouped_cv.R, calibrates each fold's assigned LV against the
-# training cell-type fraction with a simple linear fit, and applies that
-# calibration to the held-out fold to get out-of-fold (OOF) predictions.
-# It aggregates these across folds and datasets into OOF metrics (Pearson r,
-# predictive R2, MAE)
-
+# Summarize CLAMPfull recovery across held-out donor folds.
 suppressPackageStartupMessages({
   library(data.table)
   library(here)

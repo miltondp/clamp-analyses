@@ -1,3 +1,4 @@
+# Shared Python helpers for pseudobulk and donor-bulk inputs.
 from __future__ import annotations
 
 import gzip

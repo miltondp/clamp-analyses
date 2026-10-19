@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-# Projects every raw single cell onto a full-data CLAMPfull models
-# Writes per-cell LV scores plus cell metadata to an
-# HDF5 output and a projection summary CSV.
-# we created a projection function for py instead of using the clamp function that uses the same 
-# ridge formula (B = (Z'Z + L2*I)^-1 Z'Y) to avoid cross-language R
+# Project single cells into fitted CLAMPfull models.
 from __future__ import annotations
 
 import argparse

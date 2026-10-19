@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# GenomicSuperSignature pseudobulk models
+# Fit GenomicSuperSignature on pseudobulk expression.
 suppressPackageStartupMessages({
   library(data.table)
   library(cluster)

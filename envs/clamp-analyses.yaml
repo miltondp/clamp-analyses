@@ -50,6 +50,8 @@ dependencies:
   - bioconductor-go.db
   - bioconductor-annotationdbi
   - bioconductor-genomicsupersignature
+  - bioconductor-vsn=3.74.0
+  - bioconductor-edger=4.4.0
   - bioconductor-mofa2
   - bioconductor-cogaps
 
@@ -93,3 +95,4 @@ dependencies:
       - scanpy==1.11.5
       - umap-learn==0.5.11
       - pytest==9.0.2
+      - openpyxl==3.1.5

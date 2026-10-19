@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-# GTEx k-means clustering of gene expression data using different methods.
-#
-# GPU-accelerated (cuML) k-means ensemble over sample embeddings from multiple
-# model-building methods plus raw RNA-Seq, scored against true tissue labels
-# (ARI).
-
+# Compare tissue clustering across GTEx model embeddings.
 from __future__ import annotations
 
 import argparse
@@ -23,7 +18,7 @@ from sklearn.metrics import adjusted_rand_score
 from sklearn.preprocessing import StandardScaler
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import extract_B_matrix  # noqa: E402
+from common import extract_B_matrix
 
 readRDS = ro.r["readRDS"]
 

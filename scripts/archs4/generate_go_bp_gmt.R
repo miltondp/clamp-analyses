@@ -1,3 +1,4 @@
+# Build the pinned GO biological process reference.
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 1L) stop("Expected one output path")
 

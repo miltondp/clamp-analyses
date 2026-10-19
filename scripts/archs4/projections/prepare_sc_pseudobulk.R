@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-# Pseudobulk a single-cell dataset (donor x cell type) and emit the same
-# canonical triple as the bulk prep scripts.
-
+# Build donor and cell-type pseudobulks for projection.
 suppressPackageStartupMessages({
   library(data.table)
   library(jsonlite)

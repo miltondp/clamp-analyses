@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# PLIER GTEx models
+# Fit PLIER on GTEx expression.
 suppressPackageStartupMessages({
   library(dplyr)
   library(PLIER)

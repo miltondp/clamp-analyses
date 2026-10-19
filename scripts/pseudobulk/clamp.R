@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# CLAMPbase and CLAMPfull pseudobulk models
+# Fit CLAMPbase and CLAMPfull models on pseudobulk expression.
 suppressPackageStartupMessages({
   library(CLAMP)
   library(data.table)

@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-# Per-LV differential activity between conditions (limma lmFit/eBayes/topTable),
-# for one model of one dataset, over every contrast declared for the dataset.
-
+# Test differences in module activity between conditions.
 suppressPackageStartupMessages({
   library(data.table)
   library(dplyr)
@@ -46,7 +44,7 @@ if (nzchar(summary_path) && file.exists(summary_path)) {
   }
 }
 
-# limma_groups: ~0 + factor, makeContrasts. limma_coef: ~ block + factor, topTable(coef=).
+
 fit_contrast <- function(spec) {
   fac <- as.character(samples[[spec$factor]])
   if (identical(spec$type, "limma_groups")) {

@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-# Per-fold donor-grouped RF + out-of-fold SHAP for the subtissue-recovery analysis.
-#
-# For a single held-out fold: for each broad (SMTS) tissue eligible for subtissue
-# recovery, trains a one-vs-rest RandomForest on this fold's training donors
-# only (blind to SMTSD subtissue labels throughout), then computes SHAP for the
-# held-out fold's tissue-positive samples using the training fold as background.
-
-
+# Fit donor-held-out tissue classifiers and compute SHAP values.
 from __future__ import annotations
 
 import argparse
@@ -23,7 +16,7 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from sklearn.model_selection import RandomizedSearchCV, StratifiedGroupKFold
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import extract_B_matrix  # noqa: E402
+from common import extract_B_matrix
 
 readRDS = ro.r["readRDS"]
 
@@ -55,9 +48,7 @@ def main() -> None:
     gtex_CLAMPfull_rds = readRDS(str(args.clamp_full_rds))
     lv_matrix = extract_B_matrix(gtex_CLAMPfull_rds).T
 
-    # gtex_meta is unused directly here (all label info comes from the fold
-    # membership file produced by subtissue_cv_folds.py), but is a declared
-    # input for Snakemake staleness tracking, matching sibling scripts.
+
     _ = pd.read_csv(
         args.gtex_meta,
         sep="\t",
@@ -150,8 +141,7 @@ def main() -> None:
             print(f"[gtex]   fold {fold} {tissue}: no held-out positives, skipping SHAP", flush=True)
             continue
 
-        # Background = train fold only (never the held-out fold); explained
-        # samples = held-out fold's tissue-positive samples only.
+
         explainer = shap.TreeExplainer(final_model, data=lv_train, feature_perturbation="interventional")
         shap_explanation = explainer(lv_matrix.loc[positive_test_ids])
         shap_values_class1 = shap_explanation.values[..., 1]

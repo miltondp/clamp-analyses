@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
-# Fit CLAMPbase at a forced rank K for the saturation sweep.
-
+# Fit CLAMPbase at a specified rank.
 suppressPackageStartupMessages({
   library(bigstatsr)
   library(Matrix)
@@ -99,7 +98,11 @@ message(
   nrow(Y), " genes x ", ncol(Y), " samples"
 )
 
-base_args <- list(Y = Y, svdres = svd_res, trace = TRUE, rseed = seed)
+initialization <- args$initialization %||% "random"
+z_only <- identical(args$z_only, "true")
+base_args <- list(Y = Y, svdres = svd_res, trace = TRUE)
+if (initialization == "random") base_args$rseed <- seed else set.seed(123L)
+if (clamp_k > length(svd_res$d)) stop("Requested K exceeds supplied SVD rank")
 rank_arg <- if ("clamp_k" %in% names(formals(CLAMP::CLAMPbase))) "clamp_k" else "k"
 base_args[[rank_arg]] <- clamp_k
 base_res <- do.call(CLAMP::CLAMPbase, base_args)
@@ -120,9 +123,9 @@ if (anyNA(base_res$B) || any(!is.finite(as.matrix(base_res$B)))) {
 rownames(base_res$Z) <- genes
 colnames(base_res$B) <- sample_names
 
-saveRDS(base_res, file.path(tmp_dir, "CLAMPbase.rds"))
+if (!z_only) saveRDS(base_res, file.path(tmp_dir, "CLAMPbase.rds"))
 write.csv(base_res$Z, file.path(tmp_dir, "CLAMPbase", "Z.csv"))
-write.csv(base_res$B, file.path(tmp_dir, "CLAMPbase", "B.csv"))
+if (!z_only) write.csv(base_res$B, file.path(tmp_dir, "CLAMPbase", "B.csv"))
 
 finished <- Sys.time()
 manifest <- list(
@@ -136,6 +139,10 @@ manifest <- list(
   genes = length(genes),
   samples = length(sample_names),
   latent_variables = clamp_k,
+  initialization = initialization,
+  artifact_scope = if (z_only) "pathway-only Z loadings; B and full fit not persisted" else "full",
+  svd_path = normalizePath(svd_path),
+  svd_components = length(svd_res$d),
   prior = NULL,
   requested_resources = list(
     mem_mb = requested_mem_mb,

@@ -1,9 +1,8 @@
 #!/usr/bin/env Rscript
-
-# Shared ARCHS4 helpers.
+# Shared helpers for ARCHS4 models and projections.
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
-# Parses named command-line arguments.
+
 parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
   out <- list()
   i <- 1L
@@ -22,26 +21,26 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
   out
 }
 
-# Returns a required command-line argument.
+
 required_arg <- function(args, name) {
   value <- args[[name]]
   if (is.null(value) || !nzchar(as.character(value))) stop("Missing --", gsub("_", "-", name))
   value
 }
 
-# Creates a directory when it does not exist.
+
 ensure_dir <- function(path) {
   dir.create(path, showWarnings = FALSE, recursive = TRUE)
   path
 }
 
-# Creates the parent directory for a file.
+
 ensure_parent <- function(path) {
   ensure_dir(dirname(path))
   path
 }
 
-# Runs an expression with one BLAS thread per worker.
+
 with_single_threaded_blas <- function(n_cores, expr) {
   if (n_cores > 1) {
     old_check <- getOption("bigstatsr.check.parallel.blas")
@@ -54,12 +53,12 @@ with_single_threaded_blas <- function(n_cores, expr) {
   force(expr)
 }
 
-# Attaches an existing FBM backing file.
+
 attach_fbm <- function(backingfile, nrow, ncol) {
   bigstatsr::FBM(nrow = nrow, ncol = ncol, backingfile = backingfile, create_bk = FALSE)
 }
 
-# Converts sample-by-gene counts to TPM.
+
 tpm_norm <- function(counts, gene_lengths) {
   if (!is.matrix(counts)) stop("`counts` must be a matrix.")
   if (is.null(names(gene_lengths))) stop("`gene_lengths` must be a named numeric vector.")
@@ -76,7 +75,7 @@ tpm_norm <- function(counts, gene_lengths) {
   sweep(rpk, 1, per_sample_sum, FUN = "/") * 1e6
 }
 
-# Builds a CLAMPfull prior from GMT collections.
+
 build_prior <- function(genes, gmts) {
   gmt_list <- lapply(names(gmts), function(collection) {
     sets <- CLAMP:::read_gmt(gmts[[collection]])
@@ -119,7 +118,7 @@ validate_sample_names <- function(sample_names, n_columns) {
   invisible(sample_names)
 }
 
-# Writes a CLAMP result in the standard model layout.
+
 write_clamp_model <- function(res, model_dir, genes, sample_names, rds_path = NULL) {
   validate_sample_names(sample_names, ncol(res$B))
   res$Z <- data.frame(res$Z)
@@ -145,7 +144,6 @@ write_clamp_model <- function(res, model_dir, genes, sample_names, rds_path = NU
   invisible(res)
 }
 
-# Projection workflow helpers
 
 read_projection_model <- function(path) {
   mdl <- readRDS(path)

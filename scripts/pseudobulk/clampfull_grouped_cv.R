@@ -1,10 +1,5 @@
 #!/usr/bin/env Rscript
-# Held-out fold evaluation: we train CLAMPfull on every sample except this
-# fold, then project the held-out samples onto the resulting gene-to-LV
-# mapping to get their LV activity, the input a later regression needs to
-# predict each held-out sample's known cell-type proportion and check it
-# against the truth. Because the held-out samples never influenced training,
-# this is a leakage-free test of whether the model generalizes.
+# Fit and evaluate CLAMPfull on a held-out donor fold.
 suppressPackageStartupMessages({
   library(CLAMP)
   library(data.table)

@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-
-# Runs pathway ORA or aggregates completed ORA summaries.
-
+# Test pathway enrichment or aggregate completed results.
 suppressPackageStartupMessages({
   library(clusterProfiler)
   library(data.table)
@@ -11,7 +9,7 @@ suppressPackageStartupMessages({
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
-# Parses named command-line arguments.
+
 parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
   out <- list()
   i <- 1L
@@ -30,7 +28,7 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
   out
 }
 
-# Returns a required command-line argument.
+
 required_arg <- function(args, name) {
   value <- args[[name]]
   if (is.null(value) || !nzchar(as.character(value))) {
@@ -39,7 +37,7 @@ required_arg <- function(args, name) {
   value
 }
 
-# Reads a GMT pathway collection.
+
 read_gmt <- function(path) {
   records <- strsplit(readLines(path, warn = FALSE), "\t", fixed = TRUE)
   valid <- lengths(records) >= 3L
@@ -50,7 +48,7 @@ read_gmt <- function(path) {
   ))
 }
 
-# Combines completed ORA summaries into coverage tables.
+
 aggregate_coverage <- function(args) {
   ora_root <- required_arg(args, "ora_root")
   coverage_out <- required_arg(args, "coverage_out")
@@ -101,7 +99,7 @@ aggregate_coverage <- function(args) {
   fwrite(panel, panel_out)
 }
 
-# Runs pathway ORA for one model and database.
+
 run_ora <- function(args) {
 z_path <- required_arg(args, "z")
 out_dir <- required_arg(args, "out_dir")
@@ -130,9 +128,8 @@ max_size <- as.integer(args$max_size %||% 500L)
 pvalue_cutoff <- as.numeric(args$pvalue_cutoff %||% 0.05)
 qvalue_cutoff <- as.numeric(args$qvalue_cutoff %||% 0.2)
 fdr <- as.numeric(args$fdr %||% 0.05)
-# Optional: restrict the run to named LVs (one per line). Used by the
-# projections tree to score only the differentially active LVs; when absent
-# every LV in Z is tested, exactly as before.
+
+
 lv_subset_path <- args$lv_subset %||% ""
 
 if (dir.exists(out_dir)) stop("Refusing to overwrite ORA directory: ", out_dir)

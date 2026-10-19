@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Build an independent expression-derived UMAP for sampled retained cells."""
-
+# Build expression UMAPs for retained single cells.
 from __future__ import annotations
 
 import argparse

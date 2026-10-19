@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-# Fit a small CLAMP model on one dataset's own RNA-seq, for comparison against
-# a projection of the same data into the ARCHS4 model.
-
+# Fit a local CLAMP model for projection comparisons.
 suppressPackageStartupMessages({
   library(data.table)
   library(dplyr)
@@ -64,7 +62,7 @@ base_res <- CLAMP::CLAMPbase(Y = norm, svdres = svdres, trace = TRUE, clamp_k = 
 base_res$Z <- data.frame(base_res$Z); rownames(base_res$Z) <- genes
 base_res$B <- data.frame(base_res$B); colnames(base_res$B) <- samples
 
-# Build the prior: GMT collections plus a CellMarker cell-type set.
+
 gmt_list <- lapply(seq_along(prior_gmts), function(i) {
   sets <- CLAMP:::read_gmt(prior_gmts[[i]])
   names(sets) <- paste0(prior_names[[i]], "_", names(sets))

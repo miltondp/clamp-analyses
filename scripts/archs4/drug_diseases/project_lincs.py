@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-# Project the LINCS L1000 drug-perturbation signature matrix into a CLAMP LV space.
-# Projects the drug x gene LINCS matrix through the given compendium's CLAMP model
-# (--model-name; the canonical drug-diseases pipeline passes CLAMPfull_canonical)
-# via CLAMP::projectCLAMP, producing a drug x LV matrix.
-
+# Project L1000 drug signatures into canonical models.
 from __future__ import annotations
 
 import argparse

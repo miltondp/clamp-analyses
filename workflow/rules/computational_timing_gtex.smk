@@ -28,9 +28,7 @@ RUNTIME_GTEX_MEM_MB = {
 
 
 # ============================================================
-# GTEx computational-timing analysis 
-#
-# 9 methods x 3 seeds = 27 fits on one dataset
+# Step 1: prepare GTEx benchmark inputs
 # ============================================================
 
 rule runtime_gtex_matrix_shape:
@@ -46,6 +44,10 @@ rule runtime_gtex_matrix_shape:
         "python scripts/gtex/run_timing_benchmark.py --probe-shape "
         "--matrix-csv {input.df_csv} --shape-csv {output.shape}"
 
+
+# ============================================================
+# Step 2: measure model time and memory
+# ============================================================
 
 rule runtime_fit_gtex:
     input:
@@ -102,6 +104,10 @@ rule runtime_fit_gtex:
         "--max-count {params.max_count} "
         "--similarity-threshold {params.similarity_threshold}"
 
+
+# ============================================================
+# Step 3: summarize benchmark results
+# ============================================================
 
 rule computational_timing_report_gtex:
     input:

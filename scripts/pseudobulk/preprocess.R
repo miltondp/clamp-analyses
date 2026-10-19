@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-# Normalizes one pseudobulk expression matrix CPM,
-# then filters and z-scores it via CLAMP and
-# selects number LVs via elbow-based SVD component selection
+# Normalize pseudobulk expression and estimate model rank.
 suppressPackageStartupMessages({
   library(CLAMP)
   library(data.table)

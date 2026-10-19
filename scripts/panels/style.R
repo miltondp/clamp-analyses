@@ -1,7 +1,9 @@
+# Shared publication figure styles and export settings.
 suppressPackageStartupMessages({
   library(data.table); library(ggplot2); library(cowplot); library(patchwork)
   library(here); library(grid); library(yaml)
 })
+source(here("scripts/panels/svg_export.R"))
 NM_WIDTH <- 180
 NM_HEIGHT <- 247
 NM_FONT <- 5.5
@@ -14,37 +16,43 @@ nm_theme <- function() {
           legend.key.size=unit(2.5,"mm"),axis.ticks.length=unit(1,"mm"),
           plot.margin=margin(2,2,2,2,"mm"))
 }
+MIN_FONT_PT <- 5
+MIN_GEOM_TEXT <- MIN_FONT_PT / .pt
+FONT_FAMILY <- "Helvetica"
+FS_TAG <- 8
 nm_tag <- function(p,label,title=NULL) {
-  heading <- paste(label,if(!is.null(title)) title else "")
-  plot_grid(ggdraw()+draw_label(heading,x=.01,hjust=0,size=6.5,fontface="bold",fontfamily="Helvetica"),
+  plot_grid(ggdraw()+draw_label(tolower(label),x=.005,hjust=0,size=FS_TAG,fontface="bold",fontfamily=FONT_FAMILY)+
+    draw_label(if(is.null(title)) "" else title,x=.055,hjust=0,size=MIN_FONT_PT,fontface="bold",fontfamily=FONT_FAMILY),
             p,ncol=1,rel_heights=c(.08,.92))
 }
 nm_fonts <- function(g) {
   if(inherits(g,"text")) {
     fs <- g$gp$fontsize; if(is.null(fs)) fs <- NM_FONT
-    g$gp$fontsize <- pmin(7,pmax(5,fs));g$gp$fontfamily <- "Helvetica"
+    g$gp$fontsize <- pmax(5,fs);g$gp$fontfamily <- "Helvetica"
   }
   if(!is.null(g$grobs)) g$grobs <- lapply(g$grobs,nm_fonts)
   if(!is.null(g$children)) for(i in seq_along(g$children)) g$children[[i]] <- nm_fonts(g$children[[i]])
   g
 }
-nm_export <- function(pages,number,titles) {
+nm_export <- function(pages,number,titles, height=NM_HEIGHT, heading=FALSE, dpi=600) {
+  NM_HEIGHT <- height
   out <- here(sprintf("output/99_panels/supp%d",number))
   dir.create(out,recursive=TRUE,showWarnings=FALSE)
   stopifnot(length(pages)==1L, length(titles)==1L)
   grobs <- vector("list",length(pages))
   for(i in seq_along(pages)) {
-    heading <- sprintf("Supplementary Figure %d%s | %s",number,
+    heading_text <- sprintf("Supplementary Figure %d%s | %s",number,
                        if(length(pages)>1) sprintf(" (%d/%d)",i,length(pages)) else "",titles[i])
-    page <- plot_grid(ggdraw()+draw_label(heading,x=.012,hjust=0,size=7,fontface="bold",fontfamily="Helvetica"),
+    page <- if (!heading) pages[[i]] else plot_grid(ggdraw()+draw_label(heading_text,x=.012,hjust=0,size=7,fontface="bold",fontfamily="Helvetica"),
                        pages[[i]],ncol=1,rel_heights=c(.018,.982))
     grDevices::pdf(NULL,width=NM_WIDTH/25.4,height=NM_HEIGHT/25.4)
     g <- nm_fonts(grid::forceGrob(ggplotGrob(page)))
     grDevices::dev.off()
     grobs[[i]] <- g
     stem <- sprintf("supp%d",number)
-    ggsave(file.path(out,paste0(stem,".svg")),g,width=NM_WIDTH,height=NM_HEIGHT,units="mm",device=svglite::svglite,bg="white")
-    ggsave(file.path(out,paste0(stem,".png")),g,width=NM_WIDTH,height=NM_HEIGHT,units="mm",dpi=300,device=ragg::agg_png,bg="white")
+    ggsave(file.path(out,paste0(stem,".svg")),g,width=NM_WIDTH,height=NM_HEIGHT,units="mm",device=svg_device,bg="white")
+    add_svg_font_stack(file.path(out,paste0(stem,".svg")))
+    ggsave(file.path(out,paste0(stem,".png")),g,width=NM_WIDTH,height=NM_HEIGHT,units="mm",dpi=dpi,device=ragg::agg_png,bg="white")
   }
   raw <- tempfile(fileext=".pdf")
   cairo_pdf(raw,width=NM_WIDTH/25.4,height=NM_HEIGHT/25.4,onefile=TRUE,family="Helvetica")

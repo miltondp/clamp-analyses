@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
-# Aggregate per-cell saturation ORA summaries into long/panel-ready tables.
-
+# Summarize pathway recovery across fixed-rank models.
 suppressPackageStartupMessages({
   library(data.table)
 })
@@ -22,14 +21,21 @@ required_arg <- function(args, name) {
 
 args <- parse_cli()
 ora_root <- required_arg(args, "ora_root")
+full_ora_root <- required_arg(args, "full_ora_root")
 saturation_out <- required_arg(args, "saturation_out")
 panel_out <- required_arg(args, "panel_out")
 
+read_summary <- function(path) {
+  row <- fread(path)
+  index <- regmatches(path, regexpr("/seed[0-9]+/", path))
+  row[, summary_seed := seed]
+  row[, seed := as.integer(gsub("[^0-9]", "", index))]
+  row
+}
+
 summary_files <- list.files(ora_root, pattern = "^summary\\.csv$", recursive = TRUE, full.names = TRUE)
-canonical <- "/rs[0-9]+/k[0-9]+/seed[0-9]+/[^./]+/[^./]+/summary\\.csv$"
+canonical <- "/rs[0-9]+/k[0-9]+/seed[0-9]+/CLAMPbase/(canonical|cellmarker)/summary\\.csv$"
 summary_files <- grep(canonical, summary_files, value = TRUE)
-# Saturation scores against canonical + CellMarker only; drop any Reactome
-# directories left on disk from earlier runs.
 summary_files <- summary_files[!grepl("/reactome/", summary_files, fixed = TRUE)]
 if (!length(summary_files)) stop("No published ORA summaries found below ", ora_root)
 complete_files <- file.path(dirname(summary_files), "complete")
@@ -38,14 +44,31 @@ if (any(!file.exists(complete_files))) {
 }
 
 saturation <- rbindlist(lapply(summary_files, function(path) {
-  row <- fread(path)
-  # K is recovered from the path: .../rs{f}/k{K}/seed{s}/{model}/{database}/summary.csv
+  row <- read_summary(path)
   parts <- strsplit(path, "/", fixed = TRUE)[[1]]
   k_part <- parts[length(parts) - 4L]
   if (!grepl("^k[0-9]+$", k_part)) stop("Cannot read K from path: ", path)
   row[, k := as.integer(sub("^k", "", k_part))]
   row
 }), fill = TRUE)
+
+full_files <- list.files(full_ora_root, pattern = "^summary\\.csv$", recursive = TRUE, full.names = TRUE)
+full_files <- grep("/seed[0-9]+/CLAMPbase/(canonical|cellmarker)/summary\\.csv$", full_files, value = TRUE)
+if (!length(full_files)) stop("No 100% coverage ORA summaries found below ", full_ora_root)
+if (any(!file.exists(file.path(dirname(full_files), "complete")))) {
+  stop("Incomplete 100% coverage ORA directories below ", full_ora_root)
+}
+full <- rbindlist(lapply(full_files, read_summary), fill = TRUE)
+if (any(full$fraction != 100L) || any(full$latent_variables != 1728L)) {
+  stop("100% coverage ORA summaries must have fraction 100 and 1728 latent variables")
+}
+full[, k := latent_variables]
+saturation <- rbindlist(list(saturation, full), fill = TRUE)
+if (!is.null(args$database_labels)) {
+  pairs <- strsplit(strsplit(args$database_labels, ",", fixed = TRUE)[[1L]], "=", fixed = TRUE)
+  labels <- setNames(vapply(pairs, `[[`, character(1), 2L), vapply(pairs, `[[`, character(1), 1L))
+  saturation[database %chin% names(labels), database_label := labels[database]]
+}
 
 required <- c(
   "dataset", "fraction", "seed", "model", "database", "database_label",

@@ -19,11 +19,8 @@ def donor_bulk_manifest(wildcards):
 
 
 # ============================================================
-# Step 1: build donor-bulk libraries and independent expression UMAPs
+# Step 1: build donor-bulk libraries and expression UMAPs
 # ============================================================
-# Sums the same retained raw single-cell counts used by pseudobulk into one
-# real bulk-like library per donor, plus a separate expression UMAP from a
-# sampled subset of cells
 
 rule build_donor_bulk:
     input:
@@ -108,10 +105,8 @@ rule donor_bulk_umaps:
 
 
 # ============================================================
-# Step 2: fit full-data donor-bulk models
+# Step 2: fit full-data models
 # ============================================================
-# Preprocesses the raw donor-summed counts
-# and fits CLAMPfull on the full dataset
 
 rule preprocess_donor_bulk:
     input:
@@ -170,10 +165,8 @@ rule donor_bulk_full_models:
 
 
 # ============================================================
-# Step 3: leakage-free donor-bulk grouped CV
+# Step 3: validate models across held-out donors
 # ============================================================
-# Same 5-fold, donor-preserving grouped CV, refit on
-# the donor-summed libraries
 
 rule donor_bulk_grouped_cv_folds:
     input:
@@ -248,11 +241,8 @@ rule donor_bulk_models:
 
 
 # ============================================================
-# Original-cell projection, analysis, validation, and notebooks
+# Step 4: project single cells and report recovery
 # ============================================================
-# Projects the original single cells onto the donor-bulk CLAMPfull models,
-# pools full/CV results into analysis tables, validates the pipeline, and
-# runs the QC and recovery notebooks.
 
 rule single_cell_projection_donor_bulk:
     input:

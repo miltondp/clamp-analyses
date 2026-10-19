@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
-# Score CLAMP LVs against CRISPR-Cas9 lipid-screen gene sets with fgsea.
-
+# Test gene modules against CRISPR lipid-screen gene sets.
 suppressPackageStartupMessages({
   library(dplyr)
   library(purrr)

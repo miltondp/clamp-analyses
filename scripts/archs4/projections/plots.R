@@ -1,5 +1,4 @@
-# Figure helpers for the projection report notebooks. S
-
+# Shared plotting helpers for projection reports.
 suppressPackageStartupMessages({
   library(data.table)
   library(ggplot2)
@@ -119,7 +118,7 @@ proj_expected_mechanism_panel <- function(lv_stats, comparisons, dsel, msel) {
                        expand = expansion(mult = 0)) +
     scale_fill_gradient2(low = PROJ_DIVERGING$low, mid = PROJ_DIVERGING$mid,
                          high = PROJ_DIVERGING$high, midpoint = 0,
-                         limits = c(-lim, lim), name = "LV log2FC") +
+                         limits = c(-lim, lim), name = "GM log2FC") +
     scale_size_continuous(range = c(1.5, 8), name = "-log10 ORA FDR") +
     guides(fill = guide_colourbar(barheight = grid::unit(28, "pt"),
                                   barwidth = grid::unit(6, "pt")),

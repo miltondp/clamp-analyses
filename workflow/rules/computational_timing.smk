@@ -16,11 +16,7 @@ RUNTIME_TIMING_FILES = expand(
 
 
 # ============================================================
-# Controlled computational-timing analysis over pseudobulk model inputs
-#
-# One job owns one dataset/method/seed model directory.  Snakemake can
-# therefore resume an interrupted 180-fit benchmark without touching the
-# production models under output/01_model_building.
+# Step 1: measure pseudobulk model time and memory
 # ============================================================
 
 rule runtime_fit_pseudobulk:
@@ -61,6 +57,10 @@ rule runtime_fit_pseudobulk:
         "--mofa-max-epochs {params.mofa_max_epochs} "
         "--cogaps-iterations {params.cogaps_iterations}"
 
+
+# ============================================================
+# Step 2: summarize benchmark results
+# ============================================================
 
 rule computational_timing_report_pseudobulk:
     input:

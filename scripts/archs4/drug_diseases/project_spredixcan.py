@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-# Project raw S-PrediXcan gene-trait z-scores into a CLAMP LV space. For each of
-# the 49 tissue files under --spredixcan-dir: clean (drop duplicate gene rows,
-# drop any-NaN rows), save the cleaned copy, then project it through the given
-# compendium's CLAMP model (--model-name; the canonical drug-diseases pipeline
-# passes CLAMPfull_canonical) via CLAMP::projectCLAMP. Writes two subdirectories
-# under --output-dir: raw/{stem}-data.pkl (cleaned, unprojected tissue data) and
-# proj/{stem}-projection-{compendium}.pkl (CLAMP-projected tissue data).
-
+# Project tissue gene-trait associations into canonical models.
 from __future__ import annotations
 
 import argparse

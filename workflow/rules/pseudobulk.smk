@@ -44,10 +44,8 @@ def all_pseudobulk_inputs(filename):
 
 
 # ============================================================
-# Reference gene set for pathway priors
+# Step 1: prepare the pathway reference
 # ============================================================
-# Downloads and checksums the fixed GO:BP gene-set file used as the shared
-# pathway prior by every method that needs one (CLAMPfull, PLIER, MOFA-FLEX).
 
 rule pathway_prior:
     output:
@@ -64,12 +62,8 @@ rule pathway_prior:
 
 
 # ============================================================
-# Step 1: build pseudobulk data
+# Step 2: build pseudobulk data
 # ============================================================
-# For each dataset, produces
-# the pseudobulk expression matrix: which samples qualify, the CPM-averaged
-# expression matrix built from raw single cells, and the matching
-# ground-truth cell-type composition table used to score every model later.
 
 rule cohort_manifest:
     input:
@@ -121,10 +115,8 @@ rule pseudobulk_data:
 
 
 # ============================================================
-# Step 2: preprocess pseudobulk data
+# Step 3: normalize expression and estimate rank
 # ============================================================
-# filters out low-signal genes, z-scores and
-# picks the model rank (k) via SVD elbow selection
 
 rule preprocess_pseudobulk:
     input:
@@ -154,10 +146,8 @@ rule preprocess_pseudobulk:
 
 
 # ============================================================
-# Step 3: decomposition pseudobulk models
+# Step 4: fit decomposition models
 # ============================================================
-# CLAMPbase/CLAMPfull, PLIER, PCA/NMF/ICA,
-# Flashier, MOFA-FLEX, GSSig, CoGAPS models with pseudobulk data
 
 rule clamp_pseudobulk:
     input:
@@ -348,12 +338,8 @@ rule model_building_qc_pseudobulk:
 
 
 # ============================================================
-# Step 4: grouped cross-validation for CLAMPfull
+# Step 5: validate CLAMPfull across held-out donors
 # ============================================================
-# Splits each dataset into 5 donor-preserving folds, refits CLAMPfull per
-# fold on the training samples, projects the held-out samples onto the
-# resulting latent variables, and pools all folds into out-of-fold
-# predictions and metrics
 
 rule grouped_cv_folds_pseudobulk:
     input:
@@ -472,12 +458,8 @@ rule grouped_cv_analysis_pseudobulk:
 
 
 # ============================================================
-# Step 5: project single cells onto the CLAMP latent variables
+# Step 6: project single cells
 # ============================================================
-# Projects every raw single cell from each
-# dataset onto the full-data CLAMPfull models
-# so each individual cell's LV activity can later be checked against its annotated
-# cell type
 
 rule single_cell_projection_pseudobulk:
     input:
@@ -508,12 +490,8 @@ rule single_cell_projections:
 
 
 # ============================================================
-# Step 6: biology analyses
+# Step 7: evaluate biological recovery
 # ============================================================
-# Turns model outputs into biological results: benchmarking every method
-# against the ground truth, the held-out cross-validation report,
-# disentangling latent variables against marker genes, single-cell recovery,
-# and the hard-to-distinguish cell-type-pair panels.
 
 rule benchmark_pseudobulk:
     input:
@@ -562,6 +540,7 @@ rule holdout_report_pseudobulk:
 
 rule disentangle_pseudobulk:
     input:
+        ora_helper="scripts/pseudobulk/marker_ora.R",
         models=expand(f"{PROD}/{{dataset}}/models/CLAMPfull/CLAMPfull.rds", dataset=DATASETS),
         assignments=rules.benchmark_pseudobulk.output.assignments,
         corr=rules.benchmark_pseudobulk.output.corr,
@@ -589,7 +568,6 @@ rule disentangle_pseudobulk:
         mod_root=PROD,
         out_dir=f"{BIO}/02_disentangle",
         top_gene_fraction=config["module_recovery"]["top_gene_fraction"],
-        retry_gene_fraction=config["module_recovery"]["retry_gene_fraction"],
         fdr_threshold=config["module_recovery"]["fdr_threshold"],
         top_terms=config["module_recovery"]["top_terms"],
     conda: "clamp-analyses"
@@ -622,6 +600,11 @@ rule single_cell_recovery_pseudobulk:
 
 rule hard_cell_types_pseudobulk:
     input:
+        models=expand(f"{PROD}/{{dataset}}/models/CLAMPfull/Z.csv", dataset=DATASETS),
+        cell_marker_file=CELL_MARKER_FILE,
+        allen_brain_gmt_file=ALLEN_BRAIN_GMT_FILE,
+        azimuth_file=AZIMUTH_FILE,
+        ora_helper="scripts/pseudobulk/marker_ora.R",
         top=rules.disentangle_pseudobulk.output.top,
         margins=rules.disentangle_pseudobulk.output.margins,
         selected=rules.disentangle_pseudobulk.output.selected,
@@ -633,6 +616,7 @@ rule hard_cell_types_pseudobulk:
         recovery=rules.single_cell_recovery_pseudobulk.output.recovery,
         notebook=f"{BIO_NB}/04_hard_cell_types.ipynb",
     output:
+        cross_grid=f"{BIO}/04_hard_cell_types/hard_cross_grid_ready.csv",
         table=f"{BIO}/04_hard_cell_types/hard_cell_types.csv",
         correlations=f"{BIO}/04_hard_cell_types/related_lv_correlations.csv",
         enrichment=f"{BIO}/04_hard_cell_types/hard_marker_enrichment.csv",

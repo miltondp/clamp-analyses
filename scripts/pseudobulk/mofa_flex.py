@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""MOFA-FLEX GO:BP pseudobulk models"""
-
+# Fit MOFA-FLEX on pseudobulk with pathway priors.
 from __future__ import annotations
 
 import argparse

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+# Export projected drug signatures with DrugBank names.
 from __future__ import annotations
 
 import argparse

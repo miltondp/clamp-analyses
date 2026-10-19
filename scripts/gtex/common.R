@@ -1,4 +1,4 @@
-# Shared GTEx helpers used by multiple production scripts.
+# Shared R helpers for GTEx model fitting.
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
 parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
@@ -25,7 +25,7 @@ required_arg <- function(args, name) {
   value
 }
 
-# Build the GO:BP pathway prior used by clamp.R and plier.R.
+
 build_go_bp_prior <- function(genes, gmt_path) {
   bp_gmt <- CLAMP:::read_gmt(gmt_path)
   names(bp_gmt) <- paste0("BP_", names(bp_gmt))

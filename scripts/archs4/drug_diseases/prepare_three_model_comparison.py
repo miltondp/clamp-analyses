@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Prepare deterministic four-model drug-repurposing comparison data.
+# Compare canonical models with gene-based drug predictions.
 from __future__ import annotations
 
 import argparse

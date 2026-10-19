@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-# Score how much of a dataset's known biology each model recovers, from the
-# full member list of each mechanism's best-matching ORA gene set.
-
+# Measure recovery of expected pathways and cell types.
 suppressPackageStartupMessages({
   library(data.table)
   library(jsonlite)

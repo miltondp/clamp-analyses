@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# CoGAPS GTEx models
+# Fit CoGAPS on GTEx expression.
 suppressPackageStartupMessages({
   library(CoGAPS)
 })

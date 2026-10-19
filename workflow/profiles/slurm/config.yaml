@@ -31,16 +31,13 @@ set-resources:
   preprocess_archs4:
     mem_mb: 200000
     runtime: 18000
-  svd_archs4:
+  svd_bp_coverage_cell:
     mem_mb: 200000
     runtime: 6000
-  clampbase_archs4:
+  clampbase_bp_coverage_cell:
     mem_mb: 500000
     runtime: 12000
-  clampfull_archs4:
-    mem_mb: 500000
-    runtime: 18000
 
 set-threads:
   preprocess_archs4: 30
-  svd_archs4: 30
+  svd_bp_coverage_cell: 30

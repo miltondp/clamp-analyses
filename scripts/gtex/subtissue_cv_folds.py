@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# GTEx subtissue-recovery donor-grouped fold assignment
-
+# Assign GTEx donors to subtissue-validation folds.
 from __future__ import annotations
 
 import argparse
@@ -14,7 +13,7 @@ import rpy2.robjects as ro
 from sklearn.model_selection import StratifiedGroupKFold
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import derive_donor_id, extract_B_matrix  # noqa: E402
+from common import derive_donor_id, extract_B_matrix
 
 readRDS = ro.r["readRDS"]
 
@@ -49,11 +48,9 @@ def main() -> None:
     meta_filtered = gtex_meta[gtex_meta["SAMPID"].isin(lv_matrix.index)].copy()
     meta_filtered = meta_filtered.set_index("SAMPID")
     meta_filtered = meta_filtered.loc[lv_matrix.index]
-    meta_filtered.index.name = "SAMPID"  # .loc against lv_matrix.index (unnamed) clears the index name
+    meta_filtered.index.name = "SAMPID"
 
-    # Broad-tissue universe filter: always SMTS, regardless of what the main
-    # true-labels pipeline uses, since this analysis is about subtissue
-    # recoverability from a tissue-blind (SMTS) RF.
+
     tissue_counts = meta_filtered["SMTS"].value_counts()
     valid_tissues = tissue_counts[tissue_counts >= args.min_samples].index
     meta_filtered = meta_filtered[meta_filtered["SMTS"].isin(valid_tissues)]

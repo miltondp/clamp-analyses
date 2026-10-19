@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
-# Builds the filtered, z-scored recount2 matrix used by coverage fits.
-
+# Filter and standardize recount2 expression.
 suppressPackageStartupMessages({
   library(bigstatsr)
   library(dplyr)

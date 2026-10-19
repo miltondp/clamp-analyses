@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
-# Project one or more datasets into a CLAMP model with CLAMP::projectCLAMP.
-
+# Project expression datasets into a fitted CLAMP model.
 suppressPackageStartupMessages({
   library(data.table)
   library(jsonlite)

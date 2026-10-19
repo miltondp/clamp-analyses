@@ -23,9 +23,8 @@ include: "rules/archs4.smk"
 include: "rules/archs4_coverage.smk"
 include: "rules/archs4_saturation.smk"
 include: "rules/archs4_canonical.smk"
-# phenoplier.smk runs GLS on the coverage / saturation / final / canonical
-# models above and produces the per-model summaries archs4_traits.smk
-# aggregates, so it sits between them.
+include: "rules/archs4_stability.smk"
+include: "rules/expression_scale.smk"
 include: "rules/phenoplier.smk"
 include: "rules/archs4_traits.smk"
 include: "rules/archs4_technical_noise.smk"
@@ -47,6 +46,7 @@ rule pseudobulk_complete:
         rules.panels_pseudobulk.input,
 
 rule all:
+    default_target: True
     input:
         rules.pseudobulk_data.input,
         rules.full_models_pseudobulk.input,
@@ -62,6 +62,11 @@ rule all:
         rules.computational_timing_analysis_gtex.input,
         rules.biology_gtex.input,
         rules.archs4_canonical_ora.input,
+        rules.archs4_coverage.input,
+        rules.archs4_saturation.input,
+        rules.archs4_traits.input,
         rules.technical_noise_report_archs4.output.complete,
         rules.archs4_drug_diseases.input,
         rules.biology_archs4_crispercas.input,
+        rules.expression_scale_report.output.complete,
+        rules.publish_figures.output,

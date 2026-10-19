@@ -12,12 +12,8 @@ SUBTISSUE_TISSUES_ARG = " ".join(shlex.quote(t) for t in config["gtex"]["subtiss
 
 
 # ============================================================
-# Step 1: build the base FBM, SVD, CLAMPbase/full
+# Step 1: prepare GTEx data and fit models
 # ============================================================
-# Downloads the raw GTEx bulk RNA-seq matrix, builds the filtered/z-scored
-# backing matrix and its SVD, then fits CLAMPbase/CLAMPfull and every
-# comparator decomposition model (PLIER, PCA/NMF/ICA, flashier, MOFA-FLEX,
-# CoGAPS, GenomicSuperSignature) on the same production matrix.
 
 rule download_gtex_raw:
     output:
@@ -40,6 +36,8 @@ rule clamp_gtex:
         genes=f"{GTEX_PROD}/gtex_genes.rds",
         gene_stats=f"{GTEX_PROD}/gtex_gene_stats.csv",
         fbm_filt=f"{GTEX_PROD}/gtex_fbm_filt.rds",
+        fbm_backing=f"{GTEX_PROD}/FBMgtex_preproc_filtered.bk",
+        raw_backing=f"{GTEX_PROD}/FBMgtex.bk",
         df_rds=f"{GTEX_PROD}/df_gtex_fbm_filt.rds",
         df_csv=f"{GTEX_PROD}/df_gtex_fbm_filt.csv",
         svd_res=f"{GTEX_PROD}/gtex_svdRes.rds",
@@ -237,12 +235,8 @@ rule model_building_qc_gtex:
 
 
 # ============================================================
-# Step 2: GPU k-means clustering ensemble
+# Step 2: evaluate tissue clustering
 # ============================================================
-# Scores every model's sample embedding by how well each method
-# recovers known GTEx tissue labels
-# using k-means fits and ARI
-# RNA-seq baseline and a gene-subsampling
 
 rule kmeans_clustering_gtex:
     input:
@@ -304,11 +298,8 @@ rule kmeans_clustering_report_gtex:
 
 
 # ============================================================
-# Step 3: LV importance (RF + SHAP)
+# Step 3: measure tissue feature importance
 # ============================================================
-# Trains one-vs-rest random-forest classifiers on the CLAMPfull latent
-# variables against true GTEx tissue labels and computes SHAP to explain
-# which LVs drive each tissue.
 
 rule lv_importance_rf_true_labels_gtex:
     input:
@@ -345,11 +336,8 @@ rule lv_importance_rf_true_labels_report_gtex:
 
 
 # ============================================================
-# Step 4: biology / ORA / plotting notebooks
+# Step 4: interpret gene modules
 # ============================================================
-# subtissue concordance, global B-matrix/Z-matrix alignment,
-# liver xCell disentangling, multi-tissue xCell recovery, and GO:BP prior
-# orthogonality against every evaluation gene-set collection.
 
 rule lv_importance_rf_true_labels_biology_gtex:
     input:
@@ -443,12 +431,8 @@ rule geneset_orthogonality_gtex:
 
 
 # ============================================================
-# Step 5: subtissue recovery from donor-grouped out-of-fold RF/SHAP
+# Step 5: validate subtissue recovery across donors
 # ============================================================
-# Assigns every sample to donor-grouped folds stratified on broad GTEx
-# tissue (SMTS), trains fold-blind one-vs-rest random forests per tissue,
-# and evaluates recovery of detailed subtissue (SMTSD) labels from the
-# resulting out-of-fold SHAP profiles against the full CLAMP latent space.
 
 rule subtissue_cv_folds_gtex:
     input:

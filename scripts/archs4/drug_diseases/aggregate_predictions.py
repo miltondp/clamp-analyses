@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-# Aggregate per-tissue drug-disease prediction HDF5 files into report tables.
-# Loads every method's HDF5 prediction files, ranks scores within the full DOID
-# distribution, merges with the gold standard, reduces across thresholds (mean)
-# then across tissues (max), and writes performance_summary.csv (AUROC/AvgPrecision
-# per method) plus the raw/aggregated prediction tables consumed by notebooks 00/01.
-
+# Combine drug-disease predictions across tissues and methods.
 from __future__ import annotations
 
 import argparse

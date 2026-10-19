@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-# maps each cell to its
-# sample, drops excluded cells, counts what's left per sample, and drops any
-# sample below the minimum cell count. 
-# Writes the surviving samples and their
-# cell counts to a manifest CSV that later scripts use to pick samples.
-
+# Select eligible donors and record their retained cell counts.
 from __future__ import annotations
 
 import argparse

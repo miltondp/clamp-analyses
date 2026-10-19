@@ -22,6 +22,23 @@ RNASEQ_FRACTION_COLORS:
   "5%":  "#AA4499"
   "1%":  "#117733"
 
+# Training compendia (and the single-gene comparator) in the ARCHS4 figures.
+COMPENDIUM_COLORS:
+  ARCHS4: "#0072B2"
+  GTEx: "#E69F00"
+  recount2: "#009E73"
+  Gene-based: "#888888"
+
+# ARCHS4 training fractions (viridis, end = 0.9, reversed) in Figure 3 and Supplementary Figure 5.
+ARCHS4_FRACTION_COLORS:
+  "1%": "#BBDF27"
+  "5%": "#5DC863"
+  "10%": "#22A884"
+  "25%": "#25848E"
+  "50%": "#35608D"
+  "75%": "#463480"
+  "100%": "#440154"
+
 DATASET_COLORS:
   "PBMC 1k1k": "#1B9E77"
   "PBMC Perez": "#D95F02"

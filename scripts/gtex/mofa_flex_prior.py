@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# MOFA-FLEX model on GTEx data with Biological Process (BP) pathway priors.
-
+# Fit MOFA-FLEX on GTEx with pathway priors.
 from __future__ import annotations
 
 import argparse

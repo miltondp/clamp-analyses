@@ -1,6 +1,6 @@
 import re
 
-# Technical-noise screen for the published canonical ARCHS4 model.
+
 A4_TN_CFG = A4_CFG["technical_noise"]
 A4_TN_ROOT = A4_TN_CFG["compute_root"]
 A4_TN_NB = os.path.join(REPO_ROOT, A4_TN_CFG["notebooks"])
@@ -11,6 +11,10 @@ A4_TN_TRAITS = f"{A4_TN_MODEL}/traits/canon_archs4.tsv.gz"
 A4_TN_SCRIPT = "scripts/archs4/technical_noise/run_analysis.R"
 A4_TN_COMMON = "scripts/archs4/common.R"
 
+
+# ============================================================
+# Step 1: download gene references
+# ============================================================
 
 rule technical_noise_fetch_ensembl:
     output:
@@ -24,6 +28,10 @@ rule technical_noise_fetch_ensembl:
     shell:
         "curl --fail --location --retry 3 '{params.url}' --output {output} 2> {log}"
 
+
+# ============================================================
+# Step 2: measure gene and sample technical effects
+# ============================================================
 
 rule technical_noise_gene_properties:
     input:
@@ -122,6 +130,10 @@ rule technical_noise_b:
         "Rscript {input.script} --stage sample_level --model-dir {params.model} "
         "--out-dir {params.out} --n-cores {threads} > {log} 2>&1"
 
+
+# ============================================================
+# Step 3: summarize technical noise and render the report
+# ============================================================
 
 rule technical_noise_summary:
     input:

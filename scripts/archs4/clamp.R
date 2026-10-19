@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-
-# Fits CLAMPbase on a filtered ARCHS4 FBM.
-
+# Fit CLAMPbase on filtered ARCHS4 expression.
 suppressPackageStartupMessages({
   library(bigstatsr)
   library(dplyr)

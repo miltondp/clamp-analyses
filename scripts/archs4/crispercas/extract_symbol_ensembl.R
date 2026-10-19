@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
-# Map gene symbols to Ensembl identifiers for gene-level TWAS lookups.
-
+# Map gene symbols to Ensembl identifiers.
 suppressPackageStartupMessages({
   library(org.Hs.eg.db)
   library(AnnotationDbi)

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end integrity checks for the donor-bulk benchmark."""
-
+# Check donor-bulk inputs, models, and recovery results.
 from __future__ import annotations
 
 import argparse
@@ -16,7 +15,7 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "pseudobulk"))
 
-from common import analysis_excluded_cell_types, read_yaml  # noqa: E402
+from common import analysis_excluded_cell_types, read_yaml
 
 
 def resolve(value: str | Path) -> Path:

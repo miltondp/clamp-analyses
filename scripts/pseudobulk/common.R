@@ -1,3 +1,4 @@
+# Shared R helpers for pseudobulk modeling and evaluation.
 options(device = function(...) grDevices::pdf(file = NULL))
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
