@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-# Single-gene-based drug-disease prediction baseline (no CLAMP projection). For
-# each of the 49 raw (cleaned, but unprojected) S-PrediXcan tissue files, intersects
-# genes with the raw LINCS matrix and scores drug-disease pairs as -drug^T . disease
-# in gene space, at several top-N-genes thresholds. This step never touches a CLAMP
-# model, so it is run once (not per compendium). Writes HDF5 prediction files under
-# {output-dir}/lincs/predictions/dotprod_neg/ via drug_disease_utils.predict_dotprod_neg.
-
+# Predict drug-disease associations from individual genes.
 from __future__ import annotations
 
 import argparse

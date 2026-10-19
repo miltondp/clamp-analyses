@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-# Utility functions for drug-disease association predictions using CLAMP.
-# Adapted from the PhenoPlier project (greenelab/phenoplier), replacing
-# MultiplierProjection / entity.Trait dependencies with direct pandas operations
-# and an explicit EFO -> DOID mapping step.
-# Original: https://github.com/greenelab/phenoplier/blob/main/libs/drug_disease.py
-
+# Shared helpers for drug-disease prediction and projection.
 from pathlib import Path
 
 import pandas as pd

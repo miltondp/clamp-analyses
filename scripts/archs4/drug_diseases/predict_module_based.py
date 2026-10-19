@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-# Module-based (LV-space) drug-disease prediction, one compendium at a time.
-# Scores drug-disease pairs as -drug^T . disease in the given compendium's CLAMP
-# LV space, at several top-N-LVs thresholds. Writes HDF5 prediction files under
-# {output-dir}/lincs/predictions/dotprod_neg/ via drug_disease_utils.predict_dotprod_neg.
-
+# Predict drug-disease associations from module activities.
 from __future__ import annotations
 
 import argparse

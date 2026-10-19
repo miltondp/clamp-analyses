@@ -5,8 +5,6 @@ A4_DD_COMPUTE = A4_DD_CFG["compute_root"]
 A4_DD_REPORT = A4_DD_CFG["report_root"]
 A4_DD_NLVS = ",".join(map(str, A4_DD_CFG["n_top_lvs"]))
 A4_DD_NGENES = ",".join(map(str, A4_DD_CFG["n_top_genes"]))
-A4_DD_CLAMPFULL_ROOT = os.path.dirname(A4_CAN_FINAL_ROOT)
-A4_DD_LINCS_TSV_PRIORS = A4_DD_CFG["lincs_tsv_priors"]
 
 def dd_model_dir(compendium):
     return f"{A4_CAN_FINAL_ROOT}/{compendium}"
@@ -14,14 +12,16 @@ def dd_model_dir(compendium):
 def dd_prediction_dir(compendium):
     return f"{A4_DD_COMPUTE}/predictions/module_based_{compendium}"
 
+
 # ============================================================
-# Step 1: project raw data into each compendium's canonical CLAMP model
+# Step 1: project traits and drug signatures
 # ============================================================
 
 rule project_spredixcan_drug_diseases:
     input:
         model=f"{A4_CAN_FINAL_ROOT}/{{compendium}}/{A4_CAN_MODEL_NAME}.rds",
-        provenance=f"{A4_CAN_FINAL_ROOT}/{{compendium}}/adoption_validation.json",
+        z=f"{A4_CAN_FINAL_ROOT}/{{compendium}}/Z.csv",
+        provenance=f"{A4_CAN_FINAL_ROOT}/{{compendium}}/manifest.json",
         spredixcan=A4_DD_SPREDIXCAN,
         script="scripts/archs4/drug_diseases/project_spredixcan.py"
     output:
@@ -40,7 +40,8 @@ rule project_spredixcan_drug_diseases:
 rule project_lincs_drug_diseases:
     input:
         model=f"{A4_CAN_FINAL_ROOT}/{{compendium}}/{A4_CAN_MODEL_NAME}.rds",
-        provenance=f"{A4_CAN_FINAL_ROOT}/{{compendium}}/adoption_validation.json",
+        z=f"{A4_CAN_FINAL_ROOT}/{{compendium}}/Z.csv",
+        provenance=f"{A4_CAN_FINAL_ROOT}/{{compendium}}/manifest.json",
         lincs=f"{A4_DD_DATA}/lincs-data.pkl",
         script="scripts/archs4/drug_diseases/project_lincs.py"
     output:
@@ -62,19 +63,19 @@ rule fetch_drugbank_drug_diseases:
     log:
         A4_DD_CFG["drugbank_tsv"] + ".log"
     shell:
+        "mkdir -p $(dirname {output:q}) && "
         "curl --fail --location --retry 3 '{A4_DD_CFG[drugbank_url]}' --output {output}.download 2> {log} && "
         "echo '{A4_DD_CFG[drugbank_sha256]}  {output}.download' | sha256sum --check --status && "
         "mv {output}.download {output}"
 
 rule export_lincs_projection_tsv_drug_diseases:
     input:
-        lincs=f"{A4_DD_CLAMPFULL_ROOT}/{{prior}}/{{compendium}}/lincs-projection.pkl",
+        lincs=f"{A4_CAN_FINAL_ROOT}/{{compendium}}/lincs-projection.pkl",
         drugbank=rules.fetch_drugbank_drug_diseases.output,
         script="scripts/archs4/drug_diseases/export_lincs_projection_tsv.py"
     output:
-        f"{A4_DD_CLAMPFULL_ROOT}/{{prior}}/{{compendium}}/lincs-projection.tsv"
+        f"{A4_CAN_FINAL_ROOT}/{{compendium}}/lincs-projection.tsv"
     wildcard_constraints:
-        prior="|".join(A4_DD_LINCS_TSV_PRIORS),
         compendium=A4_CAN_COMPENDIUM_PATTERN
     resources:
         mem_mb=8000, runtime=60
@@ -82,9 +83,9 @@ rule export_lincs_projection_tsv_drug_diseases:
     shell:
         "python {input.script} --lincs-projection {input.lincs} --drugbank {input.drugbank} --output {output}"
 
+
 # ============================================================
-# Step 2: predict drug-disease associations (module-based per compendium,
-# plus the gene-space baseline)
+# Step 2: predict drug-disease associations
 # ============================================================
 
 rule predict_module_drug_diseases:
@@ -121,8 +122,9 @@ rule predict_gene_drug_diseases:
         "python {input.script} --spredixcan-raw-dir {input.spredixcan_raw}/raw --lincs-file {input.lincs} "
         "--gold-standard {input.gold} --ukb-efo {input.ukb} --efo-xrefs {input.efo} --do-xrefs {input.do} --n-top-genes {A4_DD_NGENES} --output-dir {output}"
 
+
 # ============================================================
-# Step 3: aggregate predictions and compare all 4 methods
+# Step 3: compare prediction methods
 # ============================================================
 
 rule aggregate_drug_diseases:
@@ -149,7 +151,9 @@ rule prepare_three_model_comparison_data:
         gold=f"{A4_DD_DATA}/gold_standard.pkl",
         prep="scripts/archs4/drug_diseases/prepare_three_model_comparison.py"
     output:
-        stats=f"{A4_DD_REPORT}/three_model_comparison/data/figure_statistics.txt"
+        stats=f"{A4_DD_REPORT}/three_model_comparison/data/figure_statistics.txt",
+        tables=expand(f"{A4_DD_REPORT}/three_model_comparison/data/{{name}}.csv",
+                      name=["per_tissue_metrics", "max_aggregate_reference", "ordering_stability", "paired_tissue_tests"]),
     resources:
         mem_mb=16000, runtime=360
     conda: "clamp-analyses"
@@ -157,8 +161,9 @@ rule prepare_three_model_comparison_data:
         "python {input.prep} --archs4 {input.arch}/lincs/predictions/dotprod_neg --recount2 {input.recount}/lincs/predictions/dotprod_neg --gtex {input.gtex}/lincs/predictions/dotprod_neg --gene {input.gene}/lincs/predictions/dotprod_neg --gold-standard {input.gold} "
         "--n-top-lvs {A4_DD_CFG[figure_n_top_lvs]} --n-top-genes {A4_DD_CFG[figure_n_top_genes]} --n-boot {A4_DD_CFG[bootstrap][n_boot]} --seed {A4_DD_CFG[bootstrap][seed]} --output-dir {A4_DD_REPORT}/three_model_comparison/data"
 
+
 # ============================================================
-# Step 4: reports
+# Step 4: render reports
 # ============================================================
 
 rule three_model_comparison_report:
@@ -203,7 +208,7 @@ rule archs4_drug_diseases:
     input:
         expand(f"{A4_CAN_FINAL_ROOT}/{{compendium}}/{A4_CAN_MODEL_NAME}.rds", compendium=A4_CAN_COMPENDIA),
         expand(f"{A4_CAN_FINAL_ROOT}/{{compendium}}/lincs-projection.pkl", compendium=A4_CAN_COMPENDIA),
-        expand(f"{A4_DD_CLAMPFULL_ROOT}/{{prior}}/{{compendium}}/lincs-projection.tsv", prior=A4_DD_LINCS_TSV_PRIORS, compendium=A4_CAN_COMPENDIA),
+        expand(f"{A4_CAN_FINAL_ROOT}/{{compendium}}/lincs-projection.tsv", compendium=A4_CAN_COMPENDIA),
         rules.aggregate_drug_diseases.output,
         rules.prepare_three_model_comparison_data.output,
         rules.three_model_comparison_report.output,
