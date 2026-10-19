@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-# Turn a GEO processed count matrix into counts.rds/norm.csv/samples.csv, the
-# canonical triple every downstream projection rule consumes.
-
+# Prepare GEO count matrices for model fitting and projection.
 suppressPackageStartupMessages({
   library(data.table)
   library(jsonlite)

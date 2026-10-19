@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-# Sum per-transcript FluxCapacitor GTF read counts to gene level and emit the
-# same counts.rds/norm.csv/samples.csv triple as prepare_geo_matrix.R.
-
+# Build gene counts and annotations from GEO transcript files.
 suppressPackageStartupMessages({
   library(data.table)
   library(jsonlite)

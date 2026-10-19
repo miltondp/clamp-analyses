@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-# Gather the per-dataset outputs into the tables the report notebooks read.
-# Notebooks do no computation: everything they plot is produced here.
-
+# Combine projection and mechanism-recovery results.
 suppressPackageStartupMessages({
   library(data.table)
   library(jsonlite)

@@ -84,10 +84,6 @@ def proj_db_min_size(database):
 PROJ_ALL_MECH = [f"{proj_dir(d)}/mechanism_recovery" for d in PROJ_DATASETS]
 
 
-# ============================================================
-# Step 1: download and prepare projection datasets
-# ============================================================
-
 localrules: projection_raw_data, projection_unpack
 
 
@@ -97,6 +93,10 @@ def _download_entry(dataset, fname):
             return d
     raise KeyError(f"{fname} is not declared for {dataset}")
 
+
+# ============================================================
+# Step 1: download and prepare projection datasets
+# ============================================================
 
 rule projection_raw_data:
     output:
@@ -113,7 +113,6 @@ rule projection_raw_data:
 
 
 rule projection_unpack:
-    """GSE133218 ships its 30 per-sample GTFs inside one tar."""
     input:
         tar=lambda w: f"{PROJ_RAW}/{w.dataset}/raw/{proj_ds(w.dataset)['unpack']['tar']}",
     output:
@@ -232,8 +231,8 @@ rule fit_local_clamp:
 rule project_into_archs4:
     input:
         prepared=f"{PROJ_PROD}/{{dataset}}/prepared",
-        # Deliberately not `ancient`: a published canonical-model update must
-        # invalidate every projection and its downstream interpretation.
+
+
         model=PROJ_A4_RDS,
         provenance=PROJ_A4_CFG["provenance"],
         script="scripts/archs4/projections/project_clamp.R",
@@ -257,7 +256,7 @@ rule project_into_archs4:
 
 
 # ============================================================
-# Step 3: test LVs, run ORA, and score expected mechanisms
+# Step 3: test activity and pathway recovery
 # ============================================================
 
 rule test_lvs:
@@ -339,9 +338,9 @@ rule score_mechanisms:
         common="scripts/archs4/common.R",
     output:
         mech=directory(f"{PROJ_PROD}/{{dataset}}/mechanism_recovery"),
-    params:
         models_tsv=f"{PROJ_PROD}/{{dataset}}/mechanism_models.tsv",
         ora_tsv=f"{PROJ_PROD}/{{dataset}}/mechanism_ora.tsv",
+    params:
         models=lambda w: "\\n".join(
             f"{m}\\t{proj_z(w.dataset, m)}\\t{proj_lv_dir(w.dataset, m)}/lv_stats.csv"
             f"\\t{proj_lv_dir(w.dataset, m)}/significant_lvs.txt" for m in PROJ_MODELS),
@@ -362,9 +361,9 @@ rule score_mechanisms:
     conda: "clamp-analyses"
     resources: mem_mb=16000, runtime=60
     shell:
-        "printf 'model\\tz\\tlv_stats\\tsignificant_lvs\\n{params.models}\\n' > {params.models_tsv} && "
-        "printf 'model\\tdatabase\\tdir\\n{params.ora_rows}\\n' > {params.ora_tsv} && "
-        "Rscript {input.script} --models {params.models_tsv} --ora {params.ora_tsv} "
+        "printf 'model\\tz\\tlv_stats\\tsignificant_lvs\\n{params.models}\\n' > {output.models_tsv} && "
+        "printf 'model\\tdatabase\\tdir\\n{params.ora_rows}\\n' > {output.ora_tsv} && "
+        "Rscript {input.script} --models {output.models_tsv} --ora {output.ora_tsv} "
         "--mechanisms '{params.mechanisms}' --top-pct {params.top_pct} "
         "--min-count {params.min_count} --fdr {params.fdr} "
         "--lv-fdr {params.lv_fdr} --lv-logfc {params.lv_logfc} "
@@ -375,16 +374,16 @@ rule score_mechanisms:
         "--out-dir {output.mech} > {log} 2>&1"
 
 
-# ============================================================
-# Step 4: report the ARCHS4 projection benchmarks
-# ============================================================
-
 PROJ_BENCH = PROJ_CFG["benchmarks"]
 PROJ_BENCH_PB_RESULTS = list(PROJ_BENCH["pseudobulk"].values())
 PROJ_BENCH_GTEX_RESULTS = list(PROJ_BENCH["gtex"].values())
 PROJ_BENCH_PB_DIR = os.path.dirname(PROJ_BENCH["pseudobulk"]["projection"])
 PROJ_BENCH_GTEX_DIR = os.path.dirname(PROJ_BENCH["gtex"]["projection"])
 
+
+# ============================================================
+# Step 4: evaluate pseudobulk and GTEx projections
+# ============================================================
 
 rule projection_report_pseudobulk_recovery:
     input:
@@ -417,7 +416,7 @@ rule projection_report_gtex_ari:
 
 
 # ============================================================
-# Step 5: aggregate mechanism recovery and render reports
+# Step 5: summarize mechanism recovery and render reports
 # ============================================================
 
 rule aggregate_projections:
@@ -509,3 +508,5 @@ rule archs4_projections:
         PROJ_REPORTS,
         rules.projection_report_pseudobulk_recovery.output.complete,
         rules.projection_report_gtex_ari.output.complete,
+
+include: "projection_benchmarks.smk"
