@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+# Measure gene and sample technical effects in canonical models.
 suppressPackageStartupMessages({
   library(data.table)
   library(hdf5r)
