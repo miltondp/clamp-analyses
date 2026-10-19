@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
-# Computes a recount2 randomized SVD and CLAMP rank.
-
+# Compute the recount2 SVD and estimate model rank.
 suppressPackageStartupMessages({
   library(bigstatsr)
   library(CLAMP)

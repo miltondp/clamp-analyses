@@ -1,8 +1,10 @@
 R2_CFG = config["recount2"]
 R2_DIR = R2_CFG["paths"]["production"]
 
-# Builds the recount2 inputs used by the coverage comparator.
 
+# ============================================================
+# Step 1: download and preprocess recount2
+# ============================================================
 
 rule download_recount2:
     output:
@@ -31,6 +33,8 @@ rule preprocess_recount2:
         common="scripts/recount2/common.R",
     output:
         fbm_filt=f"{R2_DIR}/recount2_fbm_filt.rds",
+        fbm_backing=f"{R2_DIR}/FBMrecount2_preproc_filtered.bk",
+        raw_backing=f"{R2_DIR}/FBMrecount2.bk",
         genes=f"{R2_DIR}/recount2_genes.rds",
         samples=f"{R2_DIR}/recount2_samples.rds",
     log:
@@ -52,9 +56,14 @@ rule preprocess_recount2:
         "--seed {params.seed} > {log} 2>&1"
 
 
+# ============================================================
+# Step 2: estimate rank and fit CLAMPbase
+# ============================================================
+
 rule svd_recount2:
     input:
         fbm_filt=rules.preprocess_recount2.output.fbm_filt,
+        fbm_backing=rules.preprocess_recount2.output.fbm_backing,
         genes=rules.preprocess_recount2.output.genes,
         samples=rules.preprocess_recount2.output.samples,
         script="scripts/recount2/svd.R",
@@ -81,6 +90,7 @@ rule svd_recount2:
 rule clampbase_recount2:
     input:
         fbm_filt=rules.preprocess_recount2.output.fbm_filt,
+        fbm_backing=rules.preprocess_recount2.output.fbm_backing,
         genes=rules.preprocess_recount2.output.genes,
         samples=rules.preprocess_recount2.output.samples,
         svd=rules.svd_recount2.output.svd,
@@ -112,7 +122,6 @@ rule recount2_models:
         rules.clampbase_recount2.output.z,
 
 
-# Adopts existing recount2 outputs without recomputing them.
 rule recount2_precomputed:
     input:
         rules.preprocess_recount2.output,

@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-
-# Computes an ARCHS4 randomized SVD and CLAMP rank.
-
+# Compute the ARCHS4 SVD and estimate model rank.
 suppressPackageStartupMessages({
   library(bigstatsr)
   library(CLAMP)

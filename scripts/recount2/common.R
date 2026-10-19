@@ -1,8 +1,7 @@
-# Shared recount2 helpers.
-
+# Shared helpers for recount2 model fitting.
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
-# Parses named command-line arguments.
+
 parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
   out <- list()
   i <- 1L
@@ -21,7 +20,7 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
   out
 }
 
-# Returns a required command-line argument.
+
 required_arg <- function(args, name) {
   value <- args[[name]]
   if (is.null(value) || !nzchar(as.character(value))) {
@@ -30,18 +29,18 @@ required_arg <- function(args, name) {
   value
 }
 
-# Creates a directory when it does not exist.
+
 ensure_dir <- function(path) {
   dir.create(path, recursive = TRUE, showWarnings = FALSE)
   path
 }
 
-# Attaches an existing FBM backing file.
+
 attach_fbm <- function(backingfile, nrow, ncol) {
   bigstatsr::FBM(nrow = nrow, ncol = ncol, backingfile = backingfile, create_bk = FALSE)
 }
 
-# Runs an expression with one BLAS thread per worker.
+
 with_single_threaded_blas <- function(n_cores, expr) {
   if (n_cores <= 1L) return(force(expr))
   old_check <- getOption("bigstatsr.check.parallel.blas")

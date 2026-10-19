@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
-# Fits CLAMPbase on the filtered recount2 matrix.
-
+# Fit CLAMPbase on filtered recount2 expression.
 suppressPackageStartupMessages({
   library(bigstatsr)
   library(CLAMP)

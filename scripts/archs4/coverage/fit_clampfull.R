@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-
-# Fits and atomically publishes one GO:BP CLAMPfull model.
-
+# Fit and publish a canonical CLAMPfull model.
 suppressPackageStartupMessages({
   library(bigstatsr)
   library(CLAMP)
@@ -14,7 +12,7 @@ source(file.path(script_dir, "..", "common.R"))
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
-# Parses named command-line arguments.
+
 parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
   out <- list()
   i <- 1L
@@ -33,7 +31,7 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
   out
 }
 
-# Returns a required command-line argument.
+
 required_arg <- function(args, name) {
   value <- args[[name]]
   if (is.null(value) || !nzchar(as.character(value))) {
@@ -42,19 +40,19 @@ required_arg <- function(args, name) {
   value
 }
 
-# Records an input file for the model manifest.
+
 file_record <- function(path) {
   info <- file.info(path)
   list(path = normalizePath(path), bytes = unname(info$size))
 }
 
-# Records an output file for the model manifest.
+
 output_record <- function(path) {
   info <- file.info(path)
   list(path = basename(path), bytes = unname(info$size))
 }
 
-# Reattaches an FBM descriptor after moving its backing file.
+
 attach_portable_fbm <- function(descriptor_path) {
   fbm <- readRDS(descriptor_path)
   recorded <- fbm$backingfile
@@ -87,7 +85,7 @@ k_path <- if (is.null(clamp_k_arg)) required_arg(args, "k") else args$k
 base_path <- required_arg(args, "base_model")
 out_dir <- required_arg(args, "out_dir")
 seed <- as.integer(required_arg(args, "seed"))
-model_name <- args$model_name %||% "CLAMPfull_bp"
+model_name <- args$model_name %||% "CLAMPfull_canonical"
 max_iter <- as.integer(args$max_iter %||% 5000L)
 multiplier <- as.numeric(args$multiplier %||% 100)
 fraction <- as.integer(args$fraction %||% 100L)
@@ -100,7 +98,10 @@ set.seed(seed)
 started <- Sys.time()
 
 if (dir.exists(out_dir)) {
-  stop("Refusing to overwrite an existing model directory: ", out_dir)
+  if (length(list.files(out_dir, all.files = TRUE, no.. = TRUE))) {
+    stop("Refusing to overwrite an existing model directory: ", out_dir)
+  }
+  unlink(out_dir, recursive = TRUE)
 }
 dir.create(dirname(out_dir), recursive = TRUE, showWarnings = FALSE)
 tmp_dir <- paste0(out_dir, ".tmp.", Sys.getpid())

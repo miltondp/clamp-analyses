@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-# Build the canonical CLAMP prior used by the drug-disease models.
-# The generated GMT is deliberately self-contained and prefixes every term by
-# its source collection. This prevents term-name collisions and makes the
-# model manifest auditable without requiring an external database release.
+# Build and validate the shared canonical pathway prior.
 from __future__ import annotations
 
 import argparse
@@ -49,11 +46,10 @@ def main() -> None:
     if len(names) != len(set(names)):
         raise ValueError("Canonical prior contains duplicate prefixed set names")
 
-    args.output_gmt.parent.mkdir(parents=True, exist_ok=True)
-    with args.output_gmt.open("w") as handle:
-        for name, desc, genes in rows:
-            handle.write("\t".join([name, desc, *genes]) + "\n")
-    digest = hashlib.md5(args.output_gmt.read_bytes()).hexdigest()
+    content = "".join("\t".join([name, desc, *genes]) + "\n" for name, desc, genes in rows).encode()
+    digest = hashlib.md5(content).hexdigest()
+    if len(rows) != 11107 or digest != "8ea2e09825753a90273eaa2dc03176f6":
+        raise ValueError(f"Canonical prior differs from the recorded input: {len(rows)} sets, MD5 {digest}")
     manifest = {
         "schema_version": 1,
         "collections": {"C2ALL": sum(n.startswith("C2ALL_") for n in names),
@@ -62,10 +58,10 @@ def main() -> None:
         "total_sets": len(rows), "md5": digest,
         "inputs": {k: str(getattr(args, k)) for k in ("c2_all", "reactome", "cellmarker")},
     }
+    args.output_gmt.parent.mkdir(parents=True, exist_ok=True)
+    args.output_gmt.write_bytes(content)
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
     args.manifest.write_text(json.dumps(manifest, indent=2) + "\n")
-    if manifest["total_sets"] != 11107:
-        raise ValueError(f"Expected 11107 canonical sets, found {manifest['total_sets']}")
     print(json.dumps(manifest, indent=2))
 
 

@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
-
-# Builds the filtered, z-scored ARCHS4 expression matrix.
-
+# Filter and standardize ARCHS4 expression.
 suppressPackageStartupMessages({
   library(bigstatsr)
   library(hdf5r)
