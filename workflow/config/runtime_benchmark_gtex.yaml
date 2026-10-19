@@ -14,7 +14,7 @@ runtime_benchmark_gtex:
       here would only re-derive the same censored value at a cost of 21 days.
       Reported as a right-censored ">7 days, did not converge", not as a data
       point.  Same reason it is absent from rule full_models_gtex.
-  cogaps_evidence: output/01_model_building/01_gtex/CoGAPS/NOT_CONVERGED.txt
+  cogaps_evidence: references/runtime/gtex_cogaps_not_converged.txt
 
   output_root: output/02_model_performance/01_gtex/00_computational_timing
   notebook: nbs/02_model_performance/01_gtex/00_computational_timing.ipynb

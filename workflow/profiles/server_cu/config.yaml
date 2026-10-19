@@ -1,0 +1,51 @@
+# Pico (CU): defq is recorded in the existing local site profile.
+# Verified with sinfo on 2026-10-19: 900000 MB, 168 CPUs, infinite time, gpu:1.
+# Recheck access and availability before submission.
+snakefile: workflow/Snakefile
+latency-wait: 120
+# Pico SLURM profile for benchmark and high-memory ARCHS4 jobs.
+#
+# Supply site-specific account and partition values outside the repository,
+# for example in a user-owned profile derived from this file or with
+# `--default-resources slurm_account=... slurm_partition=...`.
+
+executor: slurm
+jobs: 20
+cores: 144
+use-conda: true
+printshellcmds: true
+rerun-incomplete: true
+retries: 2
+rerun-triggers:
+  - mtime
+
+resources:
+  - mem_mb=800000
+  - fit_mem_mb=800000
+  - ora_mem_mb=64000
+  - fit_slots=20
+  - ora_slots=8
+  - large_fit_slot=1
+  - gpu=1
+  - timing_slot=1
+
+default-resources:
+  - slurm_partition=defq
+  - mem_mb=8000
+  - runtime=5760
+  - tasks=1
+
+set-resources:
+  preprocess_archs4:
+    mem_mb: 200000
+    runtime: 18000
+  svd_bp_coverage_cell:
+    mem_mb: 200000
+    runtime: 6000
+  clampbase_bp_coverage_cell:
+    mem_mb: 500000
+    runtime: 12000
+
+set-threads:
+  preprocess_archs4: 30
+  svd_bp_coverage_cell: 30

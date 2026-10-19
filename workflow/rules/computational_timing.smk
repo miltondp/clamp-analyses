@@ -39,6 +39,7 @@ rule runtime_fit_pseudobulk:
         cogaps_iterations=config["cogaps"]["n_iterations"],
     threads: RUNTIME_THREADS
     resources:
+        timing_slot=1,
         mem_mb=48000,
         runtime=7 * 24 * 60,
     wildcard_constraints:

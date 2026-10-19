@@ -58,7 +58,10 @@ aggregate_coverage <- function(args) {
 
   summary_files <- list.files(ora_root, pattern = "^summary\\.csv$", recursive = TRUE, full.names = TRUE)
   canonical <- "/[^/]+/rs[0-9]+/seed[0-9]+/[^./]+/[^./]+/summary\\.csv$"
-  summary_files <- grep(canonical, summary_files, value = TRUE)
+  # Canonical fits publish <dataset>/ora/<database>/summary.csv; coverage
+  # campaigns publish <dataset>/rs*/seed*/<model>/<database>/summary.csv.
+  canonical_fit <- "/ora/[^/]+/summary\\.csv$"
+  summary_files <- summary_files[grepl(canonical, summary_files) | grepl(canonical_fit, summary_files)]
   if (!length(summary_files)) stop("No published ORA summaries found below ", ora_root)
   complete_files <- file.path(dirname(summary_files), "complete")
   if (any(!file.exists(complete_files))) {

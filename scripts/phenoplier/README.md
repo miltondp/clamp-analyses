@@ -20,8 +20,8 @@ saturation / final-model trait-recovery reports.
 10. [Layout](#10-layout)
 11. [As-run record (pico)](#11-as-run-record-pico)
 
-> Sections marked **`[MARC: …]`** cover CLAMP-side inputs this integration consumes
-> but does not produce; please fill them in.
+> Start with the [repository guide](../../README.md) and [input checklist](../../docs/inputs.md).
+> Historical sections below describe earlier runs; the tracked workflow is authoritative.
 
 ---
 
@@ -64,11 +64,11 @@ warning) — delete the project to recompute.
 
 | what | where it comes from |
 |---|---|
-| Snakemake 8 (`envs/snakemake.yaml`) | `./setup.sh` or `conda env create -n snakemake -f envs/snakemake.yaml`. Includes `snakemake-executor-plugin-slurm` for cluster runs. |
+| Snakemake 8 (`envs/snakemake.lock`) | `./setup.sh` or `conda create -n snakemake --file envs/snakemake.lock`. Includes `snakemake-executor-plugin-slurm` for cluster runs. |
 | `clamp-analyses` conda env | `./setup.sh` (see the top-level README). Needed by every rule that fits, validates or publishes a CLAMP model and by the R aggregators / report notebooks. |
 | phenoplier-cli **v0.5.2** in its own env | §3. Pinned in `phenoplier.yaml: version`; every GLS/store job refuses any other release. |
 | phenoplier reference data bundle (`phenoplier_full_data`) | §3. Provided per site; not downloaded by this workflow. |
-| CLAMP models to test | produced by the ARCHS4 / GTEx / recount2 rules, or already published. **`[MARC: which of `output/98_final_models/**`, `output/01_model_building/02_archs4/00_preprocess/*` and `data/pathways/*.gmt` are published inputs that must be staged before a fresh checkout can run, and where they come from.]`** |
+| CLAMP models to test | produced by the ARCHS4 / GTEx / recount2 rules, or already published. Models and preprocessing are workflow outputs; stage the manual references listed in [inputs](../../docs/inputs.md). |
 
 phenoplier-cli needs `snakemake>=9` / Python ≥3.12, which is incompatible with this
 repo's own `snakemake=8` / Python 3.11. That is why it lives in a separate env and
@@ -77,6 +77,12 @@ why each GLS run is a shell job rather than rules of this DAG.
 ## 3. phenoplier-cli environment and workspace
 
 ### 3.1 Environment (once per machine or cluster)
+
+The source repository currently requires access from the authors (anonymous
+access returned HTTP 404 during the fresh-clone audit). Authenticate Git first,
+or set `PHENOPLIER_REPO_URL=git@github.com:pivlab/phenoplier-cli.git` for SSH.
+The setup helper obtains its installer from the requested release, not `main`.
+
 
 ```bash
 bash scripts/phenoplier/setup_env.sh       # creates conda env `phenoplier-cli-neo` with phenoplier-cli v0.5.2 + rpy2/R
@@ -176,73 +182,10 @@ There are two Slurm layers to keep apart:
 
 ### 6.1 Site profile
 
-`workflow/profiles/slurm/config.yaml` is the portable part (executor, job limits,
-memory pools, per-rule overrides for the ARCHS4 fits). Site specifics — account,
-partition, QOS — stay out of the repo. Create a user-owned profile that starts from
-it and adds them, e.g. `~/.config/snakemake/clamp-slurm/config.yaml`:
-
-```yaml
-# Site profile for <cluster>. Everything not listed here comes from
-# workflow/profiles/slurm/config.yaml, which you copy in or keep in step with.
-executor: slurm
-jobs: 20                      # concurrent Slurm jobs
-use-conda: true
-printshellcmds: true
-rerun-incomplete: true
-retries: 2
-rerun-triggers: [mtime]
-latency-wait: 120             # shared filesystems lag; avoid false "missing output"
-
-resources:                    # cluster-wide pools this workflow's rules draw from
-  - mem_mb=800000
-  - fit_mem_mb=800000
-  - ora_mem_mb=64000
-  - fit_slots=20
-  - ora_slots=8
-  - large_fit_slot=1
-
-default-resources:
-  - slurm_account=<account>
-  - slurm_partition=<partition>
-  - mem_mb=8000
-  - runtime=5760
-  - tasks=1
-
-set-resources:
-  # phenoplier GLS: one node, one task, `threads` cpus; 100 GB covers the 8 GB
-  # archs4 .rds (~88 GB to load). Wall clock 3 days > the ~20 h archs4 final.
-  gls_bp_coverage_full:   {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_bp_coverage_base:   {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_bp_saturation_full: {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_bp_saturation_base: {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_bp_final_full:      {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_final_base:         {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_canonical:          {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  # [MARC: the ARCHS4 fit overrides from workflow/profiles/slurm/config.yaml
-  # (preprocess_archs4 / svd_archs4 / clampbase_archs4 / clampfull_archs4) and any
-  # high-memory partition they need.]
-
-set-threads:
-  preprocess_archs4: 30
-  svd_archs4: 30
-```
-
-Notes:
-
-- `slurm_account` / `slurm_partition` are ordinary Snakemake resources; put them in
-  `default-resources` and override per rule in `set-resources`. Any `mem_mb`,
-  `runtime` (minutes) and `threads` a rule declares are translated to `--mem`,
-  `--time` and `--cpus-per-task` by the plugin.
-- `gls_*` jobs need **one node**: phenoplier-cli's pools are process pools, not MPI.
-  The plugin submits `tasks=1` by default; keep it.
-- The job's cgroup is what pins phenoplier-cli: `workers.step7 × blas_step7` should
-  equal `resources.gls.threads` (default 6 × 2 = 12). Un-pinned it over-detects the
-  node's cores and thrashes.
-- `phenoplier.yaml: workspace` should be set to the shared-filesystem workspace so
-  jobs never depend on `PHENOPLIER_HOME` being exported through `sbatch`.
-- The conda envs (`snakemake`, `clamp-analyses`, `phenoplier-cli-neo`) must be
-  visible on the compute nodes (same `$HOME`/shared conda install). `use-conda`
-  resolves them by name; nothing is created on the fly.
+Use the tracked `workflow/profiles/server_cu` profile on Pico, or adapt
+`workflow/profiles/slurm` for another cluster. See the complete
+[profile and hardware guide](../../docs/running.md). Keep `target: local` so GLS
+runs inside its allocated job. GPU rules need site-specific GPU routing.
 
 ### 6.2 Submitting
 
@@ -292,15 +235,10 @@ pickle), `<name>_trait_filter_excluded.tsv` (which traits the filter dropped and
 why), `<name>.log`. Summary columns: `phenotype, phenotype_desc, lv, pvalue,
 binarized_n_pos, lv_se_ratio, lv_degenerate, degenerate_reason, fdr`.
 
-Inputs the ARCHS4 families need that this integration does not produce. The
-CLAMPfull_bp prior `data/pathways/go_bp.Hs.symbols.gmt` is generated by
-`generate_archs4_go_bp_gmt` (`workflow/rules/archs4.smk`, checksum-verified). Still to
-document: **`[MARC: ARCHS4 raw h5 + preprocess outputs
-(`00_preprocess/metadata_filtered.rds`, `fbm_filtered.bk`), the coverage cells'
-`fbm_subsampled.bk` (written by `subsample_cells.R` but undeclared),
-`scripts/archs4/clamp.R` referenced by `clampbase_bp_coverage_cell`, and the other
-gene-set files under `data/pathways/` (`c2.cp.*`, `c5.go.cc.*`, `c8.all.*`, `h.all.*`,
-`Cell_marker_Human.xlsx`) — where they come from and how to stage them.]`**
+ARCHS4 raw expression and preprocessing are produced by the workflow, as are
+coverage subsamples and fitted models. Manual references and access requirements
+are listed in the [input checklist](../../docs/inputs.md). The two GO:BP files
+have distinct generation rules and are not interchangeable.
 
 ## 8. Verifying a run
 

@@ -1,3 +1,5 @@
+snakefile: workflow/Snakefile
+latency-wait: 120
 # Local profile for comparator fits, streaming ORA, and plotting notebooks.
 #
 #   snakemake --profile workflow/profiles/local <target>
@@ -12,6 +14,8 @@ resources:
   - ora_mem_mb=64000
   - fit_slots=2
   - ora_slots=8
+  - gpu=1
+  - timing_slot=1
   - large_fit_slot=0
 
 retries: 2

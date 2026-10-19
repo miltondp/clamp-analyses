@@ -26,10 +26,17 @@ REF="${PHENOPLIER_REF:-v0.5.2}"
 CLONE_DIR="${PHENOPLIER_CLONE_DIR:-$HOME/phenoplier-cli}"
 TARGET_ENV="${PHENOPLIER_TARGET_ENV:-phenoplier-cli-neo}"
 
-# install_phenoplier_cli.sh clones/updates $CLONE_DIR itself if needed --
-# see https://github.com/pivlab/phenoplier-cli/blob/main/scripts/install_phenoplier_cli.sh
-curl -fsSL "https://raw.githubusercontent.com/pivlab/phenoplier-cli/main/scripts/install_phenoplier_cli.sh" \
-  | bash -s -- --dir "$CLONE_DIR" --env "$TARGET_ENV" --ref "$REF" --extras slurm "$@"
+# Fetch the installer from the requested release using Git authentication.
+# Anonymous raw.githubusercontent.com access cannot read a private repository.
+REPO_URL="${PHENOPLIER_REPO_URL:-https://github.com/pivlab/phenoplier-cli.git}"
+bootstrap_dir="$(mktemp -d)"
+trap 'rm -rf "$bootstrap_dir"' EXIT
+if ! git clone --depth 1 --branch "$REF" "$REPO_URL" "$bootstrap_dir/source"; then
+    echo "Cannot access phenoplier-cli $REF. Request repository access or set PHENOPLIER_REPO_URL to an authenticated Git URL." >&2
+    exit 1
+fi
+bash "$bootstrap_dir/source/scripts/install_phenoplier_cli.sh" \
+  --repo "$REPO_URL" --dir "$CLONE_DIR" --env "$TARGET_ENV" --ref "$REF" --extras slurm "$@"
 
 cat <<EOF
 
