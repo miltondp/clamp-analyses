@@ -1,5 +1,35 @@
 #!/usr/bin/env bash
-# Run and validate trait associations for one model.
+# Run pivlab/phenoplier-cli's GLS pipeline for ONE CLAMP model and publish its
+# combined summary where this repo's rules expect it. Driven by
+# workflow/rules/phenoplier.smk (one call per model); every model in
+# RUN_SUMMARY.md went through this same flow.
+#
+#   1. Register + init (`shortcut gls --unlock`): extract the .rds, register it
+#      in the workspace, create the project and write pipeline_config.yaml,
+#      WITHOUT computing. Only when no config exists yet: a requeue must not
+#      re-init, so the step 1-6 sentinels survive and the pipeline resumes.
+#   2. Pin the step-6 / step-7 pools in that config. Serial step 6: the forked
+#      ProcessPoolExecutor otherwise deadlocks. Capped step 7: un-pinned,
+#      phenoplier sizes the pool from the whole node and thrashes it.
+#   3. `workflow gls run` (honours the edited config; resume-safe).
+#   4. Gate: refuse to publish a summary that is not COMPLETE
+#      (verify_summary.py) -- `summarize` concatenates whatever exists, so an
+#      interrupted step 7 yields a smaller but valid-looking file.
+#   5. Publish the summary (+ pickle, + the trait filter's exclusion log)
+#      atomically next to each other.
+#
+# Stale projects: phenoplier-cli skips extraction when a model key is already
+# registered, and this script skips the run when the project already holds a
+# summary -- so a refit .rds would silently reuse the old results. The .rds is
+# therefore fingerprinted (sha256) when the project is initialised here, and
+# a later call with a different fingerprint removes the registration, moves
+# the project aside (<project>.stale.<timestamp>) and starts over. Projects
+# that predate this script (no fingerprint on record) are reused as-is, with
+# a warning.
+#
+# phenoplier-cli lives in its own conda env (see setup_env.sh) and `phenoplier`
+# shells out to a bare `snakemake`, whose rules shell out to a bare
+# `phenoplier`, so the env's bin has to be on PATH.
 set -euo pipefail
 
 usage() {
@@ -68,6 +98,9 @@ done
 [[ -f "$rds" ]] || { echo "model not found: $rds" >&2; exit 1; }
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# The workspace comes from the workflow config (phenoplier.yaml: workspace)
+# when set, so cluster jobs do not depend on an inherited environment; else
+# from PHENOPLIER_HOME; else phenoplier-cli's default.
 workspace="${workspace_arg:-${PHENOPLIER_HOME:-$HOME/phenoplier}}"
 export PHENOPLIER_HOME="$workspace" PHENOPLIER_ROOT_DIR="$workspace"
 if [[ ! -f "$workspace/config.toml" ]]; then
@@ -76,10 +109,13 @@ if [[ ! -f "$workspace/config.toml" ]]; then
   exit 1
 fi
 
+# shellcheck disable=SC1091
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "$conda_env"
 export PATH="${CONDA_PREFIX:-}/bin:${PATH}"
 
+# `shortcut gls --name X` creates the project at exactly <workspace>/projects/X
+# (phenoplier-cli: commands/models.py derive_folder_name) -- no date prefix.
 project="$workspace/projects/$name"
 cfg="$project/pipeline_config.yaml"
 results="$project/results/gls/phenoplier"
@@ -89,6 +125,8 @@ fingerprint_file="$project/clamp_source.sha256"
 installed="$(phenoplier --version 2>&1 | tail -1 | sed -E 's/.*v([0-9][0-9A-Za-z.+-]*).*/\1/')"
 echo "[start] $(date -Is)  name=$name  rds=$rds  executor=$executor  n_jobs=$n_jobs"
 echo "[version] phenoplier-cli $installed  workspace=$workspace"
+# Results from different phenoplier-cli releases are not comparable; the
+# whole model set is produced on the release phenoplier.yaml pins.
 if [[ -n "$require_version" && "$installed" != "$require_version" ]]; then
   echo "[ERROR] phenoplier-cli $installed in env '$conda_env' but $require_version is required" \
     "(workflow/config/phenoplier.yaml: version); rebuild the env with scripts/phenoplier/setup_env.sh" >&2
@@ -122,6 +160,13 @@ if [[ ! -s "$summary" ]]; then
     if [[ -n "$cluster" ]]; then
       cluster_args=(--cluster "$cluster")
     fi
+    # A fresh project always gets a fresh registration: phenoplier-cli skips
+    # extraction when the key already exists, which would keep an old Z.
+    # The workspace registry (models/registry.toml) is rewritten whole by
+    # `model remove` without a lock, so concurrent GLS jobs initialising at
+    # the same time could drop each other's entries: hold a workspace-wide
+    # lock across remove + register/init. Only this short phase is
+    # serialised; the hours-long pipeline run is not.
     lock="$workspace/.clamp_registry.lock"
     exec 9>"$lock"
     echo "[init] $(date -Is)  waiting for registry lock $lock"
@@ -167,6 +212,9 @@ else
   echo "[run] skip: $summary exists"
 fi
 
+# The summary is named after the cohort (gls-summary-<cohort-slug>.tsv.gz);
+# older phenoplier-cli kept a gls-summary-phenomexcan.* alias. Take the
+# cohort-named file, then the alias, then whatever single summary exists.
 if [[ ! -s "$summary" ]]; then
   summary="$results/gls-summary-phenomexcan.tsv.gz"
 fi
@@ -178,6 +226,11 @@ if [[ -z "$summary" || ! -s "$summary" ]]; then
   exit 1
 fi
 
+# Gate: complete (expected phenotype count), no zero p-values, NaN only on
+# LVs flagged degenerate. A failed gate publishes nothing AND drops the
+# project's combined summary, so the next attempt re-enters the pipeline
+# (resume-safe: step 7 finishes what is missing, summarize reruns) instead of
+# skipping straight back to the same incomplete file.
 if ! python "$here/verify_summary.py" "$summary" "$expected_phenotypes"; then
   echo "[ERROR] $name: summary failed the completeness gate; removing it so a requeue resumes step 7" >&2
   rm -f "$summary" "${summary%.tsv.gz}.pkl.gz"
@@ -192,6 +245,8 @@ stem="${summary_out%.tsv.gz}"
 if [[ -f "${summary%.tsv.gz}.pkl.gz" ]]; then
   cp -f "${summary%.tsv.gz}.pkl.gz" "${stem}.pkl.gz"
 fi
+# The filter's exclusion log travels with the results: which traits were
+# dropped, and why, is part of the provenance of these numbers.
 if [[ -f "$project/trait_filter_excluded.tsv" ]]; then
   cp -f "$project/trait_filter_excluded.tsv" "${stem}_trait_filter_excluded.tsv"
 fi

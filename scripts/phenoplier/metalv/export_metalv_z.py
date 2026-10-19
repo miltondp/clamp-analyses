@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Prepare screen-associated metaLV loadings for PhenoPLIER.
+
 import argparse
 
 import pandas as pd

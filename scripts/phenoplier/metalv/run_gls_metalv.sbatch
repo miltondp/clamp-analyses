@@ -1,5 +1,4 @@
 #!/bin/bash
-# Run PhenoPLIER trait associations for metaLVs.
 #SBATCH -J metalv_gls
 #SBATCH -c 32
 #SBATCH --mem=150G

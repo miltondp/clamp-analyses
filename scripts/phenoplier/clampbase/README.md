@@ -1,7 +1,8 @@
 # CLAMPbase — GLS run (pico)
 
 Runs `phenoplier shortcut gls` for the **CLAMPbase** model family — the same
-finals / saturation / coverage design wired in `workflow/rules/phenoplier.smk`.
+finals / saturation / coverage design as the `CLAMPfull_bp` runs elsewhere in
+`scripts/phenoplier/`, but on the CLAMPbase models (`model-namespace clampbase`).
 **41 models:** finals 3 (archs4/gtex/recount2) + saturation-k1728 17 + coverage 21.
 Every run uses `--trait-filter biomedical` (2,366 of 4,049 traits).
 
@@ -26,14 +27,27 @@ one model end-to-end (register → GLS → store) with the fixes this pipeline n
   store is built to a `.tmp`, verified to open, then atomically renamed — a
   failed build never leaves a partial `.h5` that a later `-s` check would reuse.
 
-## Reproduce
-
-Use the Snakemake targets from the repository root:
+## Reproduce (pico)
 
 ```bash
-snakemake --snakefile workflow/Snakefile --use-conda --cores 12 phenoplier_coverage phenoplier_saturation phenoplier_finals
+cd scripts/phenoplier/clampbase
+# finals (tiered memory):
+sbatch --mem=88G --array=0   finals_clampbase.sbatch     # archs4
+sbatch --mem=48G --array=1-2 finals_clampbase.sbatch     # gtex, recount2
+# saturation k1728 (17):
+sbatch --array=0-16%14 sat_clampbase.sbatch
+# coverage (21, tiered by fraction — see the script header for the tier→--mem map):
+sbatch --mem=48G --array=0-8%14   cov_clampbase.sbatch   # rs1, rs5, rs10
+sbatch --mem=56G --array=9-14%14  cov_clampbase.sbatch   # rs25, rs50
+sbatch --mem=64G --array=15-17%14 cov_clampbase.sbatch   # rs75
+sbatch --mem=88G --array=18-20%14 cov_clampbase.sbatch   # rs100
 ```
 
-The existing `.sbatch` files delegate to these targets and require the named
-`snakemake` environment. They use the same configured paths and producers as
-the main workflow. Configure accounts and partitions through your site profile.
+Each sbatch sets `CLAMPBASE_CENTRAL` to a per-study collection under the workspace
+(`clampbase_{finals,saturation,coverage}/{stores,summaries}/`). `CLAMPBASE_NS`
+overrides the model namespace (default `clampbase`).
+
+> **As-run note.** These 41 were produced across pico + `local` + `lab` in
+> parallel; the off-pico worklist launchers (`run_local_clampbase.sh`,
+> `alpine_clampbase.sbatch`) are archived on branch `phenoplier-asrun-launchers`
+> (`81de511c6ee22d5fbaff1ef107ac613a1ce5bfb9`). See `../RUN_SUMMARY.md`.

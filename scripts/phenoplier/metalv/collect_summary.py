@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Restore metaLV names in PhenoPLIER trait results.
+
 import argparse
 
 import pandas as pd
