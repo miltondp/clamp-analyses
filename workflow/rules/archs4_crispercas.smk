@@ -334,14 +334,14 @@ rule crispercas_metalv_l1000:
 rule crispercas_metalv_l1000_report:
     input:
         ranking=rules.crispercas_metalv_l1000.output.ranking,
-        notebook=f"{A4_BIO_NB}/04_crispercas/00_l1000_mgm.ipynb",
+        notebook=f"{A4_BIO_NB}/04_crispercas/00_mgm.ipynb",
     output:
         complete=touch(f"{A4_METALV}/l1000/notebook.complete"),
     log:
-        notebook=f"{A4_BIO_NB}/04_crispercas/00_l1000_mgm.executed.ipynb",
+        notebook=f"{A4_BIO_NB}/04_crispercas/00_mgm.executed.ipynb",
     conda: "clamp-analyses"
     notebook:
-        f"{A4_BIO_NB}/04_crispercas/00_l1000_mgm.ipynb"
+        f"{A4_BIO_NB}/04_crispercas/00_mgm.ipynb"
 
 
 # ============================================================

@@ -278,9 +278,9 @@ archs4:
     # canonical models (S123 plus the stability seeds) clustered across seeds.
     lipid_deg: data/archs4/crispr_cas9/lipid_DEG.csv
     compute_root: output/03_model_biology/02_archs4/04_crispercas
-    metalv_root: output/03_model_biology/02_archs4/04_crispercas/03_metalv
+    metalv_root: output/03_model_biology/02_archs4/04_crispercas/00_mgm
     noise_seeds_root: output/03_model_biology/02_archs4/06_technical_noise/seeds
-    symbol_ensembl: output/03_model_biology/02_archs4/04_crispercas/02_network/figures/symbol_ensembl.csv
+    symbol_ensembl: output/03_model_biology/02_archs4/04_crispercas/00_mgm/symbol_ensembl.csv
     min_cos: 0.5
     min_models: 6
     noise_r2: 0.25
@@ -293,7 +293,7 @@ archs4:
     lipid_regex: "LIPID|CHOLESTEROL|STEROL|FATTY|LIPOPROTEIN|TRIGLYCERIDE|EICOSANOID|PHOSPHOLIPID|BILE|PROSTAGLANDIN|LEUKOTRIENE|ARACHIDONIC|SPHINGO|PPAR|LDL|HDL"
     # PhenoPLIER GLS of the GSEA-significant metaLVs, run on the pico cluster
     # (scripts/phenoplier/metalv/README.md); metaLV-named summary.
-    gls_summary: output/03_model_biology/02_archs4/04_crispercas/03_metalv/phenoplier/gls_summary_metalv.tsv.gz
+    gls_summary: output/03_model_biology/02_archs4/04_crispercas/00_mgm/phenoplier/gls_summary_metalv.tsv.gz
     phenomexcan_dir: data/phenomexcan
     archs4_cell_lines_gmt: data/pathways/archs4_cell_lines.gmt
     archs4_cell_lines_url: "https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=ARCHS4_Cell-lines"
