@@ -65,5 +65,23 @@ class ReferenceInputTests(unittest.TestCase):
         self.assertFalse((self.root / self.asset['path']).exists())
 
 
+class WorkspaceInputTests(unittest.TestCase):
+    setUp = ReferenceInputTests.setUp
+    def test_matching_workspace_input_is_linked(self):
+        asset = dict(self.asset, source_candidates=['source.txt'])
+        references.fetch('tiny', asset, self.root, source_root=self.root)
+        output = self.root / asset['path']
+        self.assertTrue(output.is_symlink())
+        self.assertEqual(output.read_bytes(), self.payload)
+        self.assertEqual(self.source.read_bytes(), self.payload)
+
+    def test_wrong_workspace_input_is_rejected(self):
+        asset = dict(self.asset, source_candidates=['source.txt'])
+        self.source.write_bytes(b'other cohort')
+        with self.assertRaises(ValueError):
+            references.fetch('tiny', asset, self.root, source_root=self.root)
+        self.assertFalse((self.root / asset['path']).exists())
+
+
 if __name__ == '__main__':
     unittest.main()

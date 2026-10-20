@@ -4,3 +4,5 @@ data/pathways/Azimuth_2023.txt -text -whitespace
 data/pathways/*.xlsx binary
 data/archs4/*.rds binary
 data/gtex/*DS.txt -text
+data/archs4/crispr_cas9/lipid_DEG.csv -text -whitespace
+data/phenomexcan/phenotypes_info.tsv -text

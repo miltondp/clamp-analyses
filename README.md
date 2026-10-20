@@ -62,7 +62,9 @@ python scripts/inputs/reference_inputs.py --check
 [Sources, DOIs and checksums](docs/reference_inputs.md) document each reference.
 The [input checklist](docs/inputs.md) lists remaining cohort/reference inputs.
 ARCHS4 biology additionally needs PhenoPLIER/PhenomeXcan and drug–disease/CRISPR
-inputs. Some projection analyses build shared benchmark prerequisites.
+inputs. [PhenoPLIER input sources and staging](docs/phenoplier_inputs.md) explain
+which files download automatically and which need an existing reference bundle.
+Some projection analyses build shared benchmark prerequisites.
 
 For ARCHS4 trait analyses, also install and initialize **phenoplier-cli v0.5.2**
 using the [environment/workspace instructions](scripts/phenoplier/README.md#3-phenoplier-cli-environment-and-workspace).
@@ -71,15 +73,15 @@ currently requires access from the authors; arrange access before running phase 
 
 ## 4. Run
 
-Choose a profile below. Always dry-run first; full fits and repeated timing runs
-can take days. Use the same profile for the dry-run and execution.
+Choose a profile below. Always dry-run first; full model fits can take days.
+Timing tables use the recorded results bundled with this repository. Use the same profile for the dry-run and execution.
 
 ```bash
 # Complete workflow, including figures and supplementary tables
 snakemake --profile workflow/profiles/server_cu --dry-run all
 snakemake --profile workflow/profiles/server_cu all
 
-# Phase 1: pseudobulk + GTEx benchmarks, donor-bulk, timing and figures
+# Phase 1: pseudobulk + GTEx benchmarks, donor-bulk and figures
 snakemake --profile workflow/profiles/server_cu benchmark
 
 # Phase 2: ARCHS4 models and biology, comparisons, figures and tables

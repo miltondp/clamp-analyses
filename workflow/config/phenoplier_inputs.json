@@ -1,0 +1,225 @@
+{
+  "schema_version": 1,
+  "note": "Downloads are opt-in; large files stay outside Git. Missing processed files must be staged from a matching workspace.",
+  "assets": {
+    "lincs": {
+      "path": "data/drug_disease_associations/lincs-data.pkl",
+      "group": "drug_disease",
+      "bundled": false,
+      "url": "https://media.githubusercontent.com/media/greenelab/phenoplier/5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc/data/input/lincs/lincs-data.pkl",
+      "sha256": "6406731dddc8f50101415ab1e80bcf6039895227315d943be6b93b5966eda434",
+      "bytes": 66789004,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "source_path": "data/input/lincs/lincs-data.pkl",
+      "verification": "Local bytes match pinned upstream blob or Git-LFS SHA-256.",
+      "source_candidates": [
+        "data/input/lincs/lincs-data.pkl",
+        "data/hetionet/lincs-data.pkl"
+      ]
+    },
+    "gold_standard": {
+      "path": "data/drug_disease_associations/gold_standard.pkl",
+      "group": "drug_disease",
+      "bundled": false,
+      "url": "https://media.githubusercontent.com/media/greenelab/phenoplier/5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc/data/drug_disease_prediction/gold_standard_set/gold_standard.pkl",
+      "sha256": "4b759a7d04ae66036294256a60d07d06cc77ea598e81c450efcbe1f59b78cffa",
+      "bytes": 18386,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "source_path": "data/drug_disease_prediction/gold_standard_set/gold_standard.pkl",
+      "verification": "Local bytes match pinned upstream blob or Git-LFS SHA-256.",
+      "source_candidates": [
+        "data/drug_disease_prediction/gold_standard_set/gold_standard.pkl",
+        "data/hetionet/gold_standard.pkl"
+      ]
+    },
+    "traits_efo": {
+      "path": "data/drug_disease_associations/phenomexcan_traits_fullcode_to_efo.tsv",
+      "group": "drug_disease",
+      "bundled": false,
+      "url": "https://raw.githubusercontent.com/greenelab/phenoplier/5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc/libs/data/phenomexcan_traits_fullcode_to_efo.tsv",
+      "sha256": "da19d898d113cadb6c1411bd5fc8e7cf0289d3692943f01d2bf1b4d4556f39ee",
+      "bytes": 142857,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "source_path": "libs/data/phenomexcan_traits_fullcode_to_efo.tsv",
+      "verification": "Local bytes match pinned upstream blob or Git-LFS SHA-256.",
+      "source_candidates": [
+        "libs/data/phenomexcan_traits_fullcode_to_efo.tsv",
+        "data/hetionet/phenomexcan_traits_fullcode_to_efo.tsv"
+      ]
+    },
+    "term_xrefs": {
+      "path": "data/drug_disease_associations/term_id_xrefs.tsv.gz",
+      "group": "drug_disease",
+      "bundled": false,
+      "url": "https://raw.githubusercontent.com/greenelab/phenoplier/5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc/libs/data/term_id_xrefs.tsv.gz",
+      "sha256": "eecc283c64162b77ea0cded4a18e711d08939139a3823c4b7f78c4a0f070f718",
+      "bytes": 756315,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "source_path": "libs/data/term_id_xrefs.tsv.gz",
+      "verification": "Local bytes match pinned upstream blob or Git-LFS SHA-256.",
+      "source_candidates": [
+        "libs/data/term_id_xrefs.tsv.gz",
+        "data/hetionet/term_id_xrefs.tsv.gz"
+      ]
+    },
+    "ontology_xrefs": {
+      "path": "data/drug_disease_associations/xrefs-prop-slim.tsv",
+      "group": "drug_disease",
+      "bundled": false,
+      "url": "https://raw.githubusercontent.com/greenelab/phenoplier/5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc/libs/data/xrefs-prop-slim.tsv",
+      "sha256": "f2711b6955792527839d9abea2f8e2fc6dd154a164d3d24b041336daebfb5103",
+      "bytes": 332320,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "source_path": "libs/data/xrefs-prop-slim.tsv",
+      "verification": "Local bytes match pinned upstream blob or Git-LFS SHA-256.",
+      "source_candidates": [
+        "libs/data/xrefs-prop-slim.tsv",
+        "data/hetionet/xrefs-prop-slim.tsv"
+      ]
+    },
+    "crispr_lipid": {
+      "path": "data/archs4/crispr_cas9/lipid_DEG.csv",
+      "group": "crispr",
+      "bundled": true,
+      "url": null,
+      "sha256": "b2599ccada5d91e34e76ea0d1eed8c857d4bdd929f7016ff64a6a10cb09b475e",
+      "bytes": 50836,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "historical_url": "https://upenn.box.com/shared/static/amiu6epztbuqjoad7eq9e50fpfdzdrvt.csv",
+      "source_path": "environment/scripts/setup_data.py:download_crispr_lipids_gene_sets_file",
+      "verification": "MD5 987eeef1987421b596988eba92e6305f matches upstream recipe; historical URL returns HTTP 404 on 2026-10-20. Preserve original snapshot.",
+      "source_candidates": [
+        "data/crispr_screen/lipid_DEG.csv"
+      ]
+    },
+    "phenomexcan_zscores": {
+      "path": "data/phenomexcan/gene_assoc/smultixcan-mashr-zscores.pkl",
+      "group": "phenomexcan",
+      "bundled": false,
+      "url": "https://media.githubusercontent.com/media/greenelab/phenoplier/5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc/data/input/phenomexcan/smultixcan-mashr-zscores.pkl",
+      "sha256": "ddf3d8dd6f1422a6b9ac2d551059c4aedde4c98164b935fd8b345e39b0484883",
+      "bytes": 737544426,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "verification": "SHA-256 matches pinned upstream Git-LFS object.",
+      "source_candidates": [
+        "data/phenomexcan/gene_assoc/smultixcan-mashr-zscores.pkl"
+      ]
+    },
+    "phenomexcan_pvalues": {
+      "path": "data/phenomexcan/gene_assoc/smultixcan-mashr-pvalues.pkl",
+      "group": "phenomexcan",
+      "bundled": false,
+      "url": null,
+      "sha256": "f2480ff11d33e815e330579393644a16c64ee7f3c9c8301677a814702d9e274a",
+      "bytes": 737544426,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "historical_url": "https://upenn.box.com/shared/static/wvrbt0v2ddrtb25g7dgw1be09yt9l14l.pkl",
+      "verification": "Local MD5 3436a41e9a70fc2a206e9b13153ebd12 matches upstream setup recipe; URL returns HTTP 404 on 2026-10-20. Obtain matching file from existing workspace/reference bundle.",
+      "source_candidates": [
+        "data/phenomexcan/gene_assoc/smultixcan-mashr-pvalues.pkl"
+      ]
+    },
+    "phenomexcan_rcp": {
+      "path": "data/phenomexcan/gene_assoc/fastenloc-torus-rcp.pkl",
+      "group": "phenomexcan",
+      "bundled": false,
+      "url": null,
+      "sha256": "c9da922040769cb6f3169edeafe6871bf8ae3817ba466dc5a9e712b5d3a3b341",
+      "bytes": 1246646563,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "historical_url": "https://upenn.box.com/shared/static/qgghpf4nyuj45su5a184e8geg4egjd20.pkl",
+      "verification": "Local MD5 a1b12c552c0b41db3f3b0131910aa974 matches upstream setup recipe; URL returns HTTP 404 on 2026-10-20. Obtain matching file from existing workspace/reference bundle.",
+      "source_candidates": [
+        "data/phenomexcan/gene_assoc/fastenloc-torus-rcp.pkl"
+      ]
+    },
+    "gene_name_mapping": {
+      "path": "data/phenomexcan/genes_metadata/genes_mapping_name_to_id.pkl",
+      "group": "phenomexcan",
+      "bundled": false,
+      "url": "https://zenodo.org/records/10944491/files/genes_mapping_name_to_id.pkl?download=1",
+      "sha256": "bf5acbe561686feb4decea4466d25af337affdc6b253d1ff5d16ba3e5b70b550",
+      "bytes": 939036,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "source_candidates": [
+        "data/phenomexcan/genes_metadata/genes_mapping_name_to_id.pkl"
+      ],
+      "verification": "Public pinned Zenodo file used by phenoplier-cli v0.5.2."
+    },
+    "phenotypes_info": {
+      "path": "data/phenomexcan/phenotypes_info.tsv",
+      "group": "phenomexcan",
+      "bundled": true,
+      "url": null,
+      "sha256": "9a8ceab5684dd01b3914f25feb8752d7c39cccf61159aee4eaa9bca3029e4001",
+      "bytes": 894547,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "verification": "Preserved processed metadata from existing reference bundle; not substituted by raw UK Biobank phenotype metadata.",
+      "source_candidates": [
+        "data/phenomexcan/phenotypes_info.tsv"
+      ]
+    },
+    "crispr_zscores": {
+      "path": "data/archs4/drug_diseases_associations/smultixcan-mashr-zscores.pkl",
+      "group": "crispr",
+      "bundled": false,
+      "url": "https://media.githubusercontent.com/media/greenelab/phenoplier/5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc/data/input/phenomexcan/smultixcan-mashr-zscores.pkl",
+      "sha256": "ddf3d8dd6f1422a6b9ac2d551059c4aedde4c98164b935fd8b345e39b0484883",
+      "bytes": 737544426,
+      "source_repository": "https://github.com/greenelab/phenoplier",
+      "source_commit": "5894a6bd9b091f5cf1f4806f1f3e20fb6caa91cc",
+      "doi": [
+        "10.1038/s41467-023-41057-4"
+      ],
+      "verification": "SHA-256 matches pinned upstream Git-LFS object.",
+      "source_candidates": [
+        "data/phenomexcan/gene_assoc/smultixcan-mashr-zscores.pkl"
+      ],
+      "local_source": "data/phenomexcan/gene_assoc/smultixcan-mashr-zscores.pkl"
+    }
+  }
+}

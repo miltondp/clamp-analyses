@@ -99,6 +99,12 @@ through rpy2 → R, which the env ships.
 
 ### 3.2 Workspace (once per site)
 
+See the [input download/staging guide](../../docs/phenoplier_inputs.md) for the
+public sources and remaining processed-bundle requirements. The CLI's
+`workspace download full_data` registry is not a completeness guarantee for
+this analysis' processed inputs; inspect it with `--list` first.
+
+
 A phenoplier workspace is a directory with `config.toml`, `data/`, `models/`,
 `projects/`. GLS reads ~6 GB of reference data from `data/` (PhenomeXcan GWAS,
 S-PrediXcan / S-MultiXcan results, the GTEx v8 reference panel, MASHR models, the

@@ -12,8 +12,12 @@ configfile: "workflow/config/projections.yaml"
 configfile: "workflow/config/phenoplier.yaml"
 
 REPO_ROOT = os.path.dirname(workflow.basedir)
+TIMING_MODE = config.get("timing_mode", "recorded")
+if TIMING_MODE not in {"recorded", "recompute"}:
+    raise ValueError("timing_mode must be 'recorded' or 'recompute'")
 
 include: "rules/reference_inputs.smk"
+include: "rules/phenoplier_inputs.smk"
 include: "rules/pseudobulk.smk"
 include: "rules/gtex.smk"
 include: "rules/computational_timing.smk"

@@ -63,29 +63,45 @@ rule runtime_fit_pseudobulk:
 # Step 2: summarize benchmark results
 # ============================================================
 
-rule computational_timing_report_pseudobulk:
-    input:
-        timings=RUNTIME_TIMING_FILES,
-        pseudobulk_config="workflow/config/pseudobulk.yaml",
-        runtime_config="workflow/config/runtime_benchmark.yaml",
-        figure_config="config.yaml",
-        notebook=RUNTIME_NB,
-    output:
-        long=f"{RUNTIME_ROOT}/runtime_long.csv",
-        seed_totals=f"{RUNTIME_ROOT}/runtime_seed_totals.csv",
-        summary=f"{RUNTIME_ROOT}/runtime_summary.csv",
-        complete=touch(f"{RUNTIME_ROOT}/notebook.complete"),
-    log:
-        notebook=os.path.join(os.path.dirname(RUNTIME_NB),
-                              "00_computational_timing.executed.ipynb")
-    params:
-        datasets=DATASETS,
-        methods=RUNTIME_METHODS,
-        seeds=RUNTIME_SEEDS,
-        out_dir=RUNTIME_ROOT,
-    conda: "clamp-analyses"
-    notebook:
-        RUNTIME_NB
+if TIMING_MODE == "recorded":
+    rule computational_timing_report_pseudobulk:
+        input:
+            manifest="references/runtime/recorded_timings.json",
+            records=["references/runtime/pseudobulk/" + name for name in ['runtime_long.csv', 'runtime_seed_totals.csv', 'runtime_summary.csv']],
+        output:
+            long=f"{RUNTIME_ROOT}/runtime_long.csv",
+            seed_totals=f"{RUNTIME_ROOT}/runtime_seed_totals.csv",
+            summary=f"{RUNTIME_ROOT}/runtime_summary.csv",
+            complete=touch(f"{RUNTIME_ROOT}/notebook.complete"),
+        params:
+            out_dir=RUNTIME_ROOT,
+        conda: "snakemake"
+        shell:
+            "python scripts/inputs/restore_recorded_timings.py --dataset pseudobulk --out-dir {params.out_dir:q}"
+else:
+    rule computational_timing_report_pseudobulk:
+        input:
+            timings=RUNTIME_TIMING_FILES,
+            pseudobulk_config="workflow/config/pseudobulk.yaml",
+            runtime_config="workflow/config/runtime_benchmark.yaml",
+            figure_config="config.yaml",
+            notebook=RUNTIME_NB,
+        output:
+            long=f"{RUNTIME_ROOT}/runtime_long.csv",
+            seed_totals=f"{RUNTIME_ROOT}/runtime_seed_totals.csv",
+            summary=f"{RUNTIME_ROOT}/runtime_summary.csv",
+            complete=touch(f"{RUNTIME_ROOT}/notebook.complete"),
+        log:
+            notebook=os.path.join(os.path.dirname(RUNTIME_NB),
+                                  "00_computational_timing.executed.ipynb")
+        params:
+            datasets=DATASETS,
+            methods=RUNTIME_METHODS,
+            seeds=RUNTIME_SEEDS,
+            out_dir=RUNTIME_ROOT,
+        conda: "clamp-analyses"
+        notebook:
+            RUNTIME_NB
 
 
 rule computational_timing_analysis:

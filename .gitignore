@@ -19,6 +19,12 @@ data/pathways/*
 data/archs4/*
 !data/archs4/gene_lengths.rds
 !data/archs4/GTEx_Tissues_pathMat.rds
+!data/archs4/crispr_cas9/
+data/archs4/crispr_cas9/*
+!data/archs4/crispr_cas9/lipid_DEG.csv
+!data/phenomexcan/
+data/phenomexcan/*
+!data/phenomexcan/phenotypes_info.tsv
 output
 *.swp
 .ipynb_checkpoints/

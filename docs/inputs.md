@@ -29,11 +29,11 @@ manual staging.
 | GTEx v8 sample attributes, subject phenotypes and xCell scores | Automatic `reference_inputs` downloads; sample attributes are also bundled. |
 | Pseudobulk cohorts | Manual: raw matrices and metadata at the paths in `workflow/config/pseudobulk.yaml`; fixed exports (`bulk_expr.csv`, `patient_info.csv`, `truthFrac_v0.csv` and applicable `truthFrac_v1.csv`) for `build_pseudobulk: false`. |
 | Cell labels | Manual: `data/pseudobulk/cell_type_labels.csv` for benchmark figures. |
-| PhenoPLIER | Manual environment/workspace and reference bundle; see `scripts/phenoplier/README.md`. |
-| PhenomeXcan | Manual `data/phenomexcan`, including phenotype metadata, S-MultiXcan P values/z-scores, fastENLOC RCPs and gene mappings; S-PrediXcan requires 49 tissue pickles under `gene_assoc/spredixcan/pkl`. |
-| Drug–disease inputs | Manual `data/drug_disease_associations/{lincs-data.pkl,gold_standard.pkl,phenomexcan_traits_fullcode_to_efo.tsv,term_id_xrefs.tsv.gz,xrefs-prop-slim.tsv}`. |
-| CRISPR screen | Manual `data/archs4/crispr_cas9/lipid_DEG.csv` and `data/archs4/drug_diseases_associations/smultixcan-mashr-zscores.pkl`. |
-| Timing evidence | Historical GTEx CoGAPS record is bundled in `references/runtime/`; new timings are computed. |
+| PhenoPLIER | Separate environment/workspace; downloads and remaining processed-bundle requirements are in [the staging guide](phenoplier_inputs.md). |
+| PhenomeXcan | Z-scores and gene mapping download; processed metadata is bundled. P values, fastENLOC and the 49 processed S-PrediXcan pickles are staged from a matching workspace. [Details](phenoplier_inputs.md). |
+| Drug–disease inputs | All five PhenoPLIER shared files download automatically from a pinned public commit. |
+| CRISPR screen | Original lipid-screen CSV is bundled; the legacy z-score path links to the shared downloadable PhenomeXcan file. |
+| Timing evidence | Author-generated pseudobulk/GTEx timing tables and CoGAPS non-convergence evidence are bundled; timing fits are not rerun by default. |
 
 Both workflow phases use shared references. Phase 2 also builds pseudobulk/GTEx
 prerequisites for cross-dataset checks as needed.

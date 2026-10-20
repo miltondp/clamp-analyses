@@ -2,6 +2,8 @@
 
 For installation, inputs, profiles and execution, start with the [README](../README.md).
 
+The default workflow uses recorded timing tables; see [timing evidence](phenoplier_inputs.md#timing-results-are-recorded-evidence).
+
 ## Pseudobulk
 
 Benchmarks CLAMP against other latent-variable/matrix-decomposition methods on pseudobulk

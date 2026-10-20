@@ -5,6 +5,7 @@ import gzip
 import hashlib
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import tempfile
@@ -28,7 +29,7 @@ def verify(path, asset):
         raise ValueError(f"Checksum mismatch for {path}: expected {asset['sha256']}, found {actual}. Existing files are never replaced; inspect this input before proceeding.")
 
 
-def fetch(key, asset, destination_root, check=False, upstream=False, offline=False, destination_override=None):
+def fetch(key, asset, destination_root, check=False, upstream=False, offline=False, destination_override=None, source_root=None):
     destination = destination_override.resolve() if destination_override else destination_root / asset['path']
     if destination.exists():
         verify(destination, asset)
@@ -36,6 +37,18 @@ def fetch(key, asset, destination_root, check=False, upstream=False, offline=Fal
         return
     if check:
         raise FileNotFoundError(f'Missing {destination}')
+    local_source = asset.get('local_source')
+    candidates = [ROOT / local_source] if local_source else []
+    if source_root:
+        candidates.append(source_root / asset['path'])
+        candidates.extend(source_root / candidate for candidate in asset.get('source_candidates', []))
+    for candidate in candidates:
+        if candidate.is_file():
+            verify(candidate, asset)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.symlink_to(candidate.resolve())
+            print(f'LINKED {key}: {destination}')
+            return
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.reference-', dir=destination.parent) as scratch:
         temporary = Path(scratch) / 'input'
@@ -46,13 +59,14 @@ def fetch(key, asset, destination_root, check=False, upstream=False, offline=Fal
             recovered = result.returncode == 0
         if not recovered:
             if offline or not asset.get('url'):
-                raise RuntimeError(f"{key}: restore the bundled snapshot from Git; no verified upstream reconstruction is available.")
+                raise RuntimeError(f"{key}: no verified live download is available. Restore its bundled Git snapshot or stage a matching PhenoPLIER workspace with --source-root.")
             request = urllib.request.Request(asset['url'], headers={'User-Agent': 'CLAMP-reference-inputs/1.0'})
-            with urllib.request.urlopen(request, timeout=60) as response:
-                data = response.read()
-            if asset.get('compression') == 'gzip':
-                data = gzip.decompress(data)
-            temporary.write_bytes(data)
+            with urllib.request.urlopen(request, timeout=60) as response, temporary.open('wb') as output:
+                if asset.get('compression') == 'gzip':
+                    with gzip.GzipFile(fileobj=response) as decompressed:
+                        shutil.copyfileobj(decompressed, output, length=1024 * 1024)
+                else:
+                    shutil.copyfileobj(response, output, length=1024 * 1024)
         verify(temporary, asset)
         # Same-filesystem link publishes atomically and refuses to replace a
         # destination created by another process while this download was running.
@@ -62,6 +76,8 @@ def fetch(key, asset, destination_root, check=False, upstream=False, offline=Fal
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--manifest', type=Path, default=MANIFEST)
+    parser.add_argument('--source-root', type=Path, help='Existing PhenoPLIER workspace/bundle root; matching files are linked read-only by convention')
     parser.add_argument('--only', nargs='+', help='Manifest keys; default: all small reference inputs')
     parser.add_argument('--output-root', type=Path, default=ROOT)
     parser.add_argument('--destination', type=Path, help='Override output path for exactly one --only key')
@@ -69,14 +85,14 @@ def main():
     parser.add_argument('--upstream', action='store_true', help='Test upstream downloads instead of recovering bundled Git snapshots')
     parser.add_argument('--offline', action='store_true', help='Recover bundled snapshots from Git only')
     args = parser.parse_args()
-    assets = json.loads(MANIFEST.read_text())['assets']
+    assets = json.loads(args.manifest.read_text())['assets']
     keys = args.only or list(assets)
     if args.destination and len(keys) != 1:
         parser.error('--destination requires exactly one --only key')
     for key in keys:
         if key not in assets:
             parser.error(f'Unknown reference key: {key}')
-        fetch(key, assets[key], args.output_root.resolve(), args.check, args.upstream, args.offline, args.destination)
+        fetch(key, assets[key], args.output_root.resolve(), args.check, args.upstream, args.offline, args.destination, args.source_root)
 
 
 if __name__ == '__main__':

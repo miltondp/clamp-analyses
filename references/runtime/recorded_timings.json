@@ -1,0 +1,45 @@
+{
+  "recorded_at": "existing author-generated outputs; copied unchanged 2026-10-20",
+  "datasets": {
+    "pseudobulk": [
+      {
+        "source": "references/runtime/pseudobulk/runtime_long.csv",
+        "filename": "runtime_long.csv",
+        "original_path": "output/02_model_performance/00_pseudobulk/00_computational_timing/runtime_long.csv",
+        "sha256": "142c0979ed766ea4fae14d65178579a99936081a3a3b35834d31f55c4a9ef0c5"
+      },
+      {
+        "source": "references/runtime/pseudobulk/runtime_seed_totals.csv",
+        "filename": "runtime_seed_totals.csv",
+        "original_path": "output/02_model_performance/00_pseudobulk/00_computational_timing/runtime_seed_totals.csv",
+        "sha256": "b445291dbef0da9036d1ce73baa5884312e5275f6b7326c8e8846a3a2cc3ce81"
+      },
+      {
+        "source": "references/runtime/pseudobulk/runtime_summary.csv",
+        "filename": "runtime_summary.csv",
+        "original_path": "output/02_model_performance/00_pseudobulk/00_computational_timing/runtime_summary.csv",
+        "sha256": "d564dbfdc2369fb74d600ceb81e0932fb47f7f09985dc63bfaf48a480ec5759f"
+      }
+    ],
+    "gtex": [
+      {
+        "source": "references/runtime/gtex/runtime_long.csv",
+        "filename": "runtime_long.csv",
+        "original_path": "output/02_model_performance/01_gtex/00_computational_timing/runtime_long.csv",
+        "sha256": "cf987e071252cb7ecbff9ab7bff92e4d88f7b805f39281c8ad038e13d899f9e8"
+      },
+      {
+        "source": "references/runtime/gtex/runtime_per_fit.csv",
+        "filename": "runtime_per_fit.csv",
+        "original_path": "output/02_model_performance/01_gtex/00_computational_timing/runtime_per_fit.csv",
+        "sha256": "b5a5f7a4f1943082dd36f683ec2669cd855afd38c1d9004bc788c92cf4988272"
+      },
+      {
+        "source": "references/runtime/gtex/runtime_summary.csv",
+        "filename": "runtime_summary.csv",
+        "original_path": "output/02_model_performance/01_gtex/00_computational_timing/runtime_summary.csv",
+        "sha256": "3c0f529de384cd4a5b7fc648449f1a49997f8222f87a2409259b4b51f3f51f8f"
+      }
+    ]
+  }
+}

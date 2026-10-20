@@ -78,3 +78,25 @@ Complete scientific reproduction and successful cluster submission remain untest
 - A clean clone successfully restored the gene-length snapshot from Git offline,
   downloaded the two missing GTEx references through the actual Snakemake target,
   and passed SHA-256 checks for all fifteen installed files.
+
+## PhenoPLIER/CRISPR staging and recorded timing defaults — 2026-10-20
+
+- Verified the five drug–disease files against pinned upstream Git blobs/LFS
+  hashes; downloaded all five from the public repository, including LINCS.
+- Matched CRISPR lipid-screen and PhenomeXcan association checksums to the original
+  PhenoPLIER setup script. The old CRISPR/P-value/fastENLOC Box URLs return 404.
+- Bundled the original small CRISPR CSV and processed phenotype metadata. Large
+  association files stay outside Git and are linked from a matching workspace.
+- Executed `phenoplier_inputs` successfully against existing input files in the
+  original checkout, writing links only in the temporary testing checkout.
+  Verified twelve staged file hashes; inventoried 49 S-PrediXcan filenames/sizes
+  without claiming content hashes for those 21 GB of data.
+- Executed both default timing report targets: only snapshot restoration ran.
+  The timing-only dry-run contains no runtime fitting or matrix-shape probes.
+- Eleven unit tests cover downloads, streaming gzip, immutable existing inputs,
+  workspace linking, recorded timing restoration, and S-PrediXcan inventory checks.
+- No GLS/model/timing fits, full reference-bundle downloads, or modifications to
+  existing source data/output files were performed.
+- Repeated input staging plus both recorded timing reports in a clean clone:
+  all 18 Snakemake steps passed, including the public DrugBank download and
+  twelve staged-file checksum checks, with no scientific fitting jobs.
