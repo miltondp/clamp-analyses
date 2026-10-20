@@ -1,0 +1,250 @@
+{
+  "schema_version": 1,
+  "note": "SHA-256 applies to the installed (decompressed) file. Verification date is not the historical download date.",
+  "assets": {
+    "msigdb_c2.all": {
+      "path": "data/pathways/c2.all.v2026.1.Hs.symbols.gmt",
+      "resource": "MSigDB",
+      "version": "2026.1.Hs",
+      "bundled": true,
+      "url": "https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2026.1.Hs/c2.all.v2026.1.Hs.symbols.gmt",
+      "doi": [
+        "10.1073/pnas.0506580102",
+        "10.1093/bioinformatics/btr260",
+        "10.1016/j.cels.2015.12.004"
+      ],
+      "sha256": "237ee6165b3055d3a861d484c4959566a204a96a9b3bacee112dd03cc1751fb1",
+      "bytes": 4634828,
+      "verification_date": "2026-10-20",
+      "provenance_status": "upstream_bytes_verified",
+      "license_url": "https://www.gsea-msigdb.org/gsea/msigdb_license_terms.jsp"
+    },
+    "msigdb_c2.cp": {
+      "path": "data/pathways/c2.cp.v2026.1.Hs.symbols.gmt",
+      "resource": "MSigDB",
+      "version": "2026.1.Hs",
+      "bundled": true,
+      "url": "https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2026.1.Hs/c2.cp.v2026.1.Hs.symbols.gmt",
+      "doi": [
+        "10.1073/pnas.0506580102",
+        "10.1093/bioinformatics/btr260",
+        "10.1016/j.cels.2015.12.004"
+      ],
+      "sha256": "af1b31c091f5d296438f6ca20fba0286ca31fd8ae84efd6317675e6579968093",
+      "bytes": 1677390,
+      "verification_date": "2026-10-20",
+      "provenance_status": "upstream_bytes_verified",
+      "license_url": "https://www.gsea-msigdb.org/gsea/msigdb_license_terms.jsp"
+    },
+    "msigdb_c2.cp.reactome": {
+      "path": "data/pathways/c2.cp.reactome.v2026.1.Hs.symbols.gmt",
+      "resource": "MSigDB",
+      "version": "2026.1.Hs",
+      "bundled": true,
+      "url": "https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2026.1.Hs/c2.cp.reactome.v2026.1.Hs.symbols.gmt",
+      "doi": [
+        "10.1073/pnas.0506580102",
+        "10.1093/bioinformatics/btr260",
+        "10.1016/j.cels.2015.12.004"
+      ],
+      "sha256": "5d61f289a2400cddfbb3a3353829fd2284a360bbe50f2093b566c4b7bea93341",
+      "bytes": 898680,
+      "verification_date": "2026-10-20",
+      "provenance_status": "upstream_bytes_verified",
+      "license_url": "https://www.gsea-msigdb.org/gsea/msigdb_license_terms.jsp"
+    },
+    "msigdb_c5.go.cc": {
+      "path": "data/pathways/c5.go.cc.v2026.1.Hs.symbols.gmt",
+      "resource": "MSigDB",
+      "version": "2026.1.Hs",
+      "bundled": true,
+      "url": "https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2026.1.Hs/c5.go.cc.v2026.1.Hs.symbols.gmt",
+      "doi": [
+        "10.1073/pnas.0506580102",
+        "10.1093/bioinformatics/btr260",
+        "10.1016/j.cels.2015.12.004"
+      ],
+      "sha256": "1ee846c446a87c1b6cc2b097dc415bed1c2f6b539312d2611f946038c5f7e9f8",
+      "bytes": 778106,
+      "verification_date": "2026-10-20",
+      "provenance_status": "upstream_bytes_verified",
+      "license_url": "https://www.gsea-msigdb.org/gsea/msigdb_license_terms.jsp"
+    },
+    "msigdb_c8.all": {
+      "path": "data/pathways/c8.all.v2026.1.Hs.symbols.gmt",
+      "resource": "MSigDB",
+      "version": "2026.1.Hs",
+      "bundled": true,
+      "url": "https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2026.1.Hs/c8.all.v2026.1.Hs.symbols.gmt",
+      "doi": [
+        "10.1073/pnas.0506580102",
+        "10.1093/bioinformatics/btr260",
+        "10.1016/j.cels.2015.12.004"
+      ],
+      "sha256": "715a1af9f0d36e1dfd631e9daa204157e741e2a07dce90abb18f2f0aa98f8d04",
+      "bytes": 1127394,
+      "verification_date": "2026-10-20",
+      "provenance_status": "upstream_bytes_verified",
+      "license_url": "https://www.gsea-msigdb.org/gsea/msigdb_license_terms.jsp"
+    },
+    "msigdb_h.all": {
+      "path": "data/pathways/h.all.v2026.1.Hs.symbols.gmt",
+      "resource": "MSigDB",
+      "version": "2026.1.Hs",
+      "bundled": true,
+      "url": "https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2026.1.Hs/h.all.v2026.1.Hs.symbols.gmt",
+      "doi": [
+        "10.1073/pnas.0506580102",
+        "10.1093/bioinformatics/btr260",
+        "10.1016/j.cels.2015.12.004"
+      ],
+      "sha256": "eecaf6dad908334ae885406ec72bdc0646d8917588ed7c219fac92fc5363f596",
+      "bytes": 48686,
+      "verification_date": "2026-10-20",
+      "provenance_status": "upstream_bytes_verified",
+      "license_url": "https://www.gsea-msigdb.org/gsea/msigdb_license_terms.jsp"
+    },
+    "cellmarker": {
+      "path": "data/pathways/Cell_marker_Human.xlsx",
+      "resource": "CellMarker",
+      "version": "2.0",
+      "bundled": true,
+      "url": "https://www.bio-bigdata.center/CellMarker_download_files/file/Cell_marker_Human.xlsx",
+      "doi": [
+        "10.1093/nar/gkac947"
+      ],
+      "sha256": "bf52b8cd60df60f17a7c6b8a59d0bbb74ec78612f11cd11990f15e4eedb7d842",
+      "bytes": 7982475,
+      "verification_date": "2026-10-20",
+      "provenance_status": "existing_snapshot_upstream_unavailable",
+      "notes": "Preserved existing human workbook. Historical acquisition date/URL not recorded. This is the documented source endpoint, which timed out during verification; it is not a verified byte-identical redownload."
+    },
+    "allen_brain": {
+      "path": "data/pathways/Allen_Brain_Atlas_10x_scRNA_2021.gmt",
+      "resource": "Enrichr",
+      "version": "Allen_Brain_Atlas_10x_scRNA_2021",
+      "bundled": true,
+      "url": "https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=Allen_Brain_Atlas_10x_scRNA_2021",
+      "doi": [
+        "10.1093/nar/gkw377",
+        "10.1002/cpz1.90"
+      ],
+      "sha256": "6bedb4ae8544b6164af2cb5000cd4195e056b194a168ca52f44cc31b7ffd2958",
+      "bytes": 646664,
+      "verification_date": "2026-10-20",
+      "provenance_status": "upstream_bytes_verified"
+    },
+    "azimuth": {
+      "path": "data/pathways/Azimuth_2023.txt",
+      "resource": "Enrichr",
+      "version": "Azimuth_2023",
+      "bundled": true,
+      "url": "https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=Azimuth_2023",
+      "doi": [
+        "10.1093/nar/gkw377",
+        "10.1002/cpz1.90"
+      ],
+      "sha256": "03861dab6b594934680bc1acef41d48c81dec738f4cda8e66552cda1988a0ba8",
+      "bytes": 141438,
+      "verification_date": "2026-10-20",
+      "provenance_status": "existing_snapshot",
+      "existing_rule": "fetch_azimuth_gmt"
+    },
+    "archs4_cell_lines": {
+      "path": "data/pathways/archs4_cell_lines.gmt",
+      "resource": "Enrichr",
+      "version": "ARCHS4_Cell-lines",
+      "bundled": true,
+      "url": "https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=ARCHS4_Cell-lines",
+      "doi": [
+        "10.1093/nar/gkw377",
+        "10.1002/cpz1.90"
+      ],
+      "sha256": "0215579ba967d99f8dce86b9f8d043ce1a2a5d922787777163ce26fbc60461aa",
+      "bytes": 2049747,
+      "verification_date": "2026-10-20",
+      "provenance_status": "existing_snapshot",
+      "existing_rule": "fetch_archs4_cell_lines_gmt"
+    },
+    "gtex_tissue_pathmat": {
+      "path": "data/archs4/GTEx_Tissues_pathMat.rds",
+      "resource": "GTEx tissue gene-set matrix",
+      "version": "existing analysis snapshot",
+      "bundled": true,
+      "url": null,
+      "doi": [
+        "10.1126/science.aaz1776",
+        "10.1093/nar/gkw377"
+      ],
+      "sha256": "dd5dbe5312ff1cca54bd90a7c4df245a0a80d06ca4409644194375101264c8ff",
+      "bytes": 119392,
+      "verification_date": "2026-10-20",
+      "provenance_status": "upstream_memberships_verified",
+      "related_url": "https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=GTEx_Tissues_V8_2023",
+      "notes": "Existing 8076-gene x 511-term binary sparse matrix. All 511 memberships match Enrichr GTEx_Tissues_V8_2023 exactly after adding the GTEx_Tissues_ term prefix (verified 2026-10-20). Historical serialization script and acquisition date are not recorded; bundled RDS preserves the original row/column ordering and bytes."
+    },
+    "archs4_gene_lengths": {
+      "path": "data/archs4/gene_lengths.rds",
+      "resource": "ARCHS4 preprocessing gene lengths",
+      "version": "Ensembl 107; preserved analysis snapshot",
+      "bundled": true,
+      "url": null,
+      "doi": [
+        "10.1093/nar/gkab1049"
+      ],
+      "sha256": "46561d916859798d8617fd981f238e2b9837987a8217d33bf5cdcb703c52c9d8",
+      "bytes": 216381,
+      "verification_date": "2026-10-20",
+      "provenance_status": "historical_recipe_recovered",
+      "related_url": "https://ftp.ensembl.org/pub/release-107/",
+      "notes": "Historical config.R pins Ensembl 107. BioMart hsapiens_gene_ensembl query uses ARCHS4 HDF5 gene symbols and attributes ensembl_gene_id,hgnc_symbol,transcript_length; group by hgnc_symbol and ensembl_gene_id and take maximum transcript_length in base pairs. Exact original acquisition date/serialization environment is unknown. The bundled 44,737-entry vector was not recomputed; preserve its bytes for existing results.",
+      "recipe_commit": "6935e139dc9ef6c4d17ea4ff17aa3d7f603051fe",
+      "recipe_path": "nbs/01_model_building/04_archs4/01_archs4_preprocess.ipynb",
+      "rebuild_script": "scripts/inputs/build_archs4_gene_lengths.R"
+    },
+    "gtex_sample_attributes": {
+      "path": "data/gtex/GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt",
+      "resource": "GTEx",
+      "version": "v8",
+      "bundled": true,
+      "url": "https://storage.googleapis.com/adult-gtex/annotations/v8/metadata-files/GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt",
+      "doi": [
+        "10.1126/science.aaz1776"
+      ],
+      "sha256": "74f6ab4c34ed2648d708a0ae6e6dff324f6c86ea723ae7d1c37d76f5221148f0",
+      "bytes": 11512258,
+      "verification_date": "2026-10-20",
+      "provenance_status": "upstream_bytes_verified"
+    },
+    "gtex_subject_phenotypes": {
+      "path": "data/gtex/GTEx_Analysis_v8_Annotations_SubjectPhenotypesDS.txt",
+      "resource": "GTEx",
+      "version": "v8",
+      "bundled": false,
+      "url": "https://storage.googleapis.com/adult-gtex/annotations/v8/metadata-files/GTEx_Analysis_v8_Annotations_SubjectPhenotypesDS.txt",
+      "doi": [
+        "10.1126/science.aaz1776"
+      ],
+      "sha256": "821bdaff39e7a9a1d166919b3c786724c2b79c2861aeb936a2537a0f59b066f7",
+      "bytes": 20271,
+      "verification_date": "2026-10-20",
+      "provenance_status": "upstream_bytes_verified"
+    },
+    "gtex_xcell": {
+      "path": "data/gtex/GTEx_Analysis_v8_xCell_scores_7_celltypes.txt",
+      "resource": "GTEx",
+      "version": "v8",
+      "bundled": false,
+      "url": "https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/cell-type-iqtl/GTEx_Analysis_v8_xCell_scores_7_celltypes.txt.gz",
+      "doi": [
+        "10.1126/science.aaz1776",
+        "10.1186/s13059-017-1349-1"
+      ],
+      "sha256": "79104f627fe821e4681ef137f7f499019e5cbd249ee61c30ea8fa96babe81a01",
+      "bytes": 1103879,
+      "verification_date": "2026-10-20",
+      "provenance_status": "upstream_bytes_verified",
+      "compression": "gzip"
+    }
+  }
+}

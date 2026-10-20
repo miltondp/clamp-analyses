@@ -50,13 +50,19 @@ Keep the pinned CLAMP revision. [Manual setup and locks](docs/running.md#environ
 
 ## 3. Prepare inputs
 
-Follow the [input checklist](docs/inputs.md) for the phase you will run. It lists
-exact paths/configurations and separates automatic downloads from manual inputs.
-Both phases need pathway references; the benchmark also needs the configured
-single-cell cohorts and GTEx xCell scores. ARCHS4 biology additionally needs gene
-lengths, PhenoPLIER/PhenomeXcan references, and drug–disease/CRISPR inputs.
-Some projection analyses also consume benchmark outputs; Snakemake builds shared
-prerequisites when absent.
+Small reference inputs (MSigDB 2026.1, CellMarker, cell/tissue references and
+ARCHS4 gene lengths) are included in Git. Download GTEx annotations and verify
+the pinned references before starting:
+
+```bash
+snakemake --profile workflow/profiles/local reference_inputs
+python scripts/inputs/reference_inputs.py --check
+```
+
+[Sources, DOIs and checksums](docs/reference_inputs.md) document each reference.
+The [input checklist](docs/inputs.md) lists remaining cohort/reference inputs.
+ARCHS4 biology additionally needs PhenoPLIER/PhenomeXcan and drug–disease/CRISPR
+inputs. Some projection analyses build shared benchmark prerequisites.
 
 For ARCHS4 trait analyses, also install and initialize **phenoplier-cli v0.5.2**
 using the [environment/workspace instructions](scripts/phenoplier/README.md#3-phenoplier-cli-environment-and-workspace).

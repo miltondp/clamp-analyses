@@ -1,0 +1,54 @@
+DISCLAIMER OF LIABILITY AND OF WARRANTIES
+
+
+Use of our Services is at your own risk and we shall not be liable for any harm to you or others resulting from such use. IN NO EVENT SHALL BIOCARTA BE LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND ARISING OUT OF OR IN CONNECTION WITH THE USE OF THE ARTICLES OR OTHER MATERIAL DERIVED FROM THE BIOCARTA WEB SITE, WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF LIABILITY. We are not responsible for the disclosure of any information about you to anyone who accesses your information using your password and user account information.
+
+BioCarta does not represent or guarantee the truthfulness, accuracy, or reliability of any communications posted by other users or endorse any opinions expressed by users. BioCarta does not warrant that material uploaded by users has been uploaded with the permission of the copyright holder, and therefore does not guarantee that such material may be freely used. BioCarta does not warrant the accuracy or completeness of such information, and is not liable or responsible for its use by other users. BY USING THIS SITE YOU ACKNOWLEDGE THAT ANY RELIANCE ON MATERIAL POSTED BY OTHER USERS WILL BE AT YOUR OWN RISK.
+
+When entering materials on any of the BioCarta Site, you are responsible for the content of that material. BioCarta has no responsibility for the content of any messages or information posted by users, or for the content of information of third-parties on the Internet, even if accessed through BioCarta¹s pages. NEITHER BIOCARTA, NOR ANY OTHER PARTY INVOLVED IN CREATING, PRODUCING, OR DELIVERING THE BIOCARTA WEB SITE SHALL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF USE THE BIOCARTA WEB SITE, INABILITY TO USE THE BIOCARTA WEB SITE OR OUT OF ANY BREACH OF WARRANTY. THE USER EXPRESSLY ACKNOWLEDGES THAT THE PROVISIONS OF THIS PARAGRAPH SHALL ALSO APPLY TO ANY THIRD PARTY CONTENT. Because some Countries and States do not allow the exclusion or limitation of liability for consequential or incidental damages, BioCarta's liability is limited to the greatest extent permitted by law.
+
+Notwithstanding any other term contained in these Terms and Conditions, BioCarta accepts no liability for death or personal injury caused by the negligence of BioCarta. The content of and information contained in BioCarta is the opinion of the contributor and/or the author of such content and/or information. BioCarta accepts no responsibility or liability for any loss, cost, claim or expense arising from any reliance on such content or information. Users should independently verify such content or information before relying on it. BY USING THIS SITE YOU AGREE TO ASSUME ALL RISKS ASSOCIATED WITH ERRORS IN ANY AND ALL INFORMATION CONTAINED ON THIS SITE AND TO HOLD US HARMLESS FROM ANY CLAIMS RELATING TO SUCH ERROR IN EXCHANGE FOR YOUR USE OF THE SITE.
+
+We do not own or control other networks, other sites or hyperlinked sites outside of our own Site. These include the outside vendors that are accessed through our site. We are not responsible or liable for performance (or non-performance) within such networks or within interconnection points between our Site and other networks and/or sites that are operated by third parties. We also make no representation regarding your ability to transmit and receive information from or through our Site and you agree and acknowledge that at times your ability to access our Site may be impaired or disrupted. Although we will use commercially reasonable efforts to take any action we deem appropriate to remedy and avoid such events, we cannot guarantee they will not occur, and accordingly we disclaim any and all liability resulting from or related to such events.
+
+THE BIOCARTA SITE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. BIOCARTA MAKES NO WARRANTIES ABOUT THE ACCURACY, RELIABILITY, COMPLETENESS, OR TIMELINESS OF THE MATERIAL, SERVICES, SOFTWARE, TEXT, GRAPHICS, AND LINKS. Descriptions of, or references to, products or publications does not imply endorsement of that product or publication. The content of all advertisements appearing in this document and its component documents and/or files is the sole responsibility of the company placing the ad. BioCarta does not endorse either the accuracy or reliability of the content of the advertisements, or of any products connected therewith.
+
+BIOCARTA DOES NOT WARRANT THAT THE SITE WILL OPERATE ERROR-FREE OR THAT THIS SITE AND ITS SERVER ARE FREE OF COMPUTER VIRUSES OR OTHER HARMFUL MECHANISMS. IF YOUR USE OF THE SITE OR THE MATERIALS RESULTS IN THE NEED FOR SERVICING OR REPLACING EQUIPMENT OR DATA, BIOCARTA IS NOT RESPONSIBLE FOR THOSE COSTS.
+
+BioCarta will not screen users' messages and is not responsible for screening or monitoring material posted by users to any bulletin-board or any real-time communication facility (e.g. discussion group) prior to their appearance on BioCarta. However, BioCarta reserves the right to remove any messages it deems to be inaccurate, inflammatory, or deliberately misleading, whether upon its own advice or that of a board of users appointed by BioCarta, or by the users. If notified by a user of communications that allegedly do not conform to these Terms and Conditions, BioCarta may investigate the allegation and determine in good faith and in its sole discretion whether to remove the communication and/or terminate that user's access to the Site. This is for the protection of BioCarta, its employees, agents, and licensors, and the users.
+
+BioCarta Security Rules
+Violations of system or network security may result in civil or criminal liability. BioCarta will investigate occurrences and may involve, and cooperate with, law enforcement authorities in prosecuting the user or users who are involved in such violations. Your are prohibited from violating or attempting to violate the security of the Site, including, without limitation, the following:
+
+a. accessing data not intended for such user or logging into a server or account which user is not authorized to access;
+
+b. attempting to probe, scan or test the vulnerability of a system or network or to breach security or authentication measures without proper authorization;
+
+c. attempting to interfere with service to any user, host or network, including, without limitation, via means of submitting a virus to the Site, overloading, "flooding", "mailbombing" or "crashing"; or sending unsolicited e-mail, including promotions and/or advertising of products or services, or (e) forging any TCP/IP packet header or any part of the header information in any e-mail or newsgroup posting.
+
+Termination of Service
+BioCarta may terminate your use of the Site at any time and for any reason and may delete any and all communications, postings, or other content placed on the Site by you, without notice, for conduct violating these guidelines for use or terms and conditions contained on other pages of this Site.
+
+BioCarta in its sole discretion may terminate your use of the Site at any time and for any reason and may delete any and all communications, postings, or other content placed on the Site by you, without notice, for content that BioCarta believes is illegal, offensive or otherwise inappropriate to other users, BioCarta's business, or other third party providers.
+
+BioCarta reserves the right at all times to disclose any information posted by you or provided to BioCarta as necessary to satisfy any law, regulation or governmental request, or to edit, refuse to post or to remove any information or Materials, in whole or in part, that in BioCarta's sole discretion are objectionable or in violation of these guidelines for use.
+
+Indemnity
+You agree to defend, indemnify, and hold harmless BioCarta, Inc., its affiliated companies, licensors, employees, agents, and any third party information providers as well as it's officers, directors, employees and agents, from and against any claims, actions or demands, (including without limitation reasonable legal and accounting fees) alleging or resulting from (a) with respect to you: (i) infringement or misappropriation of any intellectual property rights; (ii) defamation, libel, slander, obscenity, pornography, or violation of the rights of privacy or publicity; or (iii) spamming, or any other offensive, harassing or illegal conduct or violation of these Terms and Conditions; (b) any damage or destruction to our Site or to us, or to another person or party which damage is caused by or otherwise results from your acts or omissions. BioCarta shall provide notice to you promptly of any such claim, suit, or proceeding.
+
+Confidentiality
+You acknowledge that your communications from and to this Site are not confidential and that your communications may be read or accessed by others. You acknowledge that by submitting communications to BioCarta, no confidential, fiduciary, contractually implied, or other relationship is created between you and BioCarta other than pursuant to these Terms and Conditions.
+
+General
+BioCarta makes no claims the Materials are appropriate or may be downloaded outside of the United States. Access to the Materials may not be legal by certain persons or in certain countries. If you access the Site from outside of the United States, you do so at your own risk and are responsible for compliance with the laws of your jurisdiction.
+
+These Terms and Conditions are governed by the federal and state laws of the State of California, without respect to its conflict of laws principles. Sole and exclusive jurisdiction for any action or proceeding arising out of or related to these Terms and Conditions shall be in appropriate state or federal court located in San Diego County, California.
+
+If any provision of these Terms and Conditions is found to be invalid by any court having competent jurisdiction, the invalidity of such provision shall not affect the validity of the remaining provisions of these Terms and Conditions, which shall remain in full force and effect.
+
+No waiver of any term of these Terms and Conditions shall be deemed a further or continuing waiver of such term or any other term.
+
+Any claim by a user or users with respect to BioCarta, or against BioCarta must be instituted within one year of the claim arising, or be barred.
+
+Proprietary Rights Notice for BioCarta
+Copyright © 2000 - 2016, BioCarta. All Rights Reserved.

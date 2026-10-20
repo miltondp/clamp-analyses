@@ -208,10 +208,9 @@ rule fetch_azimuth_gmt:
         A4_CRISPERCAS_CFG["azimuth_gmt"],
     log:
         A4_CRISPERCAS_CFG["azimuth_gmt"] + ".log"
+    conda: "snakemake"
     shell:
-        "mkdir -p $(dirname {output:q}) && "
-        "curl --fail --location --retry 3 '{A4_CRISPERCAS_CFG[azimuth_url]}' "
-        "--output {output} 2> {log}"
+        "python scripts/inputs/reference_inputs.py --only azimuth --destination {output:q} > {log:q} 2>&1"
 
 
 rule fetch_archs4_cell_lines_gmt:
@@ -219,10 +218,9 @@ rule fetch_archs4_cell_lines_gmt:
         A4_CRISPERCAS_CFG["archs4_cell_lines_gmt"],
     log:
         A4_CRISPERCAS_CFG["archs4_cell_lines_gmt"] + ".log"
+    conda: "snakemake"
     shell:
-        "mkdir -p $(dirname {output:q}) && "
-        "curl --fail --location --retry 3 '{A4_CRISPERCAS_CFG[archs4_cell_lines_url]}' "
-        "--output {output} 2> {log}"
+        "python scripts/inputs/reference_inputs.py --only archs4_cell_lines --destination {output:q} > {log:q} 2>&1"
 
 
 rule crispercas_metalv_ora:

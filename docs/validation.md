@@ -60,3 +60,21 @@ Manual cohort/reference files with missing provenance remain author-supplied
 requirements; the input checklist states this explicitly. Memory guidance records
 configured allocations and Pico capacity, not a newly measured minimum or peak RSS.
 Complete scientific reproduction and successful cluster submission remain untested.
+
+## Reference-input automation — 2026-10-20
+
+- Fifteen small input files are now pinned in the reference manifest; thirteen
+  are present in Git, and the two remaining GTEx files download automatically.
+- Verified all six MSigDB 2026.1 GMTs, the Allen Brain GMT, both GTEx metadata
+  tables, and decompressed xCell scores against upstream bytes.
+- Verified CellMarker's human-sheet schema and all 511 GTEx tissue-matrix
+  memberships against Enrichr after prefix normalization.
+- Recovered the gene-length calculation and Ensembl-107 version from historical
+  commit 6935e13. The existing vector is preserved; BioMart was not re-queried.
+- Six offline downloader tests cover checksums, gzip, safe publication, reuse,
+  refusal to overwrite existing files, and configurable destinations.
+- CellMarker's documented endpoint timed out; its existing snapshot is included
+  without claiming a successful upstream re-download. No scientific fits ran.
+- A clean clone successfully restored the gene-length snapshot from Git offline,
+  downloaded the two missing GTEx references through the actual Snakemake target,
+  and passed SHA-256 checks for all fifteen installed files.

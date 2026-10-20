@@ -13,6 +13,7 @@ configfile: "workflow/config/phenoplier.yaml"
 
 REPO_ROOT = os.path.dirname(workflow.basedir)
 
+include: "rules/reference_inputs.smk"
 include: "rules/pseudobulk.smk"
 include: "rules/gtex.smk"
 include: "rules/computational_timing.smk"
