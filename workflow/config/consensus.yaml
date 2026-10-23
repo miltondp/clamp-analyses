@@ -1,0 +1,37 @@
+consensus:
+  # Consensus models: meta gene modules clustered across the published canonical
+  # CLAMPfull model and nine independent seed replicates of each compendium.
+  root: output/98_final_models/consensus_models
+  model_name: CLAMPfull_consensus
+  seeds: [456, 789, 1001, 1002, 1003, 1004, 1005, 1006, 1007]
+  min_cos: 0.5
+  min_models: 6
+  noise_r2: 0.25
+  ora_databases: [bp, canonical, cellmarker, azimuth, archs4_cell_lines]
+  compendia:
+    archs4:
+      reference: S123
+    gtex:
+      reference: S124
+      stability_root: output/01_model_building/01_gtex/stability
+      attributes: data/gtex/GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt
+      covariates:
+        categorical: [SMCENTER]
+        numeric: [SMTSISCH, SMMAPRT, log10_SMRDTTL]
+        study: SMGEBTCH
+        min_level_n: 50
+      fit: {max_iter: 500, threads: 8, mem_mb: 48000, runtime: 2880}
+    recount2:
+      reference: S124
+      stability_root: output/01_model_building/03_recount2/stability
+      rse_dir: data/recount2/recount2_PLIER_data/recount_experiments_rse-gene
+      covariates:
+        categorical: [paired_end, submission_year]
+        numeric: [log10_mapped_read_count, avg_read_length, proportion_downloaded, log10_auc]
+        study: project
+        min_level_n: 50
+      fit: {max_iter: 500, threads: 8, mem_mb: 48000, runtime: 2880}
+  resources:
+    base: {threads: 8, mem_mb: 48000, runtime: 2880}
+    noise: {threads: 4, mem_mb: 32000, runtime: 1440}
+    projection: {threads: 8, mem_mb: 64000, runtime: 1440}

@@ -10,11 +10,23 @@ from rpy2.robjects.conversion import localconverter
 
 
 def prepare_clamp_projector(clamp_model_file: Path):
-    CLAMP = importr("CLAMP")
     readRDS = ro.r["readRDS"]
     clamp = readRDS(str(clamp_model_file))
     print("CLAMP model loaded")
+    return clamp_projector(clamp)
 
+
+def prepare_z_projector(z_file: Path, l2: float):
+    read_z = ro.r(
+        "function(path, l2) list(Z = as.matrix(read.csv(path, row.names = 1, check.names = FALSE)), L2 = l2)"
+    )
+    clamp = read_z(str(z_file), l2)
+    print("Z matrix loaded")
+    return clamp_projector(clamp)
+
+
+def clamp_projector(clamp):
+    CLAMP = importr("CLAMP")
     gene_symbols = list(ro.r["rownames"](clamp.rx2("Z")))
     lv_names = list(ro.r["colnames"](clamp.rx2("Z")))
     print(f"CLAMP genes: {len(gene_symbols)}, LVs: {len(lv_names)}")
