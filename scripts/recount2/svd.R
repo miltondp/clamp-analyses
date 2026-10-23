@@ -25,7 +25,7 @@ if (!identical(nrow(fbm), length(genes)) || !identical(ncol(fbm), length(samples
        " do not match ", length(genes), " genes and ", length(samples), " samples")
 }
 
-svd_k <- as.integer(args$svd_k %||% (min(nrow(fbm), ncol(fbm)) - 1L))
+svd_k <- as.integer(args$svd_k %||% floor((min(nrow(fbm), ncol(fbm)) - 1L) / 4))
 message("Randomized SVD: ", nrow(fbm), " x ", ncol(fbm), ", k = ", svd_k, ", cores = ", n_cores)
 
 svd_res <- with_single_threaded_blas(
@@ -34,6 +34,11 @@ svd_res <- with_single_threaded_blas(
 )
 saveRDS(svd_res, svd_out)
 
-clamp_k <- num.pc(list(d = svd_res$d)) * 2
+eigenvalues <- sort(svd_res$d^2 / (ncol(fbm) - 1), decreasing = TRUE)
+clamp_k <- PCAtools::chooseGavishDonoho(
+  .dim = c(nrow(fbm), ncol(fbm)),
+  var.explained = eigenvalues,
+  noise = median(eigenvalues)
+) * 2
 message("Inferred CLAMP K = ", clamp_k)
 saveRDS(clamp_k, k_out)
