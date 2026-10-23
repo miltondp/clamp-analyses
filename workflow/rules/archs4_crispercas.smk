@@ -331,19 +331,6 @@ rule crispercas_metalv_l1000:
         "--n-perm {A4_CRISPERCAS_CFG[l1000_n_perm]} --seed {A4_CRISPERCAS_CFG[l1000_seed]} --out-dir {A4_METALV}/l1000"
 
 
-rule crispercas_metalv_l1000_report:
-    input:
-        ranking=rules.crispercas_metalv_l1000.output.ranking,
-        notebook=f"{A4_BIO_NB}/04_crispercas/00_l1000_mgm.ipynb",
-    output:
-        complete=touch(f"{A4_METALV}/l1000/notebook.complete"),
-    log:
-        notebook=f"{A4_BIO_NB}/04_crispercas/00_l1000_mgm.executed.ipynb",
-    conda: "clamp-analyses"
-    notebook:
-        f"{A4_BIO_NB}/04_crispercas/00_l1000_mgm.ipynb"
-
-
 # ============================================================
 # Step 6: project metaLV activity and prepare Figure 5
 # ============================================================
@@ -413,8 +400,29 @@ rule crispercas_fig5_data:
         "--top-n {A4_CRISPERCAS_CFG[top_n]} --out-dir {A4_METALV}/fig5"
 
 
+rule crispercas_mgm_report:
+    input:
+        flags=rules.crispercas_noise_flags.output[0],
+        summary=rules.crispercas_metalv_cluster.output.summary,
+        ora=expand(rules.crispercas_metalv_ora.output.ora_dir, database=A4_METALV_ORA),
+        funnel=rules.crispercas_metalv_select.output.funnel,
+        pathways=rules.crispercas_metalv_pathways.output.top,
+        modules=f"{A4_METALV}/fig5/modules.csv",
+        traits=f"{A4_METALV}/fig5/module_trait_groups.csv",
+        composition=rules.crispercas_metalv_composition.output[0],
+        ranking=rules.crispercas_metalv_l1000.output.ranking,
+        notebook=f"{A4_BIO_NB}/04_crispercas/00_mgm.ipynb",
+    output:
+        complete=touch(f"{A4_METALV}/notebook.complete"),
+    log:
+        notebook=f"{A4_BIO_NB}/04_crispercas/00_mgm.executed.ipynb",
+    conda: "clamp-analyses"
+    notebook:
+        f"{A4_BIO_NB}/04_crispercas/00_mgm.ipynb"
+
+
 rule biology_archs4_crispercas:
     input:
         rules.crispercas_fig5_data.output,
-        rules.crispercas_metalv_l1000_report.output,
+        rules.crispercas_mgm_report.output,
         expand(rules.crispercas_metalv_ora.output.ora_dir, database=A4_METALV_ORA),

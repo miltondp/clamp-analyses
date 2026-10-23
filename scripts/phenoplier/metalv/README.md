@@ -9,10 +9,10 @@ Benjamini-Hochberg FDR over the GSEA-significant metaLVs of the current run.
 
    ```bash
    python scripts/phenoplier/metalv/export_metalv_z.py \
-     --metaz output/03_model_biology/02_archs4/04_crispercas/03_metalv/metaZ.csv \
-     --gsea-best output/03_model_biology/02_archs4/04_crispercas/03_metalv/gsea/gsea_best.csv \
+     --metaz output/03_model_biology/02_archs4/04_crispercas/00_mgm/metaZ.csv \
+     --gsea-best output/03_model_biology/02_archs4/04_crispercas/00_mgm/gsea/gsea_best.csv \
      --out-pkl metalv_z.pkl \
-     --out-mapping output/03_model_biology/02_archs4/04_crispercas/03_metalv/phenoplier/lv_mapping.csv
+     --out-mapping output/03_model_biology/02_archs4/04_crispercas/00_mgm/phenoplier/lv_mapping.csv
    ```
 
    PhenoPLIER needs contiguous LV names, so the metaLVs are renamed `LV1..LVn`
@@ -31,8 +31,8 @@ Benjamini-Hochberg FDR over the GSEA-significant metaLVs of the current run.
 
    ```bash
    python scripts/phenoplier/metalv/collect_summary.py --summary gls-summary.tsv.gz \
-     --mapping output/03_model_biology/02_archs4/04_crispercas/03_metalv/phenoplier/lv_mapping.csv \
-     --out output/03_model_biology/02_archs4/04_crispercas/03_metalv/phenoplier/gls_summary_metalv.tsv.gz
+     --mapping output/03_model_biology/02_archs4/04_crispercas/00_mgm/phenoplier/lv_mapping.csv \
+     --out output/03_model_biology/02_archs4/04_crispercas/00_mgm/phenoplier/gls_summary_metalv.tsv.gz
    ```
 
 The manuscript run (PhenoPLIER v0.5.2, biomedical trait filter, 2,366 traits,

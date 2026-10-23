@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Fit an independent GTEx CLAMPbase replicate.
+# Fit an independent CLAMPbase replicate of GTEx or another FBM compendium.
 suppressPackageStartupMessages({
   library(bigstatsr)
   library(rsvd)
@@ -18,6 +18,7 @@ out_dir <- required_arg(args, "out_dir")
 seed <- as.integer(required_arg(args, "seed"))
 seed_index <- as.integer(required_arg(args, "seed_index"))
 expected_k <- as.integer(args$expected_k %||% NA_integer_)
+dataset <- args$dataset %||% "gtex"
 started <- Sys.time()
 
 if (file.exists(file.path(out_dir, "CLAMPbase.rds"))) stop("Refusing to overwrite ", out_dir)
@@ -32,7 +33,7 @@ stopifnot(identical(nrow(Y), length(genes)), identical(ncol(Y), length(samples))
 
 set.seed(seed)
 svd_k <- floor((min(nrow(Y), ncol(Y)) - 1) / 4)
-message("GTEx randomized SVD: ", nrow(Y), " x ", ncol(Y), ", k = ", svd_k, ", seed = ", seed)
+message(dataset, " randomized SVD: ", nrow(Y), " x ", ncol(Y), ", k = ", svd_k, ", seed = ", seed)
 svd_res <- rsvd(Y[], k = svd_k)
 saveRDS(svd_res, file.path(out_dir, "svd.rds"))
 eigenvalues <- sort(svd_res$d^2 / (ncol(Y) - 1), decreasing = TRUE)
@@ -42,7 +43,7 @@ clamp_k <- PCAtools::chooseGavishDonoho(
 saveRDS(clamp_k, file.path(out_dir, "CLAMP_K.rds"))
 message("Inferred CLAMP K = ", clamp_k)
 if (!is.na(expected_k) && clamp_k != expected_k) {
-  warning("Inferred K ", clamp_k, " differs from the published GTEx K ", expected_k)
+  warning("Inferred K ", clamp_k, " differs from the published ", dataset, " K ", expected_k)
 }
 
 set.seed(seed)
@@ -57,7 +58,7 @@ write.csv(base_res$B, file.path(out_dir, "CLAMPbase", "B.csv"))
 
 finished <- Sys.time()
 write_json(list(
-  schema_version = 1L, status = "complete", model = "CLAMPbase", dataset = "gtex",
+  schema_version = 1L, status = "complete", model = "CLAMPbase", dataset = dataset,
   fraction = 100L, seed_index = seed_index, rng_seed = seed, random_start = TRUE,
   svd_k = svd_k, latent_variables = as.integer(clamp_k), genes = length(genes), samples = length(samples),
   started_utc = format(started, tz = "UTC", usetz = TRUE),
@@ -66,4 +67,4 @@ write_json(list(
   package_versions = list(R = as.character(getRversion()), CLAMP = as.character(packageVersion("CLAMP")))
 ), file.path(out_dir, "manifest.json"), pretty = TRUE, auto_unbox = TRUE)
 file.create(file.path(out_dir, "complete"))
-message("Wrote GTEx CLAMPbase replicate to ", out_dir)
+message("Wrote ", dataset, " CLAMPbase replicate to ", out_dir)

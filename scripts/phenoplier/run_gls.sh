@@ -109,10 +109,14 @@ if [[ ! -f "$workspace/config.toml" ]]; then
   exit 1
 fi
 
-# shellcheck disable=SC1091
-source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate "$conda_env"
-export PATH="${CONDA_PREFIX:-}/bin:${PATH}"
+if [[ -d "$conda_env" ]]; then
+  export PATH="$conda_env/bin:${PATH}"
+else
+  # shellcheck disable=SC1091
+  source "$(conda info --base)/etc/profile.d/conda.sh"
+  conda activate "$conda_env"
+  export PATH="${CONDA_PREFIX:-}/bin:${PATH}"
+fi
 
 # `shortcut gls --name X` creates the project at exactly <workspace>/projects/X
 # (phenoplier-cli: commands/models.py derive_folder_name) -- no date prefix.

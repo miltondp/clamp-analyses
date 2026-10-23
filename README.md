@@ -300,14 +300,14 @@ snakemake output/99_panels/fig2/fig2.pdf --snakefile workflow/Snakefile --cores 
 | Figure 2 | Pseudobulk benchmark, grouped cross-validation, eight-by-eight hard-pair marker ORA grid, donor-bulk recovery, Perez single-cell projection, and GTEx xCell tables listed in its input-path cell and `workflow/rules/panels.smk`. |
 | Figure 3 | ARCHS4 coverage and saturation tables under `output/03_model_biology/02_archs4/00_coverage` and `01_saturation`. |
 | Figure 4 | `scripts/panels/assets/projection_scheme.svg` (rasterized with Inkscape), cytokine projection aggregates under `03_projections/aggregate`, and drug-disease tables under `02_drug_diseases_canonical/three_model_comparison/data`. |
-| Figure 5 | CRISPR-Cas9 metaLV tables under `output/03_model_biology/02_archs4/04_crispercas/03_metalv/fig5/` (rule `crispercas_fig5_data`): metaLVs clustered across the ten CLAMP-full canonical models, PhenoPLIER GLS traits, ARCHS4 activity and PhenomeXcan S-MultiXcan P values and fastENLOC RCPs. |
+| Figure 5 | CRISPR-Cas9 metaLV tables under `output/03_model_biology/02_archs4/04_crispercas/00_mgm/fig5/` (rule `crispercas_fig5_data`): metaLVs clustered across the ten CLAMP-full canonical models, PhenoPLIER GLS traits, ARCHS4 activity and PhenomeXcan S-MultiXcan P values and fastENLOC RCPs. |
 | Supplements 1 and 3 | Pseudobulk benchmark and marker-recovery tables, and GTEx clustering, held-out subtissue confusion, and composition tables, respectively. |
 | Supplement 2 | Donor-bulk recovery and UMAP tables under `output/03_model_biology/00_pseudobulk/06_donor_bulk_recovery/`. |
 | Supplement 4 | Pseudobulk and GTEx computational timing outputs under `output/02_model_performance/`. |
 | Supplement 5 | ARCHS4 coverage and saturation tables under `output/03_model_biology/02_archs4/`. |
 | Supplement 6 | ARCHS4 projection aggregate results, model loadings under `output/98_final_models/`, projection benchmark results, and pathway GMT/marker files under `data/pathways/` (the required local input directory). The notebook regenerates its own `source_data` files. |
 | Supplement 7 | Drug-disease prediction pickle and per-tissue comparison tables under `output/03_model_biology/02_archs4/02_drug_diseases_canonical/`; the notebook converts the pickle with the environment's Python. |
-| Supplement 8 | metaLV clustering (`Z_all.npz`, `cluster_members.csv`) and CRISPR GSEA under `output/03_model_biology/02_archs4/04_crispercas/03_metalv/`. |
+| Supplement 8 | metaLV clustering (`Z_all.npz`, `cluster_members.csv`) and CRISPR GSEA under `output/03_model_biology/02_archs4/04_crispercas/00_mgm/`. |
 | Supplementary Tables 1-8 | `scripts/tables/build_supplementary_tables.py` (rule `supplementary_tables`), writing to `output/99_panels/tables/`. |
 
 Figures 3-5 share the helpers in `scripts/panels/main_figure.R` (180 mm maximum width,

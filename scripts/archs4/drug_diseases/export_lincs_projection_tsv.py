@@ -26,7 +26,7 @@ def main() -> None:
     missing = set(projection.columns) - set(drug_names["drugbank_id"])
     assert not missing, f"{len(missing)} drugs without a DrugBank name: {sorted(missing)[:10]}"
 
-    lv_order = sorted(projection.index, key=lambda lv: int(lv.removeprefix("LV")))
+    lv_order = sorted(projection.index, key=lambda lv: int(lv.rsplit("LV", 1)[1]))
     table = (
         projection.loc[lv_order]
         .rename_axis(index="LV", columns="drugbank_id")

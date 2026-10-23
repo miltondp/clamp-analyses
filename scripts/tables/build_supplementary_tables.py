@@ -193,7 +193,7 @@ def table_projection_targets():
     return readme, {"targets": df}
 
 
-METALV = CRISPR / "03_metalv"
+METALV = CRISPR / "00_mgm"
 FIG5_LVS = ["metaLV175", "metaLV335", "metaLV588", "metaLV91"]
 SEEDS = ["S123", "S1001", "S1002", "S1003", "S1004", "S1005", "S1006", "S1007", "S456", "S789"]
 GENE_SET = {"gene_set_increase": "lipid-increasing", "gene_set_decrease": "lipid-decreasing"}

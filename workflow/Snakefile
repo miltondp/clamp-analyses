@@ -10,6 +10,7 @@ configfile: "workflow/config/archs4.yaml"
 configfile: "workflow/config/recount2.yaml"
 configfile: "workflow/config/projections.yaml"
 configfile: "workflow/config/phenoplier.yaml"
+configfile: "workflow/config/consensus.yaml"
 
 REPO_ROOT = os.path.dirname(workflow.basedir)
 
@@ -30,6 +31,7 @@ include: "rules/archs4_traits.smk"
 include: "rules/archs4_technical_noise.smk"
 include: "rules/archs4_drug_diseases.smk"
 include: "rules/archs4_crispercas.smk"
+include: "rules/consensus.smk"
 include: "rules/projections.smk"
 include: "rules/panels.smk"
 
