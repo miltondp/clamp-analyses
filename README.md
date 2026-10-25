@@ -1,122 +1,297 @@
 # CLAMP analyses
 
-Reproduce the CLAMP benchmarks, ARCHS4 biological analyses, and publication figures.
-Run commands from the repository root. Large scientific inputs are downloaded by
-Snakemake or supplied separately; cloning alone does not include them.
+## 1. Overview
 
-## 1. Check your machine
+This repository contains the code supporting **“A genetically informed atlas of
+transcriptomic programs from massive human RNA-seq compendia.”**
+[Manuscript](https://pivlab.github.io/clamp-manuscript/).
 
-Locked environments support **Linux x86-64**. You need Git, curl, internet access
-for setup/downloads, and a shared filesystem when using multiple compute nodes.
-GTEx clustering and projection benchmarks require a compatible NVIDIA GPU/driver
-(the `gpu-kmeans` environment uses CUDA). Figure 4 requires `inkscape` on PATH.
+Pseudobulk and GTEx benchmarks evaluate recovery of cell types, tissues and
+pathways. ARCHS4 analyses examine biological programs, drug responses and CRISPR
+screens. Consensus models combine independent fits across ARCHS4, GTEx and recount2.
+The workflow also produces manuscript figures and supplementary tables.
 
-| Work | Configured RAM per job, not measured minimum |
+The analyses are organized as a **Snakemake workflow**. Each rule defines a step's
+inputs, command and outputs. Selecting a target tells Snakemake to prepare its
+missing prerequisites in order and reuse completed outputs. The main entrypoint
+is [`workflow/Snakefile`](workflow/Snakefile); profiles configure local or server
+execution. A `--dry-run` previews the required steps without executing them.
+
+## 2. Repository structure
+
+| Location | Contents |
 | --- | --- |
-| Benchmark (pseudobulk + GTEx) | Some jobs request 96–128 GB; plan for at least 192 GB RAM |
-| ARCHS4 preprocessing | 200 GB |
-| Full ARCHS4 models | 320–400 GB; supplied SLURM profiles request 500 GB for coverage fits |
-| Retry allocations | Up to 528 GB in saturation; coverage retry policy is capped at 800 GB |
+| `setup.sh`, `envs/` | Environment installation, specifications and locks |
+| `workflow/` | Main `Snakefile`, analysis rules, configuration and execution profiles |
+| `scripts/` | Data preparation, model fitting and analysis code |
+| `nbs/` | Analysis and figure notebooks |
+| `references/` | Dataset manifests, fixed cohorts and recorded timing results |
+| `data/` | Downloaded inputs and bundled reference datasets |
+| `output/` | Generated models, analyses and logs |
+| `figures/` | Publication figures and tables |
 
-For the complete ARCHS4 workflow, use a **node/machine with approximately 1 TB
-RAM** to accommodate the profiles' 800 GB scheduling budget and system overhead.
-This is a conservative allocation recommendation, not a measured minimum.
-A sufficiently large workstation works; otherwise use a high-memory server or
-cluster. RAM must fit on **one node**, not be summed across nodes. Smaller
-subsamples have smaller fits but still require preprocessing and shared models.
-See [hardware and profiles](docs/running.md) for resource details.
+Commands below assume the repository root.
 
-Reserve multi-terabyte storage for a full rebuild: raw inputs, file-backed
-matrices, replicate models, and scratch files coexist. Exact usage depends on
-which analyses you run; check available space before starting large downloads.
+## 3. Installation and requirements
 
-## 2. Install
+The locks support **Linux x86-64**. Setup uses Conda to install analysis Python
+3.11/R 4.4, Snakemake 8.30.0, the SLURM executor and a separate GPU environment
+(Python 3.13, CUDA 12.9). Git, curl and internet access are required.
 
 ```bash
 git clone https://github.com/pivlab/clamp-analyses.git
 cd clamp-analyses
 ./setup.sh
-source "$(conda info --base)/etc/profile.d/conda.sh"
+source ~/miniconda3/etc/profile.d/conda.sh
 conda activate snakemake
 python scripts/check_setup.py
 ```
 
-If setup installed Conda and your shell cannot find it, first run
-`source ~/miniconda3/etc/profile.d/conda.sh` (or your `MINICONDA_PREFIX`).
-Setup creates `clamp-analyses`, `gpu-kmeans`, and `snakemake` from explicit Conda
-locks, installs pinned pip/comparison packages, and installs the required CLAMP
-revision. Existing environments are reused; verification reports mismatches.
-Keep the pinned CLAMP revision. [Manual setup and locks](docs/running.md#environments).
+With existing Conda, use its installation path in the `source` command. Setup
+installs the pinned CLAMP revision and notebook kernels.
 
-## 3. Prepare inputs
+## 4. Data availability
 
-Small reference inputs (MSigDB 2026.1, CellMarker, cell/tissue references and
-ARCHS4 gene lengths) are included in Git. Download GTEx annotations and verify
-the pinned references before starting:
+Inputs download and process automatically when their analysis is requested,
+except for the HeartMap download below.
 
-```bash
-snakemake --profile workflow/profiles/local reference_inputs
-python scripts/inputs/reference_inputs.py --check
-```
-
-[Sources, DOIs and checksums](docs/reference_inputs.md) document each reference.
-The [input checklist](docs/inputs.md) lists remaining cohort/reference inputs.
-ARCHS4 biology additionally needs PhenoPLIER/PhenomeXcan and drug–disease/CRISPR
-inputs. [PhenoPLIER input sources and staging](docs/phenoplier_inputs.md) explain
-which files download automatically and which need an existing reference bundle.
-Some projection analyses build shared benchmark prerequisites.
-
-For ARCHS4 trait analyses, also install and initialize **phenoplier-cli v0.5.2**
-using the [environment/workspace instructions](scripts/phenoplier/README.md#3-phenoplier-cli-environment-and-workspace).
-This separate environment is not installed by `setup.sh`. The source repository
-currently requires access from the authors; arrange access before running phase 2.
-
-## 4. Run
-
-Choose a profile below. Always dry-run first; full model fits can take days.
-Timing tables use the recorded results bundled with this repository. Use the same profile for the dry-run and execution.
-
-```bash
-# Complete workflow, including figures and supplementary tables
-snakemake --profile workflow/profiles/server_cu --dry-run all
-snakemake --profile workflow/profiles/server_cu all
-
-# Phase 1: pseudobulk + GTEx benchmarks, donor-bulk and figures
-snakemake --profile workflow/profiles/server_cu benchmark
-
-# Phase 2: ARCHS4 models and biology, comparisons, figures and tables
-snakemake --profile workflow/profiles/server_cu archs4_biology
-```
-
-| Where | Profile/instructions |
+| Dataset | Source and preparation |
 | --- | --- |
-| **Pico / server_cu (CU)** | `workflow/profiles/server_cu`; uses SLURM partition `defq`. Follow [Pico setup](docs/running.md#pico--server_cu) before submission. |
-| Another SLURM server | Copy `workflow/profiles/slurm` to a user-owned profile; set partition/account, node memory and time limits. [Instructions](docs/running.md#another-slurm-server). |
-| Local machine | `workflow/profiles/local` defaults to 24 cores / 96 GB for individual smaller targets. For a complete phase, set budgets matching your hardware; [examples](docs/running.md#local-machine). |
+| Brain: Mathys, Xiong | [UCSC Aging Brain](https://cells.ucsc.edu/ad-aging-brain/); pseudobulk matrices from the [versioned archive](https://doi.org/10.5281/zenodo.16649011) |
+| Blood: OneK1K, Perez | CELLxGENE versions `1e44db10-b572-46cc-adae-dcc7acd44ca6`, `c55dc602-d168-4d15-acc1-5de4f2f5d551`; archived pseudobulk matrices |
+| Lung: HLCA | CELLxGENE version `688185ad-11c2-4172-a53a-f4f1f4076860`; donor aggregation |
+| Heart: HeartMap | [SCP3689](https://singlecell.broadinstitute.org/single_cell/study/SCP3689), [study DOI](https://doi.org/10.1038/s44161-026-00831-5); donor aggregation |
+| GTEx | [GTEx v8](https://gtexportal.org/home/downloads/adult-gtex/bulk_tissue_expression); expression and annotations |
+| ARCHS4 | [Human gene expression v2.5](https://s3.dev.maayanlab.cloud/archs4/files/human_gene_v2.5.h5); filtering and normalization |
+| recount2 | [Archived expression and metadata](https://ndownloader.figshare.com/files/10881866); extraction and preprocessing |
+| Projection datasets | GSE133218, GSE193336 and E-MTAB-6701; acquisition and processing in `workflow/config/projections.yaml` |
 
-The profiles select `workflow/Snakefile` and activate each rule's named Conda
-environment. `all` is the default target. Existing individual targets remain
-available with `snakemake --profile <profile> --list-target-rules`.
+For HeartMap, open [study SCP3689 in the Single Cell Portal](https://singlecell.broadinstitute.org/single_cell/study/SCP3689).
+Create an account if needed and sign in. In the study's **Download** tab, download
+`HeartMap_V1.0_raw_counts.h5ad` and place it at the following path relative to the
+repository root (create the directories if needed):
 
-## 5. Results and resuming
+```text
+data/pseudobulk/Heart_Datar2026/HeartMap_V1.0_raw_counts.h5ad
+```
 
-Models: `output/01_model_building/`; benchmarks: `output/02_model_performance/`;
-biology: `output/03_model_biology/`; final models: `output/98_final_models/`;
-figures/tables: `output/99_panels/`. `all` exports publication copies to `figures/`.
-Executed notebook copies live alongside source notebooks; job logs live beside
-analysis outputs and scheduler logs under `.snakemake/`.
+Pathway gene sets, cell-type markers and CRISPR screen data are included.
+Source URLs, versions and checksums are recorded in `workflow/config/*inputs.json`.
 
-Resume by rerunning the same command: completed outputs are reused and profiles
-retry incomplete jobs. Keep cluster schedulers running in `tmux`/`screen`.
-Inspect errors before forcing jobs; never force an existing final-model bundle.
-For one notebook rule, use `snakemake --profile <profile> <rule>`; force only that
-rule with `--forcerun <rule>` when intentionally regenerating its outputs.
+## 5. Quick start
 
-[Analysis/provenance reference](docs/analysis-reference.md) ·
-[PhenoPLIER details](scripts/phenoplier/README.md) ·
-[Validation and limitations](docs/validation.md)
+This synthetic example needs no external datasets or GPU. It processes four
+cells using the production pseudobulk code and executes a notebook that checks
+expression values and cell-type fractions.
 
-## License and acknowledgments
+```bash
+snakemake --profile workflow/profiles/local --cores 1 quickstart
+```
 
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-Supported by NHGRI, NICHD, NSF, and NEI.
+Expected: `output/00_quickstart/report.json` contains `"status": "PASS"`, alongside
+expression/fraction CSVs and `quickstart.ipynb`. The validation run took about
+17 seconds including scheduler/environment startup; processing took 1.1 seconds.
+It requests one CPU and 2 GB RAM.
+
+## 6. Reproducing manuscript results
+
+| Target | What it requests |
+| --- | --- |
+| `benchmark` | Pseudobulk and GTEx model benchmarks and biological evaluations |
+| `archs4_biology` | ARCHS4 fits, biological analyses, cross-compendium comparisons and consensus models |
+| `publish_figures` | Manuscript figures and supplementary tables, exported to `figures/` |
+| `all` | Both analysis phases and publication outputs |
+
+Snakemake reuses existing outputs and builds missing prerequisites. In particular,
+`publish_figures` renders publication outputs from analysis results, but missing
+results can trigger upstream analyses. Its dry-run shows whether any fits would run.
+
+### Phase 1: benchmarks on the host
+
+The `local` profile runs on the current machine. Its defaults are defined in
+[`workflow/profiles/local/config.yaml`](workflow/profiles/local/config.yaml).
+The CPU and RAM budgets can be set directly in the command:
+
+```bash
+conda activate snakemake
+CPUS=8
+RAM_MB=128000  # example scheduling budget in MB; adjust to the host
+
+snakemake --profile workflow/profiles/local --cores "$CPUS" \
+  --resources mem_mb="$RAM_MB" gpu=1 --dry-run benchmark
+snakemake --profile workflow/profiles/local --cores "$CPUS" \
+  --resources mem_mb="$RAM_MB" gpu=1 benchmark
+```
+
+`--cores` limits CPU scheduling and `--resources mem_mb` sets the RAM budget
+Snakemake schedules against across concurrent local jobs. Choose a budget below
+the machine's physical RAM, leaving headroom for the operating system. These are
+scheduling limits, not operating-system memory caps.
+
+Each rule also declares its own RAM request. Those defaults are in
+`workflow/rules/` and `workflow/config/`. To change one request, add, for example,
+`--set-resources kmeans_clustering_gtex:mem_mb=64000` to both commands. Increasing
+or decreasing this value changes the declared allocation, not the computation's
+actual memory needs; an allocation that is too small can cause failure. The GTEx
+clustering rule defaults to 128,000 MB and requires a GPU; `gpu=1` allows one GPU
+job at a time. CPU-only options are in Section 7.
+
+The targets below select smaller parts of the workflow. They are aggregate rules
+in [`workflow/Snakefile`](workflow/Snakefile); their steps are defined in
+[`pseudobulk.smk`](workflow/rules/pseudobulk.smk) and
+[`gtex.smk`](workflow/rules/gtex.smk). The same CPU/RAM budgets apply:
+
+```bash
+# Pseudobulk analyses, donor-bulk evaluations and associated panels
+snakemake --profile workflow/profiles/local --cores "$CPUS" \
+  --resources mem_mb="$RAM_MB" gpu=1 pseudobulk_complete
+
+# GTEx model fitting and biological evaluations
+snakemake --profile workflow/profiles/local --cores "$CPUS" \
+  --resources mem_mb="$RAM_MB" gpu=1 gtex_complete
+
+# Pseudobulk input preparation only
+snakemake --profile workflow/profiles/local --cores "$CPUS" \
+  --resources mem_mb="$RAM_MB" gpu=1 pseudobulk_inputs
+```
+
+Shared dependencies are still included: for example, some pseudobulk publication
+panels also read GTEx results. Adding `--dry-run` previews the jobs for any target.
+
+If the local machine has enough memory for the full workflow (roughly 1 TB RAM
+for the largest configured requests), a compatible NVIDIA GPU and sufficient
+storage, both phases and publication outputs can run locally:
+
+```bash
+snakemake --profile workflow/profiles/local --dry-run all
+snakemake --profile workflow/profiles/local all
+```
+
+### Phase 2: ARCHS4 biology on a server
+
+Snakemake runs on the server, where it schedules jobs and reuses completed
+results. The server session can be opened from a workstation through SSH;
+profiles configure execution and resources, not the SSH connection.
+
+**Server preparation.** The server needs its own checkout of this repository,
+the environments from Section 3 and access to the inputs in Section 4. On SLURM,
+the project and environments must be accessible to the compute nodes. Available
+inputs download as needed; existing model/results files can also be reused.
+
+**SLURM server.** Connect using your server account and hostname, enter the
+checkout and activate its environment. Replace the placeholders and adjust the
+Conda path if needed:
+
+```bash
+ssh USER@HOST
+cd /SHARED/PROJECT/clamp-analyses
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate snakemake
+```
+
+The SLURM profile is **`workflow/profiles/slurm/config.yaml`**. Adapt its settings
+to the server; the administrator supplies partition/account names and node limits.
+
+```bash
+nano workflow/profiles/slurm/config.yaml
+```
+
+| Setting in the profile | What to configure |
+| --- | --- |
+| `jobs`, `cores` | Submission concurrency and CPU scheduling budget |
+| `resources` | RAM/resource budgets in MB and fit/GPU concurrency limits |
+| `default-resources` | Add `slurm_partition=YOUR_PARTITION`; add `slurm_account=YOUR_ACCOUNT` only when required |
+| `default-resources` entry `runtime` | Default wall time in minutes |
+| `set-resources`, `set-threads` | Per-rule RAM, wall time, partition and CPU requests; these override defaults |
+| Top-level `slurm-qos` | Add `slurm-qos: YOUR_QOS` only if required |
+
+Keep per-job RAM requests within one node's capacity, and allow enough wall time
+for each fit. For separate GPU partitions, add this entry under the **existing**
+`set-resources` section:
+
+```yaml
+  kmeans_clustering_gtex:
+    slurm_partition: YOUR_GPU_PARTITION
+    gpu: 1
+```
+
+### Publication outputs or complete reproduction
+
+Publication outputs can use the local profile:
+
+```bash
+# Publication figures and supplementary tables
+snakemake --profile workflow/profiles/local --dry-run publish_figures
+snakemake --profile workflow/profiles/local publish_figures
+
+# Both analysis phases and publication outputs
+snakemake --profile workflow/profiles/local --dry-run all
+snakemake --profile workflow/profiles/local all
+
+# One figure or the supplementary tables
+snakemake --profile workflow/profiles/local output/99_panels/fig2/fig2.pdf
+snakemake --profile workflow/profiles/local supplementary_tables
+```
+
+Figure rules and their input dependencies are in
+[`workflow/rules/panels.smk`](workflow/rules/panels.smk).
+`consensus_models` requests consensus models, ORA and LINCS only.
+
+### Rerunning one notebook
+
+Notebook rules reuse existing upstream results. For example, this reruns only the
+GTEx clustering report notebook; missing prerequisites are prepared if needed:
+
+```bash
+snakemake --profile workflow/profiles/local --dry-run kmeans_clustering_report_gtex --forcerun kmeans_clustering_report_gtex
+snakemake --profile workflow/profiles/local kmeans_clustering_report_gtex --forcerun kmeans_clustering_report_gtex
+```
+
+Source: `nbs/03_model_biology/01_gtex/00_kmeans_clustering.ipynb`.
+The executed copy is `00_kmeans_clustering.executed.ipynb` in the same directory;
+report tables are under `output/03_model_biology/01_gtex/00_kmeans_clustering/`.
+Other notebooks have corresponding rules in `workflow/rules/`.
+
+## 7. Computational resources
+
+RAM requests are predefined in [`workflow/config/`](workflow/config/), the
+`resources` sections of [`workflow/rules/`](workflow/rules/) and profile overrides
+in [`workflow/profiles/`](workflow/profiles/). These settings are adjustable.
+
+| Workflow part | RAM per job (configured) |
+| --- | --- |
+| Pseudobulk | Up to 64 GB |
+| GTEx | Up to 96 GB |
+| `archs4_biology` | Up to 528 GB |
+| Figures | Default 8 GB |
+
+### Without a GPU
+
+The current GTEx and projection clustering code uses CuPy/cuML and has **no
+automatic CPU fallback**. `quickstart` and CPU-only targets such as
+`full_models_pseudobulk` and `full_models_gtex` can run without a GPU. Complete
+`benchmark`/`all` runs require GPU access for those clustering steps, or their
+already-generated outputs. A GPU server can perform those steps and its outputs
+can be transferred back to the host. Setting `gpu=0` does not convert GPU code
+to CPU execution.
+
+## 8. Outputs
+
+`output/01_model_building/` contains models; `02_model_performance/` benchmarks;
+`03_model_biology/` biological analyses; `98_final_models/` final and consensus
+bundles; and `99_panels/` figures/tables. Publication copies go to `figures/`.
+Figure 4 uses the supplied artwork.
+
+Logs accompany outputs; scheduler logs are under `.snakemake/`. Repeating the
+same command resumes work and reuses completed outputs.
+
+## 9. Citation
+
+Cite the [manuscript](https://pivlab.github.io/clamp-manuscript/) and the
+[software repository](https://github.com/pivlab/clamp-analyses), including the
+commit used. No archived software DOI is currently recorded here.
+
+## 10. License and contact
+
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Bundled datasets retain
+their source-specific license notices. Support: [GitHub issues](https://github.com/pivlab/clamp-analyses/issues).
