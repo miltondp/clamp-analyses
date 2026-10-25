@@ -151,7 +151,7 @@ rule gls_bp_coverage_base:
 
 rule gls_bp_saturation_base:
     input:
-        rds=lambda wc: ancient(a4_sat_base_rds(wc.fraction, wc.k, wc.seed)),
+        rds=lambda wc: a4_sat_base_rds(wc.fraction, wc.k, wc.seed),
         script="scripts/phenoplier/run_gls.sh",
         verify="scripts/phenoplier/verify_summary.py",
     output:

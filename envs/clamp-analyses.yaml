@@ -75,7 +75,7 @@ dependencies:
 
   # Python + data science
   - python=3.11
-  - pandas
+  - pandas=2.3.3
   - pyprojroot
   - numpy
   - matplotlib

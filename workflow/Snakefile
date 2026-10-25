@@ -13,6 +13,10 @@ configfile: "workflow/config/phenoplier.yaml"
 configfile: "workflow/config/consensus.yaml"
 
 REPO_ROOT = os.path.dirname(workflow.basedir)
+# CuPy otherwise writes to ~/.cupy, which can exceed server home quotas.
+# Keep JIT caches with the checkout; an explicit user setting takes precedence.
+os.environ.setdefault("CUPY_CACHE_DIR", os.path.join(REPO_ROOT, ".cache", "cupy"))
+envvars: "CUPY_CACHE_DIR"
 TIMING_MODE = config.get("timing_mode", "recorded")
 if TIMING_MODE not in {"recorded", "recompute"}:
     raise ValueError("timing_mode must be 'recorded' or 'recompute'")
@@ -20,6 +24,7 @@ if TIMING_MODE not in {"recorded", "recompute"}:
 include: "rules/reference_inputs.smk"
 include: "rules/phenoplier_inputs.smk"
 include: "rules/pseudobulk.smk"
+include: "rules/quickstart.smk"
 include: "rules/gtex.smk"
 include: "rules/computational_timing.smk"
 include: "rules/computational_timing_gtex.smk"
@@ -52,6 +57,13 @@ rule pseudobulk_complete:
         rules.donor_bulk_report.input,
         rules.panels_pseudobulk.input,
 
+rule gtex_complete:
+    input:
+        rules.full_models_gtex.input,
+        rules.model_building_qc_gtex.output.complete,
+        rules.computational_timing_analysis_gtex.input,
+        rules.biology_gtex.input,
+
 # Public entrypoints: shared prerequisites are resolved by Snakemake.
 rule benchmark:
     input:
@@ -71,6 +83,8 @@ rule benchmark:
 
 rule archs4_biology:
     input:
+        rules.consensus_models.input,
+        rules.aggregate_projections.output.agg,
         rules.archs4_canonical_ora.input,
         rules.archs4_coverage.input,
         rules.archs4_saturation.input,

@@ -22,8 +22,9 @@ def main():
     try:
         version = importlib.metadata.version('snakemake')
         plugin = importlib.metadata.version('snakemake-executor-plugin-slurm')
-        if not version.startswith('8.'):
-            failures.append('Snakemake 8 required')
+        if version != '8.30.0' or plugin != '2.8.0':
+            failures.append('Recreate snakemake from envs/snakemake.lock (8.30.0, SLURM plugin 2.8.0 required)')
+            print('FAIL ' + failures[-1])
         print(f'Snakemake {version}; SLURM plugin {plugin}')
     except importlib.metadata.PackageNotFoundError:
         raise SystemExit('Activate the snakemake environment before running this check.')
@@ -36,7 +37,6 @@ def main():
     check('GPU Python packages (driver checked at execution)', ['conda', 'run', '-n', 'gpu-kmeans', 'python', '-c',
           'import cuml,cupy,pyreadr,rpy2'])
     check('workflow parsing', [sys.executable, '-m', 'snakemake', '--snakefile', 'workflow/Snakefile', '--list-target-rules'])
-    print('Inkscape: ' + (shutil.which('inkscape') or 'missing (required for Figure 4)'))
     print('Data availability and sufficient RAM/GPU capacity require a separate target dry-run and hardware check.')
     return bool(failures)
 

@@ -47,7 +47,7 @@ create_env_from_lock() {
         log "env '$name' already exists, skipping (remove it manually with 'conda env remove -n $name' to recreate)"
     else
         log "creating env '$name' from $lock"
-        conda create --name "$name" --file "$lock" -y
+        conda create --name "$name" --file "$lock" --override-channels -c conda-forge -y
     fi
 }
 
@@ -67,12 +67,17 @@ if not requirements:
 subprocess.check_call([sys.executable, "-m", "pip", "install", *requirements])
 ' envs/clamp-analyses.yaml
 
+# Register kernels inside their environments, without changing user-level kernels.
+conda run -n clamp-analyses python -m ipykernel install --sys-prefix --name python3
+conda run -n clamp-analyses Rscript -e 'IRkernel::installspec(user = FALSE, prefix = Sys.getenv("CONDA_PREFIX"))'
+conda run -n gpu-kmeans python -m ipykernel install --sys-prefix --name python3
+
 conda run -n clamp-analyses Rscript scripts/install_analysis_packages.R
 
 log "WARNING: using the repository-pinned CLAMP revision; do not update CLAMP independently"
 conda run -n clamp-analyses Rscript scripts/install_clamp.R
 
-log "setup complete. Stage the external inputs listed in README.md before running the workflow. Next steps:"
+log "setup complete. Inputs are prepared by Snakemake; see README.md for data access and execution commands. Next steps:"
 cat <<'EOF'
 
   conda activate snakemake

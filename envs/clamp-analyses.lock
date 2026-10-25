@@ -348,7 +348,7 @@ https://conda.anaconda.org/conda-forge/noarch/nbconvert-core-7.16.6-pyhcf101f3_1
 https://conda.anaconda.org/conda-forge/linux-64/nlopt-2.10.0-py311h944b582_1.conda
 https://conda.anaconda.org/conda-forge/linux-64/numba-0.64.0-py311h3c884d5_0.conda
 https://conda.anaconda.org/conda-forge/linux-64/numexpr-2.14.1-mkl_py311hf9c0e9f_1.conda
-https://conda.anaconda.org/conda-forge/linux-64/pandas-3.0.2-py311h8032f78_0.conda
+https://conda.anaconda.org/conda-forge/linux-64/pandas-2.3.3-py311hed34c8f_2.conda#2366b5470cf61614c131e356efe9f74c
 https://conda.anaconda.org/conda-forge/noarch/patsy-1.0.2-pyhcf101f3_0.conda
 https://conda.anaconda.org/conda-forge/linux-64/pytorch-2.10.0-cpu_mkl_py311_h3da180d_103.conda
 https://conda.anaconda.org/conda-forge/linux-64/r-base-4.4.3-h15dba0b_9.conda

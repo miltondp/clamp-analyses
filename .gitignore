@@ -84,3 +84,17 @@ workflow/profiles/site-*/
 Rplots.pdf
 **/Rplots.pdf
 logs_claude/
+
+# Local runtime/JIT caches
+.cache/
+
+# Personal credentials and local authentication files
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+*.p12
+*.pfx
+.secrets/
