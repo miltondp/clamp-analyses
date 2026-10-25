@@ -24,12 +24,14 @@ ENSEMBL <- list(
   cdna = list(file = file.path(ENS_DIR, "Homo_sapiens.GRCh38.cdna.all.fa.gz")),
   ncrna = list(file = file.path(ENS_DIR, "Homo_sapiens.GRCh38.ncrna.fa.gz"))
 )
-CATEGORICAL <- c("platform_id", "instrument_model", "library_selection", "library_source",
-                 "library_strategy", "molecule_ch1", "submission_year")
-NUMERIC_QC <- c("log10_library_size", "log10_detected_genes", "mt_fraction",
-                "ribo_fraction", "protein_coding_fraction", "singlecellprobability")
-STUDY <- "series_id"
-MIN_LEVEL_N <- 500L
+split_arg <- function(x, default) if (is.null(x)) default else strsplit(x, ",", fixed = TRUE)[[1L]]
+CATEGORICAL <- split_arg(args$categorical, c("platform_id", "instrument_model", "library_selection", "library_source",
+                                              "library_strategy", "molecule_ch1", "submission_year"))
+NUMERIC_QC <- split_arg(args$numeric, c("log10_library_size", "log10_detected_genes", "mt_fraction",
+                                         "ribo_fraction", "protein_coding_fraction", "singlecellprobability"))
+STUDY <- args$study %||% "series_id"
+MIN_LEVEL_N <- as.integer(args$min_level_n %||% 500L)
+GENE_MAP <- args$gene_map %||% "archs4_h5"
 SC_MAX <- 0.5
 N_CORES <- as.integer(args$n_cores %||% 8L)
 BLOCK_SIZE <- 1000L
@@ -46,10 +48,14 @@ gtf_attr <- function(x, key) {
 }
   genes <- as.character(data.table::fread(file.path(MODELS$canonical$dir, "Z.csv"), select = 1L)[[1L]])
 
-  h5 <- H5File$new(H5, mode = "r")
-  h5_genes <- data.table(symbol = h5[["/meta/genes/symbol"]]$read(),
-                         ensembl_gene_id = sub("\\..*", "", h5[["/meta/genes/ensembl_gene"]]$read()))
-  h5$close_all()
+  if (GENE_MAP == "archs4_h5") {
+    h5 <- H5File$new(H5, mode = "r")
+    h5_genes <- data.table(symbol = h5[["/meta/genes/symbol"]]$read(),
+                           ensembl_gene_id = sub("\\..*", "", h5[["/meta/genes/ensembl_gene"]]$read()))
+    h5$close_all()
+  } else {
+    h5_genes <- data.table(symbol = character(), ensembl_gene_id = character())
+  }
 
   gtf <- fread(cmd = paste("zcat", shQuote(ENSEMBL$gtf$file), "| grep -v '^#'"), sep = "\t", header = FALSE,
                quote = "", select = c(1L, 3L, 4L, 5L, 9L),

@@ -67,14 +67,34 @@ def noise_main(args):
     print(out.groupby("model", sort=False)[["gene_flag", "sample_flag", "any_flag"]].sum())
 
 
+def flags_main(args):
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", nargs="+", required=True)
+    ap.add_argument("--threshold", type=float, default=0.25)
+    ap.add_argument("--out", required=True)
+    a = ap.parse_args(args)
+
+    rows = []
+    for spec in a.model:
+        name, path = spec.split("=", 1)
+        d = Path(path)
+        rows.append(flags(d / "lv_gene_properties_canonical.csv", d / "lv_sample_metadata_canonical.csv",
+                          a.threshold).assign(model=name)[COLS])
+    out = pd.concat(rows)
+    out.to_csv(a.out, index=False)
+    print(out.groupby("model", sort=False)[["gene_flag", "sample_flag", "any_flag"]].sum())
+
+
 def cluster_main(args):
     ap = argparse.ArgumentParser()
     ap.add_argument("--z-cache", required=True)
     ap.add_argument("--flags", required=True)
     ap.add_argument("--min-cos", type=float, default=0.5)
     ap.add_argument("--min-models", type=int, default=6)
+    ap.add_argument("--reference", default="S123")
     ap.add_argument("--out-dir", required=True)
     a = ap.parse_args(args)
+    ref = a.reference
     out = Path(a.out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -101,7 +121,7 @@ def cluster_main(args):
     allc = pd.DataFrame({"model": models, "LV": lvs, "cluster": cl})
     allc.to_csv(out / "all_lv_clusters.csv", index=False)
     stats = allc.groupby("cluster").agg(n_lvs=("LV", "size"), n_models=("model", "nunique"),
-                                        has_S123=("model", lambda s: (s == "S123").any()))
+                                        **{f"has_{ref}": ("model", lambda s: (s == ref).any())})
     kept = stats[stats.n_models >= a.min_models].sort_values(["n_models", "n_lvs"], ascending=False)
     kept["metaLV"] = [f"metaLV{i + 1}" for i in range(len(kept))]
     print(f"LVs clustered: {n}; clusters: {len(stats)}; kept (>= {a.min_models}/10 models): {len(kept)}", flush=True)
@@ -117,7 +137,7 @@ def cluster_main(args):
                             "mean_cos_to_others": np.delete(C[j], j).mean()})
         summ.append({"metaLV": row.metaLV, "cluster": cid, "n_lvs": row.n_lvs, "n_models": row.n_models,
                      "min_cos": off.min(), "mean_cos": off.mean(),
-                     "S123_lvs": ";".join(lvs[idx][models[idx] == "S123"]),
+                     f"{ref}_lvs": ";".join(lvs[idx][models[idx] == ref]),
                      "members": ";".join(f"{models[i]}:{lvs[i]}" for i in idx)})
 
     pd.DataFrame(meta, index=genes).to_csv(out / "metaZ.csv")
@@ -131,6 +151,7 @@ def main():
     commands = {
         "cache": cache_main,
         "noise": noise_main,
+        "flags": flags_main,
         "cluster": cluster_main,
     }
     parser = argparse.ArgumentParser()
