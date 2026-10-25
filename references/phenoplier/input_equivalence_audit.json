@@ -1,0 +1,329 @@
+{
+  "date": "2026-10-20",
+  "scope": "Read-only comparison against existing author inputs. Temporary downloads and conversion tests only; no model fitting.",
+  "smultixcan_and_fastenloc": [
+    {
+      "name": "smultixcan-mashr-pvalues",
+      "shape": [
+        22515,
+        4091
+      ],
+      "rows_compared": 22515,
+      "labels_aligned": true,
+      "different_values": 91054701,
+      "max_absolute_difference": 4.999999959287571e-06,
+      "max_relative_difference_nonzero": 4.996021507523065e-05,
+      "threshold_classification_differences": {
+        "0.05": 47,
+        "5.428359148709519e-10": 0
+      },
+      "examples": [
+        {
+          "gene": "ENSG00000000419",
+          "trait": "D3_ANAEMIA_IRONDEF-Iron_deficiency_anaemia",
+          "pickle": 0.9812001752173274,
+          "tsv": 0.9812
+        },
+        {
+          "gene": "ENSG00000000419",
+          "trait": "C54-Diagnoses_main_ICD10_C54_Malignant_neoplasm_of_corpus_uteri",
+          "pickle": 0.4033475873656425,
+          "tsv": 0.40335
+        },
+        {
+          "gene": "ENSG00000000419",
+          "trait": "N35-Diagnoses_main_ICD10_N35_Urethral_stricture",
+          "pickle": 0.8627880239026094,
+          "tsv": 0.86279
+        }
+      ]
+    },
+    {
+      "name": "fastenloc-torus-rcp",
+      "shape": [
+        38062,
+        4091
+      ],
+      "rows_compared": 38062,
+      "labels_aligned": true,
+      "different_values": 8736792,
+      "max_absolute_difference": 5.0000000000105516e-05,
+      "max_relative_difference_nonzero": 4.999750012487029e-05,
+      "threshold_classification_differences": {
+        "0.1": 9
+      },
+      "examples": [
+        {
+          "gene": "ENSG00000000419",
+          "trait": "20002_1154-Noncancer_illness_code_selfreported_irritable_bowel_syndrome",
+          "pickle": 0.0008464000000000001,
+          "tsv": 0.0008464
+        },
+        {
+          "gene": "ENSG00000000419",
+          "trait": "2129-Answered_sexual_history_questions",
+          "pickle": 0.00043099999999999996,
+          "tsv": 0.000431
+        },
+        {
+          "gene": "ENSG00000000419",
+          "trait": "D12-Diagnoses_main_ICD10_D12_Benign_neoplasm_of_colon_rectum_anus_and_anal_canal",
+          "pickle": 0.00047850000000000003,
+          "tsv": 0.0004785
+        }
+      ]
+    }
+  ],
+  "spredixcan": {
+    "tissues": 49,
+    "entries_compared": 2804871420,
+    "different_values": 0,
+    "archive_verification": {
+      "url": "https://zenodo.org/records/3911190/files/spredixcan-mashr-zscores.tar?download=1",
+      "bytes": 9485844480,
+      "md5": "a038f8e509b4c08678eb77e7d8dc759d",
+      "method": "Reconstructed whole-archive MD5 from HTTP range-read tar headers, unchanged local member bytes, and tar padding; matches Zenodo checksum. No full archive download.",
+      "members": [
+        {
+          "name": "spredixcan/spredixcan-Adipose_Subcutaneous.tsv.gz",
+          "bytes": 204037921
+        },
+        {
+          "name": "spredixcan/spredixcan-Adipose_Visceral_Omentum.tsv.gz",
+          "bytes": 202934480
+        },
+        {
+          "name": "spredixcan/spredixcan-Adrenal_Gland.tsv.gz",
+          "bytes": 188061703
+        },
+        {
+          "name": "spredixcan/spredixcan-Artery_Aorta.tsv.gz",
+          "bytes": 199529097
+        },
+        {
+          "name": "spredixcan/spredixcan-Artery_Coronary.tsv.gz",
+          "bytes": 191598570
+        },
+        {
+          "name": "spredixcan/spredixcan-Artery_Tibial.tsv.gz",
+          "bytes": 201232161
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Amygdala.tsv.gz",
+          "bytes": 176539862
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Anterior_cingulate_cortex_BA24.tsv.gz",
+          "bytes": 186693953
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Caudate_basal_ganglia.tsv.gz",
+          "bytes": 195280050
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Cerebellar_Hemisphere.tsv.gz",
+          "bytes": 189958751
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Cerebellum.tsv.gz",
+          "bytes": 193204725
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Cortex.tsv.gz",
+          "bytes": 197072611
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Hippocampus.tsv.gz",
+          "bytes": 186939450
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Hypothalamus.tsv.gz",
+          "bytes": 189452363
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Nucleus_accumbens_basal_ganglia.tsv.gz",
+          "bytes": 194247210
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Putamen_basal_ganglia.tsv.gz",
+          "bytes": 189498269
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Spinal_cord_cervical_c.tsv.gz",
+          "bytes": 180152694
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Substantia_nigra.tsv.gz",
+          "bytes": 173757690
+        },
+        {
+          "name": "spredixcan/spredixcan-Breast_Mammary_Tissue.tsv.gz",
+          "bytes": 202142419
+        },
+        {
+          "name": "spredixcan/spredixcan-Cells_Cultured_fibroblasts.tsv.gz",
+          "bytes": 194007906
+        },
+        {
+          "name": "spredixcan/spredixcan-Cells_EBV.tsv.gz",
+          "bytes": 170609104
+        },
+        {
+          "name": "spredixcan/spredixcan-Colon_Sigmoid.tsv.gz",
+          "bytes": 198642594
+        },
+        {
+          "name": "spredixcan/spredixcan-Colon_Transverse.tsv.gz",
+          "bytes": 201954891
+        },
+        {
+          "name": "spredixcan/spredixcan-Esophagus_Gastroesophageal_Junction.tsv.gz",
+          "bytes": 197883641
+        },
+        {
+          "name": "spredixcan/spredixcan-Esophagus_Mucosa.tsv.gz",
+          "bytes": 202209861
+        },
+        {
+          "name": "spredixcan/spredixcan-Heart_Atrial_Appendage.tsv.gz",
+          "bytes": 194277570
+        },
+        {
+          "name": "spredixcan/spredixcan-Heart_Left_Ventricle.tsv.gz",
+          "bytes": 182937264
+        },
+        {
+          "name": "spredixcan/spredixcan-Kidney_Cortex.tsv.gz",
+          "bytes": 152560083
+        },
+        {
+          "name": "spredixcan/spredixcan-Liver.tsv.gz",
+          "bytes": 175585672
+        },
+        {
+          "name": "spredixcan/spredixcan-Lung.tsv.gz",
+          "bytes": 208480581
+        },
+        {
+          "name": "spredixcan/spredixcan-Minor_Salivary_Gland.tsv.gz",
+          "bytes": 191394168
+        },
+        {
+          "name": "spredixcan/spredixcan-Muscle_Skeletal.tsv.gz",
+          "bytes": 186189511
+        },
+        {
+          "name": "spredixcan/spredixcan-Nerve_Tibial.tsv.gz",
+          "bytes": 213582538
+        },
+        {
+          "name": "spredixcan/spredixcan-Ovary.tsv.gz",
+          "bytes": 189397464
+        },
+        {
+          "name": "spredixcan/spredixcan-Pancreas.tsv.gz",
+          "bytes": 189068443
+        },
+        {
+          "name": "spredixcan/spredixcan-Pituitary.tsv.gz",
+          "bytes": 202436084
+        },
+        {
+          "name": "spredixcan/spredixcan-Prostate.tsv.gz",
+          "bytes": 198841660
+        },
+        {
+          "name": "spredixcan/spredixcan-Skin_Not_Sun_Exposed_Suprapubic.tsv.gz",
+          "bytes": 207443603
+        },
+        {
+          "name": "spredixcan/spredixcan-Skin_Sun_Exposed_Lower_leg.tsv.gz",
+          "bytes": 210941874
+        },
+        {
+          "name": "spredixcan/spredixcan-Small_Intestine_Terminal_Ileum.tsv.gz",
+          "bytes": 193705316
+        },
+        {
+          "name": "spredixcan/spredixcan-Spleen.tsv.gz",
+          "bytes": 194707920
+        },
+        {
+          "name": "spredixcan/spredixcan-Stomach.tsv.gz",
+          "bytes": 194748633
+        },
+        {
+          "name": "spredixcan/spredixcan-Testis.tsv.gz",
+          "bytes": 246850468
+        },
+        {
+          "name": "spredixcan/spredixcan-Thyroid.tsv.gz",
+          "bytes": 212769527
+        },
+        {
+          "name": "spredixcan/spredixcan-Uterus.tsv.gz",
+          "bytes": 181803792
+        },
+        {
+          "name": "spredixcan/spredixcan-Vagina.tsv.gz",
+          "bytes": 178234595
+        },
+        {
+          "name": "spredixcan/spredixcan-Whole_Blood.tsv.gz",
+          "bytes": 175015988
+        },
+        {
+          "name": "spredixcan/spredixcan-Brain_Frontal_Cortex_BA9.tsv.gz",
+          "bytes": 194557718
+        },
+        {
+          "name": "spredixcan/spredixcan-Esophagus_Muscularis.tsv.gz",
+          "bytes": 202626566
+        }
+      ]
+    },
+    "manifest": "spredixcan_download.json"
+  },
+  "gls_covariance": [
+    {
+      "resource": "gtex_v8_snp_covariance",
+      "local_bytes": 16462873506,
+      "local_md5": "0d805415b43049c0bcb2d59d3579db65",
+      "upstream_md5": "0d7895b07665d5d3afab1ba26d445901",
+      "exact_md5_match": false,
+      "doi": "10.5281/zenodo.11851741"
+    },
+    {
+      "resource": "1000g_snp_covariance",
+      "local_bytes": 2480114265,
+      "local_md5": "af77f23c0d04016a9db2beb7d2d28b07",
+      "upstream_md5": "af77f23c0d04016a9db2beb7d2d28b07",
+      "exact_md5_match": true,
+      "doi": "10.5281/zenodo.11672024"
+    }
+  ],
+  "gtex_covariance_access": "Zenodo 11851741 metadata.access_right=restricted; files=[] on audit date. Direct file URL returns HTML, not a downloadable HDF5 file. No replacement published or substituted.",
+  "precomputed_gene_correlations": "Zenodo 10944491 gene-correlation archive matches recorded MD5 fb96f18421f7e0f79e74f568b5ae6c08; contains 1,976 module-specific files plus a directory for original MultiPLIER LVs. These are not CLAMP model-specific correlations.",
+  "rapid_gwas": {
+    "url": "https://zenodo.org/records/13274496/files/rapid_gwas.zip?download=1",
+    "archive_bytes": 9894462383,
+    "verification": "All ZIP central-directory member names, sizes and CRC32 compared to local compressed input files; not a whole-archive cryptographic verification.",
+    "remote_metadata_bytes": 523128,
+    "matching": 4049,
+    "total": 4049
+  },
+  "mashr_prediction_models": {
+    "doi": "10.5281/zenodo.3518299",
+    "archive_md5": "87f3470bf2676043c748b684fb35fa7d",
+    "matching": 98,
+    "total": 98
+  },
+  "validation": {
+    "synthetic_checks": "21 repository unit tests pass under locked pandas 3.0.2, including 19 input checks. Input checks also pass under existing pandas 2.3.3.",
+    "real_conversion": "Whole_Blood converted from public-matching TSV and verified with pandas 3.0.2: all axis labels, order, shape, and exact values match. Pickle serialization differs across pandas versions; semantic verification handles this.",
+    "large_downloads": "Neither the 9.49 GB S-PrediXcan tar nor the 9.89 GB rapid-GWAS ZIP was fully downloaded. Their metadata were range-read; all tissue TSVs and all 4049 GWAS local files were compared as described above.",
+    "model_execution": "No fits or GLS runs executed.",
+    "clean_checkout": "Fresh temporary checkout without inherited data/output or Snakemake metadata: phenoplier_inputs DAG builds under local, server_cu and portable SLURM profiles. Actual remote submissions not run.",
+    "existing_source_staging": "All 49 original pickles SHA-256 verified and linked into an isolated temporary destination; source files unchanged."
+  }
+}

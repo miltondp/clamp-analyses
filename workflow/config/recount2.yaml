@@ -2,6 +2,7 @@ recount2:
   url: https://ndownloader.figshare.com/files/10881866
   plier_rds: data/recount2/recount2_PLIER_data/recount_data_prep_PLIER.RDS
   rpkm_rds: data/recount2/recount2_PLIER_data/recount_rpkm.RDS
+  metadata_archive: data/recount2/recount2_PLIER_data/recount_experiments_rse-gene.tar.gz
   paths:
     production: output/01_model_building/03_recount2/00_recount2
   preprocess:

@@ -1,0 +1,356 @@
+{
+  "date": "2026-10-20",
+  "method": "Original prepared exports recovered by HTTP byte ranges from the pinned original external-lab benchmark archive and SHA256 verified. Raw modern CELLxGENE files are not substituted for the original processed exports.",
+  "prepared_expression": [
+    {
+      "dataset": "Brain_Mathys2023",
+      "archive_member": "source_code/Benchmarking_obj/ROSMAP_AD430_Mathys2023/init/bulk_expr.csv",
+      "sha256": "0aafe291b02cde672d592e4eee5375fc0612225e2d40e85d8b8d5fc5a5f4f791",
+      "bytes": 22965502,
+      "source_shape": [
+        17135,
+        80
+      ],
+      "target_shape": [
+        17135,
+        80
+      ],
+      "matches": true,
+      "exact_values": true,
+      "max_absolute_difference": 0.0
+    },
+    {
+      "dataset": "Brain_Xiong2023",
+      "archive_member": "source_code/Benchmarking_obj/ROSMAP_AD92_Xiong2023/init/bulk_expr.csv",
+      "sha256": "1254b7654d82481230eed0601e11c43abb177666954ed032658f550f97288eac",
+      "bytes": 32108815,
+      "source_shape": [
+        25944,
+        74
+      ],
+      "target_shape": [
+        25944,
+        74
+      ],
+      "matches": true,
+      "exact_values": true,
+      "max_absolute_difference": 0.0
+    },
+    {
+      "dataset": "PBMC_1k1k",
+      "archive_member": "source_code/Benchmarking_obj/PBMC_1k1k/init/bulk_expr.csv",
+      "sha256": "404172830839ea1b7dcee25b723212e6ef642cba71caed6042c464cbd3409a1d",
+      "bytes": 201832838,
+      "source_shape": [
+        19356,
+        776
+      ],
+      "target_shape": [
+        19356,
+        776
+      ],
+      "matches": true,
+      "exact_values": true,
+      "max_absolute_difference": 0.0
+    },
+    {
+      "dataset": "PBMC_Perez2022",
+      "archive_member": "source_code/Benchmarking_obj/PBMC_Perez2022/init/bulk_expr.csv",
+      "sha256": "802e6e2f488a9acd4b041eb8ac92a2f1bafc8823437aa14bc832e9a3f9700a29",
+      "bytes": 60127308,
+      "source_shape": [
+        18854,
+        209
+      ],
+      "target_shape": [
+        18854,
+        209
+      ],
+      "matches": true,
+      "exact_values": true,
+      "max_absolute_difference": 0.0
+    }
+  ],
+  "raw_probes": [
+    "PBMC_1k1k cell counts equal False maxdiff 2002",
+    "probe sample_1_1 n 1165 zero_library 0 integer True",
+    "all_gene_CPM_match False max_abs 4058.099093867495 missing_genes 3849",
+    "filtered_gene_CPM_match False max_abs 2416.269575721526",
+    "PBMC_Perez2022 cell counts equal False maxdiff 4529",
+    "probe sample_1004_1004 n 2988 zero_library 0 integer True",
+    "all_gene_CPM_match False max_abs 747.4875395456838 missing_genes 5063",
+    "filtered_gene_CPM_match False max_abs 1363.3179695992621",
+    "Lung_Sikkema2023 cell counts equal True maxdiff 0",
+    "probe homosapiens_None_2023_None_sikkemalisa_001_d10_1101_2022_03_10_4837472020-3173-NC002 n 4884 zero_library 0 integer True",
+    "all_gene_CPM_match True max_abs 5.093170329928398e-11 missing_genes 0",
+    "filtered_gene_CPM_match True max_abs 5.093170329928398e-11"
+  ],
+  "notes": [
+    "Original patient metadata and truth fractions are included unchanged as small author snapshots; generated exports retain each original axis order.",
+    "The Mathys author cohort contains 80 donors, including a donor with 104 cells. A generic 400-cell threshold must not be retroactively applied to this prepared export.",
+    "Modern raw PBMC versions differ in donor cell totals and legacy gene names; their use for exact pseudobulk reconstruction was rejected. Raw downloads remain available for the pre-existing cell-level analyses."
+  ],
+  "generated_inputs": [
+    {
+      "dataset": "Brain_Mathys2023",
+      "file": "bulk_expr.csv",
+      "shape": [
+        17135,
+        80
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "Brain_Mathys2023",
+      "file": "patient_info.csv",
+      "shape": [
+        80,
+        3
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": null,
+      "byte_identical": true
+    },
+    {
+      "dataset": "Brain_Mathys2023",
+      "file": "truthFrac_v0.csv",
+      "shape": [
+        80,
+        7
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "Brain_Mathys2023",
+      "file": "truthFrac_v1.csv",
+      "shape": [
+        80,
+        63
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "Brain_Xiong2023",
+      "file": "bulk_expr.csv",
+      "shape": [
+        25944,
+        74
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "Brain_Xiong2023",
+      "file": "patient_info.csv",
+      "shape": [
+        74,
+        4
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": null,
+      "byte_identical": true
+    },
+    {
+      "dataset": "Brain_Xiong2023",
+      "file": "truthFrac_v0.csv",
+      "shape": [
+        74,
+        7
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "Brain_Xiong2023",
+      "file": "truthFrac_v1.csv",
+      "shape": [
+        74,
+        61
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "PBMC_1k1k",
+      "file": "bulk_expr.csv",
+      "shape": [
+        19356,
+        776
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "PBMC_1k1k",
+      "file": "patient_info.csv",
+      "shape": [
+        776,
+        2
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": null,
+      "byte_identical": true
+    },
+    {
+      "dataset": "PBMC_1k1k",
+      "file": "truthFrac_v0.csv",
+      "shape": [
+        776,
+        9
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "PBMC_1k1k",
+      "file": "truthFrac_v1.csv",
+      "shape": [
+        776,
+        23
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "PBMC_Perez2022",
+      "file": "bulk_expr.csv",
+      "shape": [
+        18854,
+        209
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "PBMC_Perez2022",
+      "file": "patient_info.csv",
+      "shape": [
+        209,
+        9
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": null,
+      "byte_identical": true
+    },
+    {
+      "dataset": "PBMC_Perez2022",
+      "file": "truthFrac_v0.csv",
+      "shape": [
+        209,
+        4
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "PBMC_Perez2022",
+      "file": "truthFrac_v1.csv",
+      "shape": [
+        209,
+        8
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": true
+    },
+    {
+      "dataset": "Lung_Sikkema2023",
+      "file": "bulk_expr.csv",
+      "shape": [
+        27394,
+        100
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 7.566995918750763e-10,
+      "byte_identical": false
+    },
+    {
+      "dataset": "Lung_Sikkema2023",
+      "file": "patient_info.csv",
+      "shape": [
+        100,
+        2
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": null,
+      "byte_identical": true
+    },
+    {
+      "dataset": "Lung_Sikkema2023",
+      "file": "truthFrac_v0.csv",
+      "shape": [
+        100,
+        11
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": false
+    },
+    {
+      "dataset": "Lung_Sikkema2023",
+      "file": "truthFrac_v1.csv",
+      "shape": [
+        100,
+        61
+      ],
+      "identical_axes": true,
+      "passes_tolerance": true,
+      "max_absolute_difference": 0.0,
+      "byte_identical": false
+    }
+  ],
+  "rtol": 1e-10,
+  "atol": 1e-08,
+  "validation_scope": {
+    "prepared": "All four complete original archived expression files downloaded as selected ZIP members and compared to the author exports.",
+    "generation": "Actual Snakemake input jobs completed for all five non-Heart cohorts in an isolated checkout. Lung was rebuilt completely from an independent local copy of the pinned H5AD.",
+    "network": "Live HTTP Range downloader passed for the Mathys prepared export. The complete 41.7 GB archive and large raw datasets were not downloaded again.",
+    "models": "No model fits, timing campaigns, GPU jobs or scheduler submissions."
+  },
+  "protected_folders": {
+    "entries_checked": 34823,
+    "changed": [],
+    "added": [],
+    "passed": true
+  },
+  "checks": {
+    "unit_tests": "28 passed under existing pandas 2.3.3 and locked pandas 3.0.2 (existing dependency libraries reused).",
+    "fresh_dags": "Source acquisition and all five non-Heart preparation targets dry-run from a fresh checkout; local, server_cu and portable SLURM profiles parse. Full input target correctly identifies only HeartMap as missing.",
+    "live_downloads": "New HTTP Range implementation downloaded and SHA256-verified the original Mathys expression export. Both UCSC feature files also downloaded and matched expected hashes.",
+    "scientific_parameters": "Unchanged beyond acquisition/build routing and fixed-reference paths.",
+    "limitations": "HeartMap authenticated file inventory/version, complete scientific workflows, and remote scheduler submission remain untested. Modern raw files are for the original downstream cell-level analyses; original lab pseudobulk processing is preserved via its verified archived exports."
+  }
+}

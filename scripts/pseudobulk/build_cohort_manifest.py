@@ -7,7 +7,7 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from common import obs_values, read_yaml, repo_path, transform_ids
+from common import load_manifest, obs_values, read_yaml, repo_path, transform_ids
 
 
 def main() -> None:
@@ -19,6 +19,16 @@ def main() -> None:
 
     config = read_yaml(args.config)
     cfg = config["datasets"][args.dataset]
+    if cfg.get("cohort_manifest"):
+        manifest = load_manifest(cfg["cohort_manifest"])
+        if "nCells" not in manifest or (manifest["nCells"] <= 0).any():
+            raise ValueError("Fixed cohort has missing or nonpositive cell totals")
+        if cfg.get("min_cells") is not None and (manifest["nCells"] < cfg["min_cells"]).any():
+            raise ValueError("Fixed cohort contains donors below its configured cell cutoff")
+        repo_path(args.output).parent.mkdir(parents=True, exist_ok=True)
+        manifest.to_csv(repo_path(args.output), index=False)
+        print(f"[{args.dataset}] preserved fixed cohort: {len(manifest)} samples")
+        return
     if cfg["kind"] != "h5ad":
         raise ValueError(f"cohort manifest generation only supports h5ad datasets, got {cfg['kind']!r}")
 

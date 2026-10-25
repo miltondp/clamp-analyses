@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import shutil
 import math
 import time
 from dataclasses import dataclass
@@ -238,6 +241,73 @@ def aggregate_mtx(dataset: str, cfg: dict[str, Any], manifest: pd.DataFrame) -> 
     return Result(bulk, patient_info(manifest, sample_counts), truth_v0, truth_v1, summary)
 
 
+def verify_reference_snapshot(cfg: dict[str, Any]) -> None:
+    if not cfg.get("reference_root"):
+        return
+    inventory = json.loads(repo_path("references/pseudobulk/snapshots.json").read_text())["files"]
+    for name, expected in inventory.items():
+        if name.startswith(cfg["reference_root"] + "/"):
+            actual = hashlib.sha256(repo_path(name).read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"Fixed cohort reference checksum mismatch: {name}")
+
+
+def reference_axes(result: Result, cfg: dict[str, Any]) -> Result:
+    """Preserve the author exports' gene/sample/label orders and metadata."""
+    if not cfg.get("reference_root"):
+        return result
+    root = repo_path(cfg["reference_root"])
+    axes = json.loads((root / "axes.json").read_text())
+    genes = pd.read_csv(root / "genes.csv", dtype=str)["gene"].tolist()
+    missing = set(genes) - set(result.bulk.columns)
+    if missing or set(axes["samples"]) != set(result.bulk.index):
+        raise ValueError(f"Author cohort/gene mismatch: {len(missing)} missing genes")
+    result.bulk = result.bulk.loc[axes["samples"], genes]
+    for key, attr in [("truthFrac_v0", "truth_v0"), ("truthFrac_v1", "truth_v1")]:
+        frame = getattr(result, attr)
+        if key in axes:
+            if frame is None or set(frame.columns) != set(axes[key]["labels"]):
+                raise ValueError(f"Author {key} label mismatch")
+            setattr(result, attr, frame.loc[axes[key]["samples"], axes[key]["labels"]])
+    original_info = pd.read_csv(root / "patient_info.csv", dtype={"sample": str})
+    observed = result.info.set_index("sample")["nCells"]
+    if not np.array_equal(observed.reindex(original_info["sample"]).to_numpy(), original_info["nCells"].to_numpy()):
+        raise ValueError("Cell totals differ from the fixed author cohort")
+    result.info = original_info
+    result.summary["n_genes_output"] = len(genes)
+    return result
+
+
+def aggregate_prepared(dataset: str, cfg: dict[str, Any], manifest: pd.DataFrame) -> Result:
+    """Recover original lab processing, not a new cohort from modern raw data."""
+    path = repo_path(cfg["prepared_source"])
+    assets = json.loads(repo_path("workflow/config/pseudobulk_inputs.json").read_text())["assets"]
+    asset = next(a for a in assets.values() if a["path"] == cfg["prepared_source"])
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != asset["sha256"]:
+        raise ValueError(f"Original lab export checksum mismatch: {path}")
+    bulk = pd.read_csv(path, index_col=0).T
+    axes = json.loads((repo_path(cfg["reference_root"]) / "axes.json").read_text())
+    genes = pd.read_csv(repo_path(cfg["reference_root"]) / "genes.csv", dtype=str)["gene"].tolist()
+    if bulk.index.tolist() != axes["samples"] or bulk.columns.tolist() != genes:
+        raise ValueError("Prepared export axes differ from the original author export")
+    if set(bulk.index) != set(manifest["sample"]):
+        raise ValueError("Prepared export does not contain the fixed donor cohort")
+    root = repo_path(cfg["reference_root"])
+    truth0 = pd.read_csv(root / "truthFrac_v0.csv", index_col=0)
+    truth1_path = root / "truthFrac_v1.csv"
+    truth1 = pd.read_csv(truth1_path, index_col=0) if truth1_path.exists() else None
+    return Result(bulk, manifest.copy(), truth0, truth1, {
+        "dataset": dataset, "kind": "prepared", "source_sha256": asset["sha256"],
+        "raw": str(path), "reference_root": cfg["reference_root"], "n_samples_retained": len(manifest),
+        "n_cells_retained": int(manifest["nCells"].sum()),
+        "n_genes_output": bulk.shape[1], "input_scale": "cpm",
+    })
+
+
 def validate(dataset: str, result: Result) -> None:
     if result.bulk.index.duplicated().any() or result.bulk.columns.duplicated().any():
         raise ValueError(f"{dataset}: duplicate samples or genes")
@@ -250,25 +320,38 @@ def validate(dataset: str, result: Result) -> None:
         if truth is not None and not np.allclose(truth.sum(axis=1), 1):
             raise ValueError(f"{dataset}: {name} rows do not sum to one")
     expected = result.info["sample"].astype(str).tolist()
-    if expected != result.bulk.index.astype(str).tolist():
+    if len(set(expected)) != len(expected) or set(expected) != set(result.bulk.index.astype(str)):
         raise ValueError(f"{dataset}: patient info and expression sample order differ")
-    if expected != result.truth_v0.index.astype(str).tolist():
+    if result.bulk.index.astype(str).tolist() != result.truth_v0.index.astype(str).tolist():
         raise ValueError(f"{dataset}: truth and expression sample order differ")
-    if result.summary.get("count_like_fraction", 0) < 0.99:
+    if result.summary.get("kind") != "prepared" and result.summary.get("count_like_fraction", 0) < 0.99:
         raise ValueError(f"{dataset}: selected raw matrix is not count-like")
 
 
 def write_result(result: Result, args: argparse.Namespace) -> None:
     for path in (args.bulk, args.patient_info, args.truth_v0, args.summary):
         repo_path(path).parent.mkdir(parents=True, exist_ok=True)
-    result.bulk.T.to_csv(repo_path(args.bulk))
-    result.info.to_csv(repo_path(args.patient_info), index=False)
-    result.truth_v0.to_csv(repo_path(args.truth_v0))
-    if args.truth_v1:
-        if result.truth_v1 is None:
-            pd.DataFrame(index=result.bulk.index).to_csv(repo_path(args.truth_v1))
-        else:
-            result.truth_v1.to_csv(repo_path(args.truth_v1))
+    if result.summary["kind"] == "prepared":
+        # Validation above proves the archived export already has the exact
+        # frozen axes. Preserve its bytes instead of reserializing floating point.
+        shutil.copyfile(repo_path(result.summary["raw"]), repo_path(args.bulk))
+        root = repo_path(result.summary["reference_root"])
+        shutil.copyfile(root / "patient_info.csv", repo_path(args.patient_info))
+        shutil.copyfile(root / "truthFrac_v0.csv", repo_path(args.truth_v0))
+        if args.truth_v1:
+            if (root / "truthFrac_v1.csv").exists():
+                shutil.copyfile(root / "truthFrac_v1.csv", repo_path(args.truth_v1))
+            else:
+                pd.DataFrame(index=result.bulk.index).to_csv(repo_path(args.truth_v1))
+    else:
+        result.bulk.T.to_csv(repo_path(args.bulk))
+        result.info.to_csv(repo_path(args.patient_info), index=False)
+        result.truth_v0.to_csv(repo_path(args.truth_v0))
+        if args.truth_v1:
+            if result.truth_v1 is None:
+                pd.DataFrame(index=result.bulk.index).to_csv(repo_path(args.truth_v1))
+            else:
+                result.truth_v1.to_csv(repo_path(args.truth_v1))
     pd.DataFrame([result.summary]).to_csv(repo_path(args.summary), index=False)
 
 
@@ -290,13 +373,17 @@ def main() -> None:
             f"{args.dataset} is configured as a lab-provided pseudobulk input; "
             "only datasets with build_pseudobulk: true may be reconstructed"
         )
+    verify_reference_snapshot(cfg)
     manifest = load_manifest(args.cohort_manifest)
-    if cfg["kind"] == "h5ad":
+    if cfg.get("prepared_source"):
+        result = aggregate_prepared(args.dataset, cfg, manifest)
+    elif cfg["kind"] == "h5ad":
         result = aggregate_h5ad(args.dataset, cfg, manifest)
     elif cfg["kind"] == "matrix_market":
         result = aggregate_mtx(args.dataset, cfg, manifest)
     else:
         raise ValueError(f"unsupported input kind {cfg['kind']!r}")
+    result = reference_axes(result, cfg)
     validate(args.dataset, result)
     write_result(result, args)
     print(f"[{args.dataset}] completed: {result.bulk.shape[1]} genes x {result.bulk.shape[0]} samples")

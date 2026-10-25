@@ -245,7 +245,7 @@ archs4:
     fits:
       archs4: {seed: 123, max_iter: 5000, mem_mb: 320000, runtime: 54000}
       gtex: {seed: 124, max_iter: 500, mem_mb: 96000, runtime: 2880}
-      recount2: {seed: 124, max_iter: 500, mem_mb: 200000, runtime: 2880}
+      recount2: {seed: 124, max_iter: 500, mem_mb: 64000, runtime: 2880}
     ora:
       databases: [bp, canonical, reactome, cellmarker]
 

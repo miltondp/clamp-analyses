@@ -1,0 +1,29 @@
+cell_type,label
+Ast,Astrocytes
+Exc,Excitatory neurons
+Inh,Inhibitory neurons
+Mic,Microglia
+Oli,Oligodendrocytes
+Opc,Oligodendrocyte Precursor Cells
+Vas,Vascular cells
+B_cell,B cells
+CD14_Mono,CD14+ Monocytes
+CD16_Mono,CD16+ Monocytes
+CD4_T,CD4+ T cells
+CD8_T,CD8+ T cells
+DC,Dendritic cells
+gd_T,gd T cells
+NK,NK cells
+Plasma_B,Plasma B cells
+T_cell,T cells
+Myeloid,Myeloid cells
+Myeloid_cell,Myeloid cells
+Dendritic,Dendritic cells
+Endothelial,Endothelial cells
+Endothelial_cell,Endothelial cells
+Fibroblast,Fibroblasts
+Malignant,Malignant cells
+Mast,Mast cells
+Mast_cell,Mast cells
+Cancer_cell,Cancer cells
+pDC,Plasmacytoid Dendritic Cells

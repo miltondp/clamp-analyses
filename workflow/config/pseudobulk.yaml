@@ -1,6 +1,9 @@
 datasets:
   Brain_Mathys2023:
-    build_pseudobulk: false
+    build_pseudobulk: true
+    cohort_manifest: references/pseudobulk/Brain_Mathys2023/cohort.csv
+    reference_root: references/pseudobulk/Brain_Mathys2023
+    prepared_source: data/pseudobulk/prepared/Brain_Mathys2023/bulk_expr.csv
     pseudobulk_dir: data/pseudobulk/Brain_Mathys2023
     kind: matrix_market
     raw: data/pseudobulk/raw/Brain_Mathys2023/ad430_matrix.mtx.gz
@@ -14,10 +17,12 @@ datasets:
     truth_v1_col: Cell_Type
     raw_cell_type_col: Major_Cell_Type
     projection_label_col: Major_Cell_Type
-    cohort_manifest: data/pseudobulk/Brain_Mathys2023/patient_info.csv
 
   Brain_Xiong2023:
-    build_pseudobulk: false
+    build_pseudobulk: true
+    cohort_manifest: references/pseudobulk/Brain_Xiong2023/cohort.csv
+    reference_root: references/pseudobulk/Brain_Xiong2023
+    prepared_source: data/pseudobulk/prepared/Brain_Xiong2023/bulk_expr.csv
     pseudobulk_dir: data/pseudobulk/Brain_Xiong2023
     kind: matrix_market
     raw: data/pseudobulk/raw/Brain_Xiong2023/matrix.mtx.gz
@@ -31,7 +36,6 @@ datasets:
     truth_v1_col: Subcelltype
     raw_cell_type_col: Celltype
     projection_label_col: Celltype
-    cohort_manifest: data/pseudobulk/Brain_Xiong2023/patient_info.csv
 
   Heart_Datar2026:
     build_pseudobulk: true
@@ -64,7 +68,10 @@ datasets:
     projection_label_map: *heart_map
 
   PBMC_1k1k:
-    build_pseudobulk: false
+    build_pseudobulk: true
+    cohort_manifest: references/pseudobulk/PBMC_1k1k/cohort.csv
+    reference_root: references/pseudobulk/PBMC_1k1k
+    prepared_source: data/pseudobulk/prepared/PBMC_1k1k/bulk_expr.csv
     pseudobulk_dir: data/pseudobulk/PBMC_1k1k
     kind: h5ad
     raw: data/pseudobulk/raw/PBMC_1k1k/PBMC_1k1k_raw.h5ad
@@ -74,7 +81,6 @@ datasets:
     truth_v0_col: predicted.celltype.l2
     raw_cell_type_col: predicted.celltype.l2
     projection_label_col: predicted.celltype.l2
-    cohort_manifest: data/pseudobulk/PBMC_1k1k/patient_info.csv
     truth_v0_map: &pbmc_1k1k_map
       CD4 CTL: CD4_T
       CD4 Naive: CD4_T
@@ -102,7 +108,10 @@ datasets:
     projection_label_map: *pbmc_1k1k_map
 
   PBMC_Perez2022:
-    build_pseudobulk: false
+    build_pseudobulk: true
+    cohort_manifest: references/pseudobulk/PBMC_Perez2022/cohort.csv
+    reference_root: references/pseudobulk/PBMC_Perez2022
+    prepared_source: data/pseudobulk/prepared/PBMC_Perez2022/bulk_expr.csv
     pseudobulk_dir: data/pseudobulk/PBMC_Perez2022
     kind: h5ad
     raw: data/pseudobulk/raw/PBMC_Perez2022/PBMC_Perez2022_raw.h5ad
@@ -112,7 +121,6 @@ datasets:
     truth_v0_col: cell_type
     raw_cell_type_col: cell_type
     projection_label_col: cell_type
-    cohort_manifest: data/pseudobulk/PBMC_Perez2022/patient_info.csv
     truth_v0_map: &pbmc_perez_map
       B cell: B_cell
       plasmablast: B_cell
@@ -129,6 +137,8 @@ datasets:
 
   Lung_Sikkema2023:
     build_pseudobulk: true
+    cohort_manifest: references/pseudobulk/Lung_Sikkema2023/cohort.csv
+    reference_root: references/pseudobulk/Lung_Sikkema2023
     kind: h5ad
     raw: data/pseudobulk/Lung_Sikkema2023/lung_HLCA.h5ad
     matrix: raw.X

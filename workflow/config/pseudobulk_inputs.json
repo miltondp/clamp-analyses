@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "verified_date": "2026-10-20",
+  "note": "Expected raw-file hashes come from the existing author snapshots. Public endpoints and versions are pinned, but full raw downloads were not repeated. Four prepared matrices were downloaded as archive members and compared completely: every value matches the author exports. HeartMap requires manual sign-in.",
+  "assets": {
+    "Brain_Mathys2023_raw": {
+      "path": "data/pseudobulk/raw/Brain_Mathys2023/ad430_matrix.mtx.gz",
+      "url": "https://cells.ucsc.edu/ad-aging-brain/ad-aging-brain/ad430_matrix.mtx.gz",
+      "doi": [
+        "10.1016/j.cell.2023.08.039"
+      ],
+      "bundled": false,
+      "bytes": 20919156983,
+      "dataset": "Brain_Mathys2023",
+      "kind": "raw",
+      "sha256": "086cfc206bc3d36709c6f5361303ae641f2989b533efa89688192b6188c98529"
+    },
+    "Brain_Mathys2023_features": {
+      "path": "data/pseudobulk/raw/Brain_Mathys2023/ad430_features.tsv.gz",
+      "url": "https://cells.ucsc.edu/ad-aging-brain/ad-aging-brain/ad430_features.tsv.gz",
+      "doi": [
+        "10.1016/j.cell.2023.08.039"
+      ],
+      "bundled": false,
+      "bytes": 62732,
+      "dataset": "Brain_Mathys2023",
+      "kind": "features",
+      "sha256": "00ab5d2dcf88cc76a4809bedb5dabef69af6b2cbe677d011132763dc5e835ff9"
+    },
+    "Brain_Mathys2023_barcodes": {
+      "path": "data/pseudobulk/raw/Brain_Mathys2023/ad430_barcodes.tsv.gz",
+      "url": "https://cells.ucsc.edu/ad-aging-brain/ad-aging-brain/ad430_barcodes.tsv.gz",
+      "doi": [
+        "10.1016/j.cell.2023.08.039"
+      ],
+      "bundled": false,
+      "bytes": 14275934,
+      "dataset": "Brain_Mathys2023",
+      "kind": "barcodes",
+      "sha256": "19128c000a3c472f82923647faaac1f091a321436617a237b61db7a1fb5997cd"
+    },
+    "Brain_Mathys2023_metadata": {
+      "path": "data/pseudobulk/raw/Brain_Mathys2023/meta.tsv",
+      "url": "https://cells.ucsc.edu/ad-aging-brain/ad-aging-brain/meta.tsv",
+      "doi": [
+        "10.1016/j.cell.2023.08.039"
+      ],
+      "bundled": false,
+      "bytes": 272994015,
+      "dataset": "Brain_Mathys2023",
+      "kind": "metadata",
+      "sha256": "963768e53e1bde199ba7bb3969bc6e1d719c8776bc9dee13c27f98b7a94345e0"
+    },
+    "Brain_Xiong2023_raw": {
+      "path": "data/pseudobulk/raw/Brain_Xiong2023/matrix.mtx.gz",
+      "url": "https://cells.ucsc.edu/ad-aging-brain/ad-atac/rna-hq/matrix.mtx.gz",
+      "doi": [
+        "10.1016/j.cell.2023.08.040"
+      ],
+      "bundled": false,
+      "bytes": 3025386156,
+      "dataset": "Brain_Xiong2023",
+      "kind": "raw",
+      "sha256": "9ae3177314a69415b7ff09d71d6e3ea98cedd62161f1a4b37dacddea84bf5a1e"
+    },
+    "Brain_Xiong2023_features": {
+      "path": "data/pseudobulk/raw/Brain_Xiong2023/features.tsv.gz",
+      "url": "https://cells.ucsc.edu/ad-aging-brain/ad-atac/rna-hq/features.tsv.gz",
+      "doi": [
+        "10.1016/j.cell.2023.08.040"
+      ],
+      "bundled": false,
+      "bytes": 119860,
+      "dataset": "Brain_Xiong2023",
+      "kind": "features",
+      "sha256": "31986d8480ffc5ebf5ba44b3040a310b21d65083f8729e3b81c553156d711fdb"
+    },
+    "Brain_Xiong2023_barcodes": {
+      "path": "data/pseudobulk/raw/Brain_Xiong2023/barcodes.tsv.gz",
+      "url": "https://cells.ucsc.edu/ad-aging-brain/ad-atac/rna-hq/barcodes.tsv.gz",
+      "doi": [
+        "10.1016/j.cell.2023.08.040"
+      ],
+      "bundled": false,
+      "bytes": 2052217,
+      "dataset": "Brain_Xiong2023",
+      "kind": "barcodes",
+      "sha256": "81ad4d3057b9950eabdf2ecf61147b5fad65f3998ca3948bda51f4ae709a29e2"
+    },
+    "Brain_Xiong2023_metadata": {
+      "path": "data/pseudobulk/raw/Brain_Xiong2023/meta.tsv",
+      "url": "https://cells.ucsc.edu/ad-aging-brain/ad-atac/rna-hq/meta.tsv",
+      "doi": [
+        "10.1016/j.cell.2023.08.040"
+      ],
+      "bundled": false,
+      "bytes": 48052462,
+      "dataset": "Brain_Xiong2023",
+      "kind": "metadata",
+      "sha256": "c2dd16539c7da4e15657e452b0c16c6245903996033a7bbf7730e681065afc8e"
+    },
+    "PBMC_1k1k_raw": {
+      "path": "data/pseudobulk/raw/PBMC_1k1k/PBMC_1k1k_raw.h5ad",
+      "url": "https://datasets.cellxgene.cziscience.com/1e44db10-b572-46cc-adae-dcc7acd44ca6.h5ad",
+      "doi": [
+        "10.1126/science.abf3041"
+      ],
+      "bundled": false,
+      "bytes": 4434273970,
+      "dataset": "PBMC_1k1k",
+      "kind": "raw",
+      "sha256": "14c5e9e70007a5e7dc047f7b29405773305e1a7b9791d0789af70649cf6f46ec"
+    },
+    "PBMC_Perez2022_raw": {
+      "path": "data/pseudobulk/raw/PBMC_Perez2022/PBMC_Perez2022_raw.h5ad",
+      "url": "https://datasets.cellxgene.cziscience.com/c55dc602-d168-4d15-acc1-5de4f2f5d551.h5ad",
+      "doi": [
+        "10.1126/science.abf1970"
+      ],
+      "bundled": false,
+      "bytes": 12218105530,
+      "dataset": "PBMC_Perez2022",
+      "kind": "raw",
+      "sha256": "3c0b74d54c03838a49817edce95314e6a4fa048ef35b74d1e697b8b2fd07cc03"
+    },
+    "Lung_Sikkema2023_raw": {
+      "path": "data/pseudobulk/Lung_Sikkema2023/lung_HLCA.h5ad",
+      "url": "https://datasets.cellxgene.cziscience.com/688185ad-11c2-4172-a53a-f4f1f4076860.h5ad",
+      "doi": [
+        "10.1038/s41591-023-02327-2"
+      ],
+      "bundled": false,
+      "bytes": 5873612847,
+      "dataset": "Lung_Sikkema2023",
+      "kind": "raw",
+      "sha256": "1cbdde1e513a31bdb6a3f70296e2d0612760d2af4032e239c94596ea87b44007"
+    },
+    "Brain_Mathys2023_prepared": {
+      "path": "data/pseudobulk/prepared/Brain_Mathys2023/bulk_expr.csv",
+      "dataset": "Brain_Mathys2023",
+      "kind": "prepared",
+      "bundled": false,
+      "url": "https://zenodo.org/records/16649011/files/source_code.zip?download=1",
+      "archive_bytes": 41742976069,
+      "archive_md5": "md5:9ed458d8f99cbfea347b63ccce37aa40",
+      "archive_member": "source_code/Benchmarking_obj/ROSMAP_AD430_Mathys2023/init/bulk_expr.csv",
+      "bytes": 22965502,
+      "sha256": "0aafe291b02cde672d592e4eee5375fc0612225e2d40e85d8b8d5fc5a5f4f791",
+      "doi": [
+        "10.5281/zenodo.16649011"
+      ],
+      "verification": "Exact complete matrix comparison against author export passed; original processing, genes and donor split are preserved. Selected archive member is SHA256-verified without downloading the complete 41.7 GB archive."
+    },
+    "Brain_Xiong2023_prepared": {
+      "path": "data/pseudobulk/prepared/Brain_Xiong2023/bulk_expr.csv",
+      "dataset": "Brain_Xiong2023",
+      "kind": "prepared",
+      "bundled": false,
+      "url": "https://zenodo.org/records/16649011/files/source_code.zip?download=1",
+      "archive_bytes": 41742976069,
+      "archive_md5": "md5:9ed458d8f99cbfea347b63ccce37aa40",
+      "archive_member": "source_code/Benchmarking_obj/ROSMAP_AD92_Xiong2023/init/bulk_expr.csv",
+      "bytes": 32108815,
+      "sha256": "1254b7654d82481230eed0601e11c43abb177666954ed032658f550f97288eac",
+      "doi": [
+        "10.5281/zenodo.16649011"
+      ],
+      "verification": "Exact complete matrix comparison against author export passed; original processing, genes and donor split are preserved. Selected archive member is SHA256-verified without downloading the complete 41.7 GB archive."
+    },
+    "PBMC_1k1k_prepared": {
+      "path": "data/pseudobulk/prepared/PBMC_1k1k/bulk_expr.csv",
+      "dataset": "PBMC_1k1k",
+      "kind": "prepared",
+      "bundled": false,
+      "url": "https://zenodo.org/records/16649011/files/source_code.zip?download=1",
+      "archive_bytes": 41742976069,
+      "archive_md5": "md5:9ed458d8f99cbfea347b63ccce37aa40",
+      "archive_member": "source_code/Benchmarking_obj/PBMC_1k1k/init/bulk_expr.csv",
+      "bytes": 201832838,
+      "sha256": "404172830839ea1b7dcee25b723212e6ef642cba71caed6042c464cbd3409a1d",
+      "doi": [
+        "10.5281/zenodo.16649011"
+      ],
+      "verification": "Exact complete matrix comparison against author export passed; original processing, genes and donor split are preserved. Selected archive member is SHA256-verified without downloading the complete 41.7 GB archive."
+    },
+    "PBMC_Perez2022_prepared": {
+      "path": "data/pseudobulk/prepared/PBMC_Perez2022/bulk_expr.csv",
+      "dataset": "PBMC_Perez2022",
+      "kind": "prepared",
+      "bundled": false,
+      "url": "https://zenodo.org/records/16649011/files/source_code.zip?download=1",
+      "archive_bytes": 41742976069,
+      "archive_md5": "md5:9ed458d8f99cbfea347b63ccce37aa40",
+      "archive_member": "source_code/Benchmarking_obj/PBMC_Perez2022/init/bulk_expr.csv",
+      "bytes": 60127308,
+      "sha256": "802e6e2f488a9acd4b041eb8ac92a2f1bafc8823437aa14bc832e9a3f9700a29",
+      "doi": [
+        "10.5281/zenodo.16649011"
+      ],
+      "verification": "Exact complete matrix comparison against author export passed; original processing, genes and donor split are preserved. Selected archive member is SHA256-verified without downloading the complete 41.7 GB archive."
+    },
+    "cell_type_labels": {
+      "path": "data/pseudobulk/cell_type_labels.csv",
+      "kind": "labels",
+      "bundled": false,
+      "url": null,
+      "local_source": "references/pseudobulk/cell_type_labels.csv",
+      "sha256": "938744c1a25f4cc6bccc46d98e81f5d173d5df05eb25e7cb4fefe05fc35c214c",
+      "bytes": 642,
+      "verification": "Original author cell-label lookup; staged from tracked references."
+    }
+  }
+}

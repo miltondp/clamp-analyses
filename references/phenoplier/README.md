@@ -1,7 +1,10 @@
-# Processed S-PrediXcan inventory
+# Processed S-PrediXcan references
 
-`spredixcan_inventory.json` records the 49 processed tissue filenames and byte
-sizes used by the current analyses. It is a staging completeness check, not a
-checksum of each large file. Historical raw/HDF5 archive download links do not
-supply an interchangeable processed pickle directory. Use a matching existing
-workspace/reference bundle as described in `docs/phenoplier_inputs.md`.
+`spredixcan_download.json` pins the public archive, tissue filenames and exact
+numerical fingerprints used by automatic conversion. The 49 converted matrices
+match the author inputs in labels, ordering and values; pickle bytes can differ
+between pandas versions. `spredixcan_inventory.json` is the historical filename
+and size inventory. `input_equivalence_audit.json` records previous comparisons.
+
+Remaining CLI workspace and downstream input issues are described in the
+[PhenoPLIER handoff](../../scripts/phenoplier/README.md).

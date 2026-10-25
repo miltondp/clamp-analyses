@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import shutil
+import ssl
 from pathlib import Path
 import subprocess
 import tempfile
@@ -13,6 +14,15 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / 'workflow/config/reference_inputs.json'
+
+
+def download_ssl_context():
+    """Retain certificate verification and include Linux administrator trust roots."""
+    context = ssl.create_default_context()
+    system_ca = Path('/etc/ssl/certs/ca-certificates.crt')
+    if system_ca.is_file() and not os.environ.get('SSL_CERT_FILE'):
+        context.load_verify_locations(cafile=str(system_ca))
+    return context
 
 
 def sha256(path):
@@ -61,7 +71,7 @@ def fetch(key, asset, destination_root, check=False, upstream=False, offline=Fal
             if offline or not asset.get('url'):
                 raise RuntimeError(f"{key}: no verified live download is available. Restore its bundled Git snapshot or stage a matching PhenoPLIER workspace with --source-root.")
             request = urllib.request.Request(asset['url'], headers={'User-Agent': 'CLAMP-reference-inputs/1.0'})
-            with urllib.request.urlopen(request, timeout=60) as response, temporary.open('wb') as output:
+            with urllib.request.urlopen(request, timeout=60, context=download_ssl_context()) as response, temporary.open('wb') as output:
                 if asset.get('compression') == 'gzip':
                     with gzip.GzipFile(fileobj=response) as decompressed:
                         shutil.copyfileobj(decompressed, output, length=1024 * 1024)

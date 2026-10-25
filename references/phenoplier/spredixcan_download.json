@@ -1,0 +1,651 @@
+{
+  "schema_version": 1,
+  "doi": "10.5281/zenodo.3911190",
+  "verified_date": "2026-10-20",
+  "verification": "All 49 complete TSV matrices exactly match the current tissue pickles: axes, order, and every floating-point value, with equal NaNs. Public tar MD5 reconstructed from remote tar headers and unchanged local member payloads matches Zenodo.",
+  "fingerprint": "v1: SHA256(pandas.util.hash_pandas_object(index) as little-endian uint64 bytes + corresponding columns hash bytes + row-major little-endian float64 matrix bytes). Shape and axis names checked separately.",
+  "archive": {
+    "url": "https://zenodo.org/records/3911190/files/spredixcan-mashr-zscores.tar?download=1",
+    "bytes": 9485844480,
+    "md5": "a038f8e509b4c08678eb77e7d8dc759d"
+  },
+  "tissues": {
+    "spredixcan-mashr-zscores-Adipose_Subcutaneous.pkl": {
+      "shape": [
+        14720,
+        4091
+      ],
+      "semantic_sha256": "3314fa61e9d0e876e0067afa91be5cdf769cc4255caad501be4ce257805be042",
+      "pickle_sha256": "879324c4b2c8e210f13e73faa10a3176db43cfd162f42285ab453f1e906cd6a6",
+      "tsv_sha256": "ba0d1f0a5a6c1a92efcaccbe03677f57add445962727eb20056f0829a9004625",
+      "tsv_bytes": 204037921,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Adipose_Subcutaneous.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Adipose_Visceral_Omentum.pkl": {
+      "shape": [
+        14627,
+        4091
+      ],
+      "semantic_sha256": "fd573dee1e46e214120c371d328b294f35750888b5c2fcb58dedf172be59433a",
+      "pickle_sha256": "6cad22a6be638450b5e7bd857290eb726f9b2134a82dacf32a2032c9dd010cba",
+      "tsv_sha256": "e28d034b41d7f802a89ec107f4c0a00d6b5b59bc26fa5f89fb4b906ae89e1b5e",
+      "tsv_bytes": 202934480,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Adipose_Visceral_Omentum.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Adrenal_Gland.pkl": {
+      "shape": [
+        13607,
+        4091
+      ],
+      "semantic_sha256": "8cff30b78a9c69c3b443d9df183c64e312fc96708dfe87a9f2aba115011df0a2",
+      "pickle_sha256": "0d73aed0ca4c91ae1206cea4f644e0d4052a534972d9608ae019964c13ebc605",
+      "tsv_sha256": "be6238c0ab5f82e0630bb4e34bd880726b50364dc5daef67069f8125c5beafe1",
+      "tsv_bytes": 188061703,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Adrenal_Gland.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Artery_Aorta.pkl": {
+      "shape": [
+        14380,
+        4091
+      ],
+      "semantic_sha256": "60dcae92b99b4d7e95c4712c048e6c850b5ea514efcb2dbfa94b5e590682f35b",
+      "pickle_sha256": "5bdfe5e60c403368a938fad9eec9e7288e6ee85208f2ca98bc0ed5dd435e2a45",
+      "tsv_sha256": "423266610bbff36a267ca163269e9214bc9f4e1ebc2c5d4f0c00047eea1c2567",
+      "tsv_bytes": 199529097,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Artery_Aorta.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Artery_Coronary.pkl": {
+      "shape": [
+        13864,
+        4091
+      ],
+      "semantic_sha256": "48af00559182d91f09c2ce4cc4c5e3194e5adf52df155bedb500e26817a17d56",
+      "pickle_sha256": "a5ca3106344337d7c0870ce33f18feb91d13465c69e697e70e469636a407ed15",
+      "tsv_sha256": "9baadbb298de0513c6a75e73218bca0c244593091d5c0b8a8a5f8f4e4afec6a2",
+      "tsv_bytes": 191598570,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Artery_Coronary.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Artery_Tibial.pkl": {
+      "shape": [
+        14479,
+        4091
+      ],
+      "semantic_sha256": "06d14d3b51845271d7bdbfa646715dbb371c19cad6115dbe78ae968f951c225e",
+      "pickle_sha256": "02f0636542ccea1705f68e0c1c095c5c84ff73727e8a68553382c896acfcdbe7",
+      "tsv_sha256": "36953ad8a58833904a83b087f687ada2b2d3d4f5f212887fd231cad9a8ca41f9",
+      "tsv_bytes": 201232161,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Artery_Tibial.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Amygdala.pkl": {
+      "shape": [
+        12804,
+        4091
+      ],
+      "semantic_sha256": "40b45b8b6c391b26588a84ba59bed59ed579d2958dc7c26601da4cb185d8b088",
+      "pickle_sha256": "fbbb0fcd0977ff501fb1b08a0018ae38c53c72709e3e791626168f41be114c1c",
+      "tsv_sha256": "ae058c8f30be08d42a194aefe3ef53e9581a6f5ac6103941746f9226fe42fb2c",
+      "tsv_bytes": 176539862,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Amygdala.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Anterior_cingulate_cortex_BA24.pkl": {
+      "shape": [
+        13516,
+        4091
+      ],
+      "semantic_sha256": "550ef2d165fb3bf6fe23dacf2ee33d754fe120a7fb96d7791760f0b6fab31bad",
+      "pickle_sha256": "d82853c8dfb1e349edbe96f896123712effd41f37f71462534a5bc16ac68bd06",
+      "tsv_sha256": "5130ca9c43a26753cc69bc8943c22bafa35594037c10bc2f8f38ed6c9bf9f3fb",
+      "tsv_bytes": 186693953,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Anterior_cingulate_cortex_BA24.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Caudate_basal_ganglia.pkl": {
+      "shape": [
+        14107,
+        4091
+      ],
+      "semantic_sha256": "98d01fb83dd0868336a604db4c6fd68908eae8db533158e747755f33c50f7ea1",
+      "pickle_sha256": "47921c2214f3d03e23a57726e46f3c9301272153d06c180fc3dc010f8f030845",
+      "tsv_sha256": "ae8e7443fe5ee0d1b9ba68680cfae2bcf6a3c65807850ae355319ed5b80f192a",
+      "tsv_bytes": 195280050,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Caudate_basal_ganglia.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Cerebellar_Hemisphere.pkl": {
+      "shape": [
+        13756,
+        4091
+      ],
+      "semantic_sha256": "0ef779c585ce646be0f665cb22b781e627e9c5695a16264d1a3962c7f7b288f8",
+      "pickle_sha256": "83279d49ba9e423b9b3e49c60d40e7799db91525ded2c4a33e3fa03f6777552e",
+      "tsv_sha256": "dbe57f8bbacaf546c12ca5ee7763c9e7308d6d9ceb5bd87e9570f53c775e72cd",
+      "tsv_bytes": 189958751,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Cerebellar_Hemisphere.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Cerebellum.pkl": {
+      "shape": [
+        13980,
+        4091
+      ],
+      "semantic_sha256": "7a75c039cfc5c111405c1e6aacf13196871693c01ccda817e00f25e5a36bd90e",
+      "pickle_sha256": "69b886ed84a153f2b5b342ec3cd8c1b1ae5a8c7bb50b3d976be1ca59633f301c",
+      "tsv_sha256": "1acb962d614f67dad446cb536799ac9565615de6d0f3ca25b204bcbcce63e766",
+      "tsv_bytes": 193204725,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Cerebellum.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Cortex.pkl": {
+      "shape": [
+        14272,
+        4091
+      ],
+      "semantic_sha256": "fab0cff8c7d47c92d73ff2b71d0ad17f566e09168655d1444fa9a99814327702",
+      "pickle_sha256": "590b75ebcf2b27de6d844ff8db4fec7ae8fccd3be9039f55d9e12fd609f10151",
+      "tsv_sha256": "4f2c7e99e4b1bf889b8e0f55dc7861a6f452bec690403f716895b215f061a3cd",
+      "tsv_bytes": 197072611,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Cortex.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Frontal_Cortex_BA9.pkl": {
+      "shape": [
+        14079,
+        4091
+      ],
+      "semantic_sha256": "477fea8818823f454cf17175f890f58a49173f74ccaf9a6ee39a9a85dad62b75",
+      "pickle_sha256": "df6cc5819fdbbf673944b4f3799b62d50d9aa76053f79e7552d28fb5704ba452",
+      "tsv_sha256": "0fb066675d91f99ea2ef4862464724dda0adcd49477148ebcf0985a5e839b0ab",
+      "tsv_bytes": 194557718,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Frontal_Cortex_BA9.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Hippocampus.pkl": {
+      "shape": [
+        13513,
+        4091
+      ],
+      "semantic_sha256": "9049ee080b4999ce7db9e94f505cbfd62a777c7279323012c0ec8150995d5ef8",
+      "pickle_sha256": "1e1df3bd1496b66e3072b17ef130cdd3e76625afdc2d18edb8f799aad0a0504e",
+      "tsv_sha256": "e844d1d50c952b4add201ea1c82fe7c99d0b5ff212fe8b556fc568692da5276a",
+      "tsv_bytes": 186939450,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Hippocampus.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Hypothalamus.pkl": {
+      "shape": [
+        13728,
+        4091
+      ],
+      "semantic_sha256": "4bb605f7cf70cb9c0cb14e44af2abf30eba17cab0fc2831ccd3de23fa84aaf37",
+      "pickle_sha256": "25bfedd1c6a3366e44d15e27bc18ca0a6c50d218ff9173b2ff2115feb6e8402f",
+      "tsv_sha256": "734091034e334523fd794097dacf69a59f5365ec4e0690d91a1f277e4e98f226",
+      "tsv_bytes": 189452363,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Hypothalamus.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Nucleus_accumbens_basal_ganglia.pkl": {
+      "shape": [
+        14047,
+        4091
+      ],
+      "semantic_sha256": "62e11a173cee1207a4a37ac1a5962913f0c80b797cabcf3d99b2ae1e6e41c7d5",
+      "pickle_sha256": "b3afa077ca8534318db62b9fda9b2a47be4fbae4a59e31078b37b4b3f450e216",
+      "tsv_sha256": "4d55d250c6dfdbe931837d2257f7eb461a6698dcb117e7f47ed77b8444897736",
+      "tsv_bytes": 194247210,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Nucleus_accumbens_basal_ganglia.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Putamen_basal_ganglia.pkl": {
+      "shape": [
+        13683,
+        4091
+      ],
+      "semantic_sha256": "7d33ad6431d5c695826f00fbd7977ee004b79ef46042108ab5134d43fb9890e1",
+      "pickle_sha256": "e7474cd60d8be65693c24b152865a96bee0729e19c6bf80c4823a6a3ef65b8fb",
+      "tsv_sha256": "c4e23d62d6f9a070b1940bccd9aced288339608c4187ad8190ff3b90d3a0ab3f",
+      "tsv_bytes": 189498269,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Putamen_basal_ganglia.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Spinal_cord_cervical_c-1.pkl": {
+      "shape": [
+        13083,
+        4091
+      ],
+      "semantic_sha256": "15eceffe136709738b717dc1a963652910acf168004070e0b66b6e475574d3b4",
+      "pickle_sha256": "c8ef6839c4d17d3e3af5b04b6cc26acd21a77f99f330b5a2ac7266e4e96b12b6",
+      "tsv_sha256": "c461da6f742a639f22579c64c5e446ca7e18070ecf6131dc69245282fec8acdb",
+      "tsv_bytes": 180152694,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Spinal_cord_cervical_c.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Brain_Substantia_nigra.pkl": {
+      "shape": [
+        12625,
+        4091
+      ],
+      "semantic_sha256": "a6a77ed9a940423492ef7ddfca431c71334a720e18e6bb802dc64fac13505dd9",
+      "pickle_sha256": "45ee8ccba64b0a16995c0d9fb912910d5451371fc815ced73686d8028c049192",
+      "tsv_sha256": "338334290333c14136bbb21f97c6babaf422f57acc1e86690f2544e73563ac59",
+      "tsv_bytes": 173757690,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Brain_Substantia_nigra.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Breast_Mammary_Tissue.pkl": {
+      "shape": [
+        14640,
+        4091
+      ],
+      "semantic_sha256": "3ca972975712a64dca22582332d2bc90fb1692fd0aea162d195eda83d372ab87",
+      "pickle_sha256": "f79c48a2a98fa887c48027c78c4f945cee3d301851681df3054b56ddcb7e0013",
+      "tsv_sha256": "798a040038a463b672ba9bd6923dd46551d8c33c16c3c4c20a70ba0ab8e37b40",
+      "tsv_bytes": 202142419,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Breast_Mammary_Tissue.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Cells_Cultured_fibroblasts.pkl": {
+      "shape": [
+        13964,
+        4091
+      ],
+      "semantic_sha256": "a0f4b2918a85055f6bef2e31f75fc6871498f90473b112cee5e6a1ef9f384070",
+      "pickle_sha256": "bb8e177b63573d3aacfd6b258d575c0e6128a285a16ffb174af448cd31fe749c",
+      "tsv_sha256": "759317ea4cd7b844ba479bacaa2bc0d13cd5c94d5f2b190fd364e36c371d8397",
+      "tsv_bytes": 194007906,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Cells_Cultured_fibroblasts.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Cells_EBV-transformed_lymphocytes.pkl": {
+      "shape": [
+        12386,
+        4091
+      ],
+      "semantic_sha256": "56cf3fcfbc9c68e4a68a5dcd8cedb716ea5b1ebad2ceed27702f2794f192b1fc",
+      "pickle_sha256": "4d358cae71736e4c66e47f776bde841e170e8dc37ae63dad6cc312d6f90e097a",
+      "tsv_sha256": "213b5c591eeb279c1d7fd59c2518d45873b402281e749f70e8e7ead2e8a27549",
+      "tsv_bytes": 170609104,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Cells_EBV.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Colon_Sigmoid.pkl": {
+      "shape": [
+        14349,
+        4091
+      ],
+      "semantic_sha256": "7f6ba89fbafd09b5ede3a060cee42d12a990097bd765f574bf67c6df421b9564",
+      "pickle_sha256": "79734318e88b8fd4f4d47757a56383e96e5bf5d9f6b065d496652b65f9de4c23",
+      "tsv_sha256": "09059c0048a69d1e0bb43b03956c60a4454b8ba8b91d018643c160a8f828822a",
+      "tsv_bytes": 198642594,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Colon_Sigmoid.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Colon_Transverse.pkl": {
+      "shape": [
+        14572,
+        4091
+      ],
+      "semantic_sha256": "0827302eb07fccf2b052eb112c9af6eb590ac31da37433f8df8b07161154f45c",
+      "pickle_sha256": "5d87b700656728c1b626f43c911b5034f4b9e7aeff8b956b3f6ecf2f78296bfc",
+      "tsv_sha256": "6606386b3a07933d29ffca8b2a614312a9d06de570be80ae49c57bfa408b6afe",
+      "tsv_bytes": 201954891,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Colon_Transverse.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Esophagus_Gastroesophageal_Junction.pkl": {
+      "shape": [
+        14271,
+        4091
+      ],
+      "semantic_sha256": "f8bb1dc6aac8a5e73345b1b9ed74331665f4f691b12cd44ce641a751102fad83",
+      "pickle_sha256": "23bd1098fecb6af0562712336955b7fcb121a783cf55fa3815f8238bd56122f0",
+      "tsv_sha256": "76710313c875b6722d02a92164220fca265bce8d5e392625e615275e6aecbf06",
+      "tsv_bytes": 197883641,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Esophagus_Gastroesophageal_Junction.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Esophagus_Mucosa.pkl": {
+      "shape": [
+        14576,
+        4091
+      ],
+      "semantic_sha256": "a051180968f9c3da70059263838c718ff54ddfeaccb413c40793262907f8f4ce",
+      "pickle_sha256": "19da21162ed9f915c43b60493d95ae165945f947b7274e6247645979aede6ac6",
+      "tsv_sha256": "e268de3cc64451c7a00bf506f63c1556c9093d62c6ac736ebc8c843e9613cf12",
+      "tsv_bytes": 202209861,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Esophagus_Mucosa.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Esophagus_Muscularis.pkl": {
+      "shape": [
+        14590,
+        4091
+      ],
+      "semantic_sha256": "2b2abe128b49054eb623dcc436cb1524e1f99a05d28b9b46b531d39ab1608b26",
+      "pickle_sha256": "cc16071924a7dcd5ac1d72e1d6f1249e1ec5f017e1830dd789c32621e68bf2e9",
+      "tsv_sha256": "6480f611a685edf5781aedf6bfacbf72032d7b473956288554b225152e526edd",
+      "tsv_bytes": 202626566,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Esophagus_Muscularis.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Heart_Atrial_Appendage.pkl": {
+      "shape": [
+        14022,
+        4091
+      ],
+      "semantic_sha256": "87fefbb09eb8a16f6e0e48468ae0972d032dd4e7828ad71e1e7fd4fb1df38a3e",
+      "pickle_sha256": "1a4dd7b665f7dcab1c2a3d99ed88b362500ec6c41b7687ceb374434d0e07653a",
+      "tsv_sha256": "e64a60434a82863dff6423b01b895dcc3274e993811e31ddebe6bcabfafc25e9",
+      "tsv_bytes": 194277570,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Heart_Atrial_Appendage.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Heart_Left_Ventricle.pkl": {
+      "shape": [
+        13189,
+        4091
+      ],
+      "semantic_sha256": "d334747977ee8f21d7bf387636d66a3a73569f7c68612882a7527afc4cc52099",
+      "pickle_sha256": "a780dda270439163081610e79bfb5e016268bbf48b3c7fcab29811236ea58576",
+      "tsv_sha256": "ac6a00aec94ea550b02f16effe832f660f06558b1e8d9304ea54b29f3a6888cd",
+      "tsv_bytes": 182937264,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Heart_Left_Ventricle.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Kidney_Cortex.pkl": {
+      "shape": [
+        11151,
+        4091
+      ],
+      "semantic_sha256": "3522ce2daf78749d822ff53f4dc6e341af40bf8cdc0fbf437e406dcc9db03a7f",
+      "pickle_sha256": "7ae0af946363b5ae7e492172f625005ff5a310d4c6fc3c3abae254cf91949210",
+      "tsv_sha256": "252ea7653fa862da0b72ac30a859bfcdc61c79c3eb6b34097572fcd44a2cea7c",
+      "tsv_bytes": 152560083,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Kidney_Cortex.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Liver.pkl": {
+      "shape": [
+        12703,
+        4091
+      ],
+      "semantic_sha256": "971ac1507e2ab0427065a61c98c589a894e91fcefe0403a6444b03784036d285",
+      "pickle_sha256": "1403b3171af7b1417b9e04b8dcb164998d16e70bc5815afd024e10b52a6b8da1",
+      "tsv_sha256": "1523a06a3eabf138423e104bfd4eeee8bcbb05f3ec51f366540bffce66b610bd",
+      "tsv_bytes": 175585672,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Liver.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Lung.pkl": {
+      "shape": [
+        15044,
+        4091
+      ],
+      "semantic_sha256": "3b3b60a8ba981c7bf68df2ad68d83163ce3b4dce3dfee41176a378c1dbf912cd",
+      "pickle_sha256": "216134d017459b63346c2526601ed3f6279d252aeefa8eab98bb94f93c19f018",
+      "tsv_sha256": "247be7602ca1b4963d6d613e561eba18fc2da581305d91549f0d16bc7a6af735",
+      "tsv_bytes": 208480581,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Lung.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Minor_Salivary_Gland.pkl": {
+      "shape": [
+        13874,
+        4091
+      ],
+      "semantic_sha256": "e4983fc5e273682cc171f01cdb8b9a34359dc0b4e5b88d4079e941b667dc2689",
+      "pickle_sha256": "112706b398ceeaf6e824e692406467e72fd0cbd99bcb3296065df62e3839146c",
+      "tsv_sha256": "d57ea559a4df0c30316557aecab33509275393bc502a3be0dd50647c22a0f88d",
+      "tsv_bytes": 191394168,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Minor_Salivary_Gland.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Muscle_Skeletal.pkl": {
+      "shape": [
+        13370,
+        4091
+      ],
+      "semantic_sha256": "f4ef63ffcf66db1d8cacfcd508ce8f852c8363f6d8172ae59748360d51578566",
+      "pickle_sha256": "3a9c8d8ccb234438c666522628926d57b33ce14f55d2e9c4b9caf2c05a2e61aa",
+      "tsv_sha256": "143743f2a2b3a4cb21dcf6aa79bdb988cdc08fbdf030c88bda396b560d28d2ed",
+      "tsv_bytes": 186189511,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Muscle_Skeletal.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Nerve_Tibial.pkl": {
+      "shape": [
+        15357,
+        4091
+      ],
+      "semantic_sha256": "5cbd3fc465af71d2b985941a6476469150dc0fc39afb099db79646387d8d319f",
+      "pickle_sha256": "0bca580688e6f55b444fde4e897ccc358a16da8f21d17a40c7423a84c4e3d3d9",
+      "tsv_sha256": "e4fd91dc1c19efdfdcff10282aae6c12824b4cd4d58f3be92703803e91c74e22",
+      "tsv_bytes": 213582538,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Nerve_Tibial.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Ovary.pkl": {
+      "shape": [
+        13728,
+        4091
+      ],
+      "semantic_sha256": "5b944f1a20b787a85e4ee59db4455c93a09064e52b995f9b2ac3e41ce31adefa",
+      "pickle_sha256": "5e9591d802e58ff1cddf59dcfad50f7a04e3e5d34ffd0be2d65f88cf14fb6ba4",
+      "tsv_sha256": "542af921254bfbd618073893d067b6e2674f503c003a14b07cd543594cdf4b5b",
+      "tsv_bytes": 189397464,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Ovary.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Pancreas.pkl": {
+      "shape": [
+        13684,
+        4091
+      ],
+      "semantic_sha256": "b92858874a5269bcf8cd27c35e02ece5b99a9a3dced3897eebb0b91ffd856a1f",
+      "pickle_sha256": "27956e025d359625af1d18d7fb9d20bc5a2a6a3c2a2055fcdf6b6affb6a2cbd6",
+      "tsv_sha256": "055d0b06c196a23cd1308eff28cb44602a085da33390c2d149b590c4ca5e71b7",
+      "tsv_bytes": 189068443,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Pancreas.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Pituitary.pkl": {
+      "shape": [
+        14633,
+        4091
+      ],
+      "semantic_sha256": "a5a8ec6a9dc71b02351e74dabd6a2efcc6d52ae016a4967f6b63022836a4b1c2",
+      "pickle_sha256": "2b39c524106e0d8548c71217d58ae1fc733c778d786fac7a853e75d5d230d716",
+      "tsv_sha256": "0be0caab18a4d00275778eceb472941133a74a6a6d54f47b1c3baa2b9845cfcd",
+      "tsv_bytes": 202436084,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Pituitary.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Prostate.pkl": {
+      "shape": [
+        14436,
+        4091
+      ],
+      "semantic_sha256": "d03c1b1bd20534007e9337588ca80319bbc10ceebe697121190b623c80df736e",
+      "pickle_sha256": "f73e451e71c9c264f106588d90372cd2df1053e872188333f912c7b126e05f90",
+      "tsv_sha256": "3bbfb33583f1b07c1a2c425f87b33e7a52be2fe27f12653ef956a02db46e1278",
+      "tsv_bytes": 198841660,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Prostate.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Skin_Not_Sun_Exposed_Suprapubic.pkl": {
+      "shape": [
+        14920,
+        4091
+      ],
+      "semantic_sha256": "76d1dfdd962cc04c140116df75b591f00db03850da9051a7a603a71fc83a4aa5",
+      "pickle_sha256": "963b5a857c1431d70487f9a3cb91fe2e9593138d6b46b6541e69490b0159e40b",
+      "tsv_sha256": "82bdc5a3a05cb12f05891a0ef23eca8a4865d48426d25d06dacb97d1ea1478f2",
+      "tsv_bytes": 207443603,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Skin_Not_Sun_Exposed_Suprapubic.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Skin_Sun_Exposed_Lower_leg.pkl": {
+      "shape": [
+        15188,
+        4091
+      ],
+      "semantic_sha256": "d14e995f33592aa48f0effe141b54b405df48268ba29516142cc6d9664f6e752",
+      "pickle_sha256": "a13f1576994286c07ddefa5309a6030ba30f26acaebbf7d6dffed02678a31b4d",
+      "tsv_sha256": "e670b71d5cf72a8faff49f73b472f656058ebd2c2b443e88ccf23700758fdfd5",
+      "tsv_bytes": 210941874,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Skin_Sun_Exposed_Lower_leg.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Small_Intestine_Terminal_Ileum.pkl": {
+      "shape": [
+        14053,
+        4091
+      ],
+      "semantic_sha256": "408c245a2a1ae693cd4eabdede359366f31dd62484506946cf56efaca5fac950",
+      "pickle_sha256": "9f56b47ba3dd41eed5b40b7c3989fd2f6acf0a835eeeea1da099862154740f54",
+      "tsv_sha256": "3f0a862cac8942e244bea278d19e65ea76b1629ba3f68ecb4a7525df5fa9107d",
+      "tsv_bytes": 193705316,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Small_Intestine_Terminal_Ileum.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Spleen.pkl": {
+      "shape": [
+        14061,
+        4091
+      ],
+      "semantic_sha256": "1f204b330f26304b6bfe92aa1586e86f4088ce0f4a8ad0b59d5d3f95e80149b9",
+      "pickle_sha256": "f51d5cd831c34f5e62144a716ef6f4359b1898a5914a6ba06b0bffdc3dd4f226",
+      "tsv_sha256": "d96733a5617ba7a00f2947ad29439df9def281f9ee9bc510220ff18a5d9fc5a8",
+      "tsv_bytes": 194707920,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Spleen.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Stomach.pkl": {
+      "shape": [
+        14089,
+        4091
+      ],
+      "semantic_sha256": "2a969f3238675499004a85e95821f6a732389a67943afc74dce07116db3acbc5",
+      "pickle_sha256": "ffdf443fac72b2ef3fc61edb5696eba190713b4a9b5e49fb6ffcafe13aba7c18",
+      "tsv_sha256": "f9bf6af3de03972b2185aafd0d6aff3a80c82e2f8d2ea85afae548e428f8c5cc",
+      "tsv_bytes": 194748633,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Stomach.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Testis.pkl": {
+      "shape": [
+        17853,
+        4091
+      ],
+      "semantic_sha256": "a4ea5af7e4400d8014404c93111c6462e4ac275c149d25d7e7ac52ed913d5b67",
+      "pickle_sha256": "556f4e0629e47dfe16ad1e0ad1764a9aa5dcafa61b4f0f34f86dcc58cf7172e5",
+      "tsv_sha256": "8a7c280b0ced91418dfb14fc1a91bfd1e773d1295164cb0d47fc33b2c358c2ed",
+      "tsv_bytes": 246850468,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Testis.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Thyroid.pkl": {
+      "shape": [
+        15289,
+        4091
+      ],
+      "semantic_sha256": "c8dcba011f2a66f4a8deaed7aad310792d69ec57d6fc8ff694d11a798307cb8c",
+      "pickle_sha256": "026cff15e95ab9d8a7d2678d456131f49d2bb916782ac19ae0eda41bc0a6ed2a",
+      "tsv_sha256": "a7557fccee2c5fd92df2a6fe4cfa3c2d960d9ffc35db565f788a5dc379113b9b",
+      "tsv_bytes": 212769527,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Thyroid.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Uterus.pkl": {
+      "shape": [
+        13188,
+        4091
+      ],
+      "semantic_sha256": "5b3284d37320b596b196b1eb785c7ae18e1370cd2ff7b4a5fd7b6eea7a1055a6",
+      "pickle_sha256": "e80c06fa6ec9f5b266a961de4ff4699bdd8a8cf2e38c2fe69f36913bb5ca57f1",
+      "tsv_sha256": "47f19a054a2a8baafee0dd06ffdb73331a569b6d96bf2f000948a54417a4cc41",
+      "tsv_bytes": 181803792,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Uterus.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Vagina.pkl": {
+      "shape": [
+        12960,
+        4091
+      ],
+      "semantic_sha256": "9681e9a5589e0a651f32d54864a535b25017ff94b0f13661c24f17f97c3eb344",
+      "pickle_sha256": "9b3aeca99e3bd00b8020babea0e3b2f64d0df181902763e0b09b80d3a1c5f176",
+      "tsv_sha256": "d5afb86f2f5015f722d7ff8d2680e63ef62db809ee35ec4927e60a111fa09187",
+      "tsv_bytes": 178234595,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Vagina.tsv.gz"
+    },
+    "spredixcan-mashr-zscores-Whole_Blood.pkl": {
+      "shape": [
+        12610,
+        4091
+      ],
+      "semantic_sha256": "1697b237a522dbc0a8561f325804ce8d38aa8087e8b68c29ceb7232ab90dc97b",
+      "pickle_sha256": "0f3ae2335c8288320f865473037c0140f234efe49854b13e0e58050c2a34f559",
+      "tsv_sha256": "9f0fa2f73877d1c6f055eb18880580a5f1fa1120693f19ebaceadb0e05f96700",
+      "tsv_bytes": 175015988,
+      "index_name": "gene_name",
+      "columns_name": null,
+      "archive_member": "spredixcan/spredixcan-Whole_Blood.tsv.gz"
+    }
+  }
+}

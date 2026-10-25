@@ -146,10 +146,12 @@
         "10.1038/s41467-023-41057-4"
       ],
       "historical_url": "https://upenn.box.com/shared/static/wvrbt0v2ddrtb25g7dgw1be09yt9l14l.pkl",
-      "verification": "Local MD5 3436a41e9a70fc2a206e9b13153ebd12 matches upstream setup recipe; URL returns HTTP 404 on 2026-10-20. Obtain matching file from existing workspace/reference bundle.",
+      "verification": "Existing pickle matches upstream historical checksum. Public Zenodo TSV has matching labels after alignment but 91054701 unequal values (maximum absolute difference 4.999999959287571e-06); not an exact replacement. See references/phenoplier/input_equivalence_audit.json.",
       "source_candidates": [
         "data/phenomexcan/gene_assoc/smultixcan-mashr-pvalues.pkl"
-      ]
+      ],
+      "alternative_public_url": "https://zenodo.org/records/3911190/files/smultixcan-mashr-pvalues.tsv.gz?download=1",
+      "alternative_is_exact": false
     },
     "phenomexcan_rcp": {
       "path": "data/phenomexcan/gene_assoc/fastenloc-torus-rcp.pkl",
@@ -164,10 +166,12 @@
         "10.1038/s41467-023-41057-4"
       ],
       "historical_url": "https://upenn.box.com/shared/static/qgghpf4nyuj45su5a184e8geg4egjd20.pkl",
-      "verification": "Local MD5 a1b12c552c0b41db3f3b0131910aa974 matches upstream setup recipe; URL returns HTTP 404 on 2026-10-20. Obtain matching file from existing workspace/reference bundle.",
+      "verification": "Existing pickle matches upstream historical checksum. Public Zenodo TSV has matching labels after alignment but 8736792 unequal values (maximum absolute difference 5.0000000000105516e-05); not an exact replacement. See references/phenoplier/input_equivalence_audit.json.",
       "source_candidates": [
         "data/phenomexcan/gene_assoc/fastenloc-torus-rcp.pkl"
-      ]
+      ],
+      "alternative_public_url": "https://zenodo.org/records/3911190/files/fastenloc-torus-rcp.tsv.gz?download=1",
+      "alternative_is_exact": false
     },
     "gene_name_mapping": {
       "path": "data/phenomexcan/genes_metadata/genes_mapping_name_to_id.pkl",

@@ -2,6 +2,8 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts/inputs"))
 
 SPEC = importlib.util.spec_from_file_location('spredixcan_inputs', Path(__file__).resolve().parents[1] / 'scripts/inputs/link_spredixcan_inputs.py')
 staging = importlib.util.module_from_spec(SPEC)

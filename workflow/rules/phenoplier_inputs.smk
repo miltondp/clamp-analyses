@@ -27,7 +27,9 @@ rule link_spredixcan_inputs:
         directory(config["archs4"]["drug_diseases"]["spredixcan_dir"]),
     params:
         source_arg=("--source-root " + shlex.quote(PHENO_INPUT_SOURCE)) if PHENO_INPUT_SOURCE else "",
-    conda: "snakemake"
+    resources:
+        mem_mb=8000,
+    conda: "clamp-analyses"
     shell:
         "python scripts/inputs/link_spredixcan_inputs.py --destination {output:q} {params.source_arg}"
 

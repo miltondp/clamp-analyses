@@ -1,3 +1,5 @@
+from pathlib import Path
+
 DATASETS = list(config["datasets"])
 DATASET_PATTERN = "|".join(DATASETS)
 BUILD_DATASETS = [
@@ -28,6 +30,16 @@ def dataset_raw_inputs(wildcards):
     return [cfg[key] for key in keys]
 
 
+def pseudobulk_build_inputs(wildcards):
+    cfg = config["datasets"][wildcards.dataset]
+    return [cfg["prepared_source"]] if cfg.get("prepared_source") else dataset_raw_inputs(wildcards)
+
+
+def pseudobulk_reference_inputs(wildcards):
+    root = config["datasets"][wildcards.dataset].get("reference_root")
+    return sorted(str(path) for path in Path(root).glob("*") if path.is_file()) if root else []
+
+
 def pseudobulk_path(dataset, filename):
     cfg = config["datasets"][dataset]
     if cfg.get("build_pseudobulk", False):
@@ -41,6 +53,30 @@ def pseudobulk_input(filename):
 
 def all_pseudobulk_inputs(filename):
     return [pseudobulk_path(dataset, filename) for dataset in DATASETS]
+
+
+# Pinned public source files. HeartMap remains an authenticated manual input.
+with open("workflow/config/pseudobulk_inputs.json") as handle:
+    PB_INPUT_ASSETS = json.load(handle)["assets"]
+PB_INPUT_PATHS = {asset["path"]: key for key, asset in PB_INPUT_ASSETS.items()}
+
+rule fetch_pseudobulk_input:
+    output:
+        "{pseudobulk_file}",
+    wildcard_constraints:
+        pseudobulk_file="|".join(re.escape(path) for path in PB_INPUT_PATHS),
+    params:
+        key=lambda wc: PB_INPUT_PATHS[wc.pseudobulk_file],
+    resources:
+        mem_mb=1000,
+    conda: "snakemake"
+    shell:
+        "python scripts/inputs/pseudobulk_inputs.py --manifest workflow/config/pseudobulk_inputs.json "
+        "--only {params.key:q}"
+
+rule pseudobulk_downloads:
+    input:
+        list(PB_INPUT_PATHS),
 
 
 # ============================================================
@@ -67,7 +103,8 @@ rule pathway_prior:
 
 rule cohort_manifest:
     input:
-        raw=dataset_raw_inputs,
+        raw=lambda wc: [config["datasets"][wc.dataset]["cohort_manifest"]]
+        if config["datasets"][wc.dataset].get("cohort_manifest") else dataset_raw_inputs(wc),
         config="workflow/config/pseudobulk.yaml",
     output:
         manifest=f"{PROD}/{{dataset}}/pseudobulk/cohort_manifest.csv",
@@ -84,7 +121,8 @@ rule cohort_manifest:
 
 rule build_pseudobulk:
     input:
-        raw=dataset_raw_inputs,
+        raw=pseudobulk_build_inputs,
+        references=pseudobulk_reference_inputs,
         manifest=rules.cohort_manifest.output.manifest,
         config="workflow/config/pseudobulk.yaml",
     output:
@@ -662,3 +700,9 @@ rule biology_pseudobulk:
         rules.single_cell_recovery_pseudobulk.output.complete,
         rules.hard_cell_types_pseudobulk.output.complete,
         rules.hard_pair_loadings_pseudobulk.output.complete,
+
+
+rule pseudobulk_inputs:
+    input:
+        rules.pseudobulk_data.input,
+        "data/pseudobulk/cell_type_labels.csv",
