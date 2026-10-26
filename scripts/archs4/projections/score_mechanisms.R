@@ -218,7 +218,7 @@ comparison_tests <- comparison_rows[, {
                               a$n_gene_set_in_universe - a$n_gene_set_in_top_loading,
                               b$n_gene_set_in_top_loading,
                               b$n_gene_set_in_universe - b$n_gene_set_in_top_loading),
-                            nrow = 2, byrow = TRUE), alternative = "greater")$p.value
+                            nrow = 2, byrow = TRUE))$p.value
   }
   .(p_value = p, arch_fraction = arch_fraction, local_fraction = local_fraction)
 }, by = comparison_id]
