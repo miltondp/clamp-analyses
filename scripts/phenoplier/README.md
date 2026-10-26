@@ -1,8 +1,9 @@
 # PhenoPLIER setup TODO and integration handoff
 
 This is the handoff for the phenoplier-cli maintainer. The CLAMP workflow already
-uses **phenoplier-cli v0.5.2** to compute GLS. Existing results were generated with
-that CLI and an initialized reference workspace. The unresolved task is reproducing
+uses **phenoplier-cli v0.7.3** with the expert-reviewed `phenomexcan-curated` trait
+filter (2,824 of 4,049 phenotypes) to compute GLS. Existing results were generated
+with that CLI and an initialized reference workspace (see "As-run results"). The unresolved task is reproducing
 that environment and its inputs for a new user. This document describes the current
 workflow after PR #53, not the older CLAMPfull_bp launchers.
 
@@ -10,7 +11,7 @@ workflow after PR #53, not the older CLAMPfull_bp launchers.
 
 | Item | Current evidence | Needed for automatic setup |
 | --- | --- | --- |
-| CLI environment | `scripts/phenoplier/setup_env.sh` installs tag v0.5.2 into `phenoplier-cli-neo`. Repository setup does not call it. An existing v0.8.0 environment fails the explicit version check. | A reproducible v0.5.2 installation and confirmed reviewer repository access; do not silently upgrade scientific runs. |
+| CLI environment | `scripts/phenoplier/setup_env.sh` installs tag v0.7.3 into `phenoplier-cli-neo`. Repository setup does not call it. Any other release fails the explicit version check. | A reproducible v0.7.3 installation and confirmed reviewer repository access; do not silently upgrade scientific runs. |
 | MGM names and matrix input | MGM/consensus columns can be named `metaLV...` or other module IDs, while the current integration requires `LV1`, `LV2`, ... . Their source is `metaZ.csv` / `Z.csv`, not a fitted-model RDS. | Support matrix-only inputs and arbitrary module names, or document a supported conversion with lossless identifier mapping. |
 | Workspace | `run_gls.sh` requires `config.toml`. Existing author workspace links the reference bundle's `data/` and `software/`. | Initialization plus acquisition of the actual references below in a new writable workspace. |
 | Downloader coverage | At v0.5.2, `full_data` includes 1000G covariance and MASHR models; its S-MultiXcan download entry is explicitly unimplemented. `t21` includes rapid-GWAS results and GTEx covariance. | A supported download route for this exact GTEx/rapid-GWAS GLS workflow. The 1000G panel is not an interchangeable default. |
@@ -66,18 +67,17 @@ Path abbreviations: `A=output/01_model_building/02_archs4`,
 
 | Family | Models / project name | Published GLS output |
 | --- | --- | --- |
-| Coverage CLAMPbase | 21: fractions 1,5,10,25,50,75,100 x replicates 1,2,3; `cov_rs{f}_seed{s}_CLAMPbase` | `A/clampbase_coverage/summaries/cov_rs{f}_seed{s}.tsv.gz` |
-| GTEx coverage comparators | 2: replicates 2,3, RNG seeds 456,789; `gtex_rs100_seed{rep}_CLAMPbase` | `A/clampbase_coverage/comparators/gtex/summaries/gtex_rs100_seed{rep}.tsv.gz` |
-| Saturation CLAMPbase GLS | 17: fractions 1,5,10,25,50,75 x replicates 1,2,3 at K=1728, excluding (1,1728,1); `sat_rs{f}_k1728_seed{s}_CLAMPbase` | `A/clampbase_saturation/summaries/sat_rs{f}_k1728_seed{s}.tsv.gz` |
-| Final CLAMPbase | GTEx/recount2: `final_{ds}_CLAMPbase`; ARCHS4 reuses coverage 100%, replicate 1 | `A/clampbase_finals/summaries/final_{ds}.tsv.gz` |
+| Coverage CLAMPbase | 70: fractions 1,5,10,25,50,75,100 x replicates 1-10 (`archs4.coverage.pathway` seeds); `cov_rs{f}_seed{s}_CLAMPbase`, except 100% replicates 2-10 named `archs4_rs100_seed{2,3,1001..1007}_CLAMPbase`. Replicates 1-3 start from `CLAMPbase.rds`, 4-10 from `CLAMPbase/Z.csv` | `A/clampbase_coverage/summaries/cov_rs{f}_seed{s}.tsv.gz` |
+| GTEx coverage comparators | 9: replicates 2-10, RNG seeds 456,789,1001-1007; `gtex_rs100_seed{rep}_CLAMPbase` | `A/clampbase_coverage/comparators/gtex/summaries/gtex_rs100_seed{rep}.tsv.gz` |
+| Saturation CLAMPbase GLS | 17: fractions 1,5,10,25,50,75 x replicates 1,2,3 at K=1728, excluding (1,1728,1); `sat_rs{f}_k1728_seed{s}_CLAMPbase`. **Pending: 43 more** (replicates 4-10 at every fraction plus (1,1728,1)); their models are `A/01_saturation/study_saturation_rs{f}_k1728_seed_{s}/CLAMPbase/Z.csv` | `A/clampbase_saturation/summaries/sat_rs{f}_k1728_seed{s}.tsv.gz` |
+| Final CLAMPbase | `phenoplier.trait_finals`: GTEx `final_gtex_CLAMPbase`; ARCHS4 reuses coverage 100%, replicate 1. **Pending:** recount2 (the current Gavish-Donoho model, 364 LVs; the as-run summary is the earlier 544-LV model) | `A/clampbase_finals/summaries/final_{ds}.tsv.gz` |
 | Canonical CLAMPfull | 3: `canon_{ds}_CLAMPfull_canonical`; input `F/{ds}/CLAMPfull_canonical.rds` | `F/{ds}/traits/canon_{ds}.tsv.gz` |
-| CRISPR MGM | `metalv`; input `M/phenoplier/metalv_z.pkl`, GSEA-selected MGM subset | `M/phenoplier/gls_summary.tsv.gz`; mapped `gls_summary_metalv.tsv.gz` |
-| Consensus GLS, separately requested | 3: `consensus_{ds}_CLAMPfull_consensus`; input `C/{ds}/traits/phenoplier_Z.pkl` | `C/{ds}/traits/gls_summary.tsv.gz`; mapped `consensus_{ds}.tsv.gz` |
+| Consensus (MGM) | 3: `consensus_{ds}_CLAMPfull`, all metaLVs; input `C/{ds}/traits/phenoplier_Z.pkl` | `C/{ds}/traits/gls_summary.tsv.gz`; mapped `consensus_{ds}.tsv.gz` |
 
-Current `consensus_models` builds models, activities, ORA and LINCS; it does not
-request consensus GLS. A specific `C/{ds}/traits/consensus_{ds}.tsv.gz` target
-requests that optional analysis. The full consensus ARCHS4 model and the
-GSEA-selected CRISPR MGM subset must keep distinct project names.
+`consensus_models` requests the consensus GLS. The CRISPR MGM selection
+(`crispercas.gls_summary`) reads `C/archs4/traits/consensus_archs4.tsv.gz` and
+recomputes Benjamini-Hochberg over the GSEA-significant metaLVs; there is no
+separate CRISPR MGM GLS run.
 
 ## Snakemake integration: model outputs to downstream results
 
@@ -94,8 +94,8 @@ required once the separate environment/workspace setup is resolved.
 | GTEx coverage comparator models | `gls_gtex_coverage_base` | `aggregate_archs4_coverage_traits` |
 | Final GTEx/recount2 CLAMPbase models | `gls_final_base` | Coverage/final trait aggregation and `store_final_base` |
 | Canonical CLAMPfull outputs from `fit_canonical_clampfull` | `gls_canonical` | `aggregate_phenoplier_traits` |
-| MGM clustering and GSEA outputs | `crispercas_metalv_gls_input` -> `crispercas_metalv_gls` | `crispercas_metalv_gls_summary` maps LV names back; selection and figure rules read the mapped result |
-| Consensus `Z.csv` from `consensus_model` | `consensus_gls_input` -> `consensus_gls` | `consensus_traits` maps LV names back to module identifiers |
+| Coverage / GTEx replicate `CLAMPbase/Z.csv` (replicates without an `.rds`) | `phenoplier_z_input` -> `gls_bp_coverage_base` / `gls_gtex_coverage_base` | as above |
+| Consensus `Z.csv` from `consensus_model` | `consensus_gls_input` -> `consensus_gls` | `consensus_traits` maps LV names back to module identifiers; `crispercas_metalv_select` reads the ARCHS4 result |
 
 The current saturation selection is `saturation_k_values: [1728]` in
 `workflow/config/phenoplier.yaml`. `phenoplier_saturation` requests exactly those
@@ -107,13 +107,12 @@ Snakemake resolves upstream producers from the declared model paths (or explicit
 GLS and its consumers. Requesting a downstream trait/figure target therefore
 includes the required GLS jobs. Updated saturation model files invalidate their
 GLS outputs; the wrapper fingerprints model content to prevent stale project reuse.
-Consensus GLS remains an explicitly requested analysis; `consensus_models` alone
-does not request it. The environment and reference acquisition issues above remain
+The environment and reference acquisition issues above remain
 TODO even though these model-to-summary dependencies are already connected.
 
 Additional model families generated before these analyses:
 
-- Coverage: 21 CLAMPbase cells under `A/02_coverage_study/<configured-level>/study_coverage_rs{f}_seed_{s}/`.
+- Coverage: 70 CLAMPbase cells under `A/02_coverage_study/<configured-level>/study_coverage_rs{f}_seed_{s}/` (replicates 4-10 hold `CLAMPbase/Z.csv` only).
 - Saturation model fitting covers 107 cells across K=86,173,432,864,1296,1728 under `A/01_saturation/`. **PhenoPLIER runs only on K=1728: 17 models**, excluding fraction 1%, replicate 1. No GLS runs are requested for K=86,173,432,864 or 1296.
 - Canonical finals: `F/{ds}/` contains `CLAMPfull_canonical.rds`, `Z.csv`, `B.csv`, `summary.csv`, `manifest.json`.
 - Stability seeds: 456,789,1001,1002,1003,1004,1005,1006,1007. ARCHS4 uses `A/05_stability`; GTEx/recount2 use `output/01_model_building/{01_gtex,03_recount2}/stability/seed{seed}/CLAMPfull_canonical/`.
@@ -141,9 +140,8 @@ fitted CLAMP `.rds` object**. The current workaround is:
 3. Serialize the matrix as a pandas pickle and pass that file to the CLI's `--input`.
 4. Map GLS results back to the original module identifiers with `collect_summary.py`.
 
-For CRISPR MGM, `export_metalv_z.py` reads `metaZ.csv` and selects GSEA-significant
-modules before conversion. For consensus, `consensus_gls_input` converts the full
-`Z.csv`. Both paths preserve their own mapping; their LV numbers are not interchangeable.
+For consensus, `consensus_gls_input` converts the full `Z.csv` and keeps
+`lv_mapping.csv`; the CRISPR MGM analysis uses the ARCHS4 consensus result.
 The wrapper's argument is still called `--rds`, even though it passes these pickles
 through to `phenoplier shortcut gls --input`.
 
@@ -169,8 +167,8 @@ an input fingerprint changes. Legacy projects without fingerprints are reused
 with a warning; use a fresh workspace for reproduction.
 
 Parameters: namespace `clamp`, cohort `phenomexcan_rapid_gwas`, GTEx v8/MASHR,
-LV percentile 0.01, biomedical trait filter, expected 2,366 phenotypes (4,049
-before filtering). Step 6 uses one worker x eight BLAS threads; step 7 uses six
+LV percentile 0.01, `phenomexcan-curated` trait filter, expected 2,824 phenotypes
+(4,049 before filtering). Step 6 uses one worker x eight BLAS threads; step 7 uses six
 workers x two BLAS threads. Outer GLS jobs request 12 CPUs, 100 GB, 4,320 minutes.
 The nested executor defaults to `local`, including when the outer Snakemake job
 uses Pico's `server_cu` submission profile.
@@ -192,3 +190,13 @@ references through documented commands, initialize a small synthetic project and
 validate input resolution without reusing author outputs. Then validate one small
 GLS case against the pinned release. Full model fits and a full GLS campaign are
 outside the repository's lightweight validation. No files have been sent externally.
+
+## As-run results
+
+The summaries in `output/` come from the pico campaign
+`server_cu:/pividori_lab/phenoplier_workspace/projects/marc/10-15-2026-trait-filtering-fix/`
+(one folder per project name above; `INDEX-curated.tsv` and `INDEX-new.tsv` list
+models, LVs and hits). Each published summary is that project's
+`summary/gls-summary-phenomexcan_rapid_gwas-phenomexcan-curated.tsv.gz`, copied to
+the output path its rule declares. The earlier biomedical (2,366-trait) summaries
+are kept in `output/archive/traits_biomedical_20261026/`.

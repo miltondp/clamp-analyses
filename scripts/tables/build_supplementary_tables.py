@@ -87,7 +87,7 @@ def table_traits():
     traits = set()
     for f in sorted(COVERAGE_SUMMARIES.glob("cov_rs*_seed*.tsv.gz")):
         traits |= set(pd.read_csv(f, sep="\t", usecols=["phenotype"], dtype=str).phenotype)
-    assert len(traits) == 2366, len(traits)
+    assert len(traits) == 2824, len(traits)
 
     info = pd.read_csv(PHENOMEXCAN / "phenotypes_info.tsv", sep="\t", dtype={"short_code": str})
     info = info[info.short_code.isin(traits)].copy()
@@ -101,7 +101,7 @@ def table_traits():
              "n_total", "n_cases", "n_controls"]].sort_values("trait_id")
     readme = [
         "Supplementary Table 1. Traits evaluated in the genetic-trait recovery analyses.",
-        "All 2,366 PhenomeXcan traits tested by the PhenoPLIER generalized least-squares (GLS) regression in the training-size, fixed-rank and full-compendium analyses (Figure 3). Per-model trait recovery counts are provided as Figure 3 source data.",
+        "All 2,824 PhenomeXcan traits (expert-reviewed phenomexcan-curated set) tested by the PhenoPLIER generalized least-squares (GLS) regression in the training-size, fixed-rank and full-compendium analyses (Figure 3). Per-model trait recovery counts are provided as Figure 3 source data.",
         "trait_id / phenomexcan_code / description / trait_type / source: PhenomeXcan trait annotation (phenotypes_info.tsv).",
         "n_total, n_cases, n_controls: GWAS sample sizes reported by PhenomeXcan (cases and controls are empty for continuous traits).",
     ]
@@ -375,10 +375,10 @@ def table_metalv_gls():
            "gls_fdr", "significant", "at_least_1000_cases", "disease_group", "in_figure5"]]
     g["metaLV"] = pd.Categorical(g.metaLV, FIG5_LVS)
     g = g.sort_values(["metaLV", "gls_pvalue"])
-    assert len(g) == 4 * 2366
+    assert len(g) == 4 * 2824
     readme = [
-        "Supplementary Table 5. PhenoPLIER GLS trait associations of the four Figure 5 metaLVs across 2,366 PhenomeXcan traits.",
-        "GLS regression of each trait's S-MultiXcan gene associations on the metaLV's top 1% of gene loadings (binarized), accounting for gene-gene correlations and gene size and density covariates (PhenoPLIER v0.5.2, biomedical trait filter). gls_fdr: Benjamini-Hochberg FDR across all traits and the 27 GSEA-significant metaLVs.",
+        "Supplementary Table 5. PhenoPLIER GLS trait associations of the four Figure 5 metaLVs across 2,824 PhenomeXcan traits.",
+        "GLS regression of each trait's S-MultiXcan gene associations on the metaLV's top 1% of gene loadings (binarized), accounting for gene-gene correlations and gene size and density covariates (PhenoPLIER v0.7.3, phenomexcan-curated trait filter, all consensus ARCHS4 metaLVs tested). gls_fdr: Benjamini-Hochberg FDR across all traits and the 27 GSEA-significant metaLVs.",
         "n_samples, n_cases, n_controls: UK Biobank sample sizes (PhenomeXcan); continuous traits have no cases or controls. at_least_1000_cases: traits used for Figure 5 (binary traits with at least 1,000 cases, or continuous traits). disease_group / in_figure5: disease to which the trait was merged in Figure 5.",
     ]
     return readme, {"gls": g}

@@ -34,7 +34,42 @@ PHENOPLIER_SAT_CELLS = [
 ]
 
 
+PHENOPLIER_COV_SEEDS = A4_PW_INDICES
+PHENOPLIER_COV_SEED_PATTERN = "|".join(map(str, PHENOPLIER_COV_SEEDS))
+PHENOPLIER_GTEX_REPLICATES = sorted(A4_COV_GTEX_REPLICATES) + [
+    r for r in A4_PW_GTEX_NEW if r > max(A4_COV_GTEX_REPLICATES)
+]
+PHENOPLIER_Z_CELLS = [
+    a4_cov_cell(fraction, seed)
+    for fraction in A4_COV_LEVELS
+    for seed in PHENOPLIER_COV_SEEDS
+    if seed not in A4_COV_SEEDS
+] + [a4_cov_gtex_rep_dir(r) for r in PHENOPLIER_GTEX_REPLICATES if r not in A4_COV_GTEX_REPLICATES]
+
+
+def phenoplier_cov_model(fraction, seed):
+    cell = a4_cov_cell(fraction, seed)
+    if int(seed) in A4_COV_SEEDS:
+        return f"{cell}/CLAMPbase.rds"
+    return f"{cell}/CLAMPbase/phenoplier_Z.pkl"
+
+
+def phenoplier_cov_name(fraction, seed):
+    fraction, seed = int(fraction), int(seed)
+    if fraction == 100 and seed > 1:
+        label = seed if seed in A4_COV_SEEDS else A4_PW_FULL_SEEDS[seed - 1]
+        return f"archs4_rs100_seed{label}_CLAMPbase"
+    return f"cov_rs{fraction}_seed{seed}_CLAMPbase"
+
+
+def phenoplier_gtex_model(replicate):
+    if int(replicate) in A4_COV_GTEX_REPLICATES:
+        return f"{a4_cov_gtex_rep_dir(replicate)}/CLAMPbase.rds"
+    return f"{a4_cov_gtex_rep_dir(replicate)}/CLAMPbase/phenoplier_Z.pkl"
+
+
 A4_FINAL_DATASETS = list(A4_COV_CFG["final_datasets"])
+PHENOPLIER_TRAIT_FINALS = list(PHENOPLIER_CFG["trait_finals"])
 A4_FINAL_DATASET_PATTERN = "|".join(A4_FINAL_DATASETS)
 A4_FINAL_LINKED = ["archs4"]
 A4_FINAL_LINKED_PATTERN = "|".join(A4_FINAL_LINKED)
@@ -67,14 +102,14 @@ def phenoplier_store_dir(summary_dir):
 PHENOPLIER_COV_BASE = [
     f"{PHENOPLIER_COV_BASE_DIR}/cov_rs{fraction}_seed{seed}.tsv.gz"
     for fraction in A4_COV_LEVELS
-    for seed in a4_cov_seeds_for(fraction)
+    for seed in PHENOPLIER_COV_SEEDS
 ]
 PHENOPLIER_SAT_BASE = [
     f"{PHENOPLIER_SAT_BASE_DIR}/sat_rs{fraction}_k{k}_seed{seed}.tsv.gz"
     for (fraction, k, seed) in PHENOPLIER_SAT_CELLS
 ]
 PHENOPLIER_FIN_BASE = [
-    f"{PHENOPLIER_FIN_BASE_DIR}/final_{dataset}.tsv.gz" for dataset in A4_FINAL_DATASETS
+    f"{PHENOPLIER_FIN_BASE_DIR}/final_{dataset}.tsv.gz" for dataset in PHENOPLIER_TRAIT_FINALS
 ]
 PHENOPLIER_CANONICAL = [
     f"{A4_CAN_FINAL_ROOT}/{dataset}/traits/canon_{dataset}.tsv.gz"
@@ -86,7 +121,7 @@ PHENOPLIER_FIN_STORES = [
 ]
 PHENOPLIER_COMP_BASE_DIR = A4_TRAIT_DIRS["coverage"]["comparators_clampbase_dir"]
 PHENOPLIER_COMP_BASE = [
-    f"{PHENOPLIER_COMP_BASE_DIR}/gtex_rs100_seed{rep}.tsv.gz" for rep in A4_COV_GTEX_REPLICATES
+    f"{PHENOPLIER_COMP_BASE_DIR}/gtex_rs100_seed{rep}.tsv.gz" for rep in PHENOPLIER_GTEX_REPLICATES
 ]
 
 
@@ -125,9 +160,21 @@ PHENOPLIER_STORE_SHELL = "".join([
 # Step 1: test module-trait associations
 # ============================================================
 
+rule phenoplier_z_input:
+    input:
+        z=ancient("{cell}/CLAMPbase/Z.csv"),
+    output:
+        temp("{cell}/CLAMPbase/phenoplier_Z.pkl"),
+    wildcard_constraints:
+        cell="|".join(re.escape(cell) for cell in PHENOPLIER_Z_CELLS),
+    conda: "clamp-analyses"
+    shell:
+        "python -c \"import pandas as pd; pd.read_csv('{input.z}', index_col=0).to_pickle('{output}')\""
+
+
 rule gls_bp_coverage_base:
     input:
-        rds=lambda wc: f"{a4_cov_cell(wc.fraction, wc.seed)}/CLAMPbase.rds",
+        rds=lambda wc: phenoplier_cov_model(wc.fraction, wc.seed),
         script="scripts/phenoplier/run_gls.sh",
         verify="scripts/phenoplier/verify_summary.py",
     output:
@@ -136,14 +183,14 @@ rule gls_bp_coverage_base:
         f"{PHENOPLIER_COV_BASE_DIR}/cov_rs{{fraction}}_seed{{seed}}.log"
     params:
         rds=lambda wc, input: input.rds,
-        name=lambda wc: f"cov_rs{wc.fraction}_seed{wc.seed}_CLAMPbase",
+        name=lambda wc: phenoplier_cov_name(wc.fraction, wc.seed),
     threads: int(PHENOPLIER_GLS_RES["threads"])
     resources:
         mem_mb=int(PHENOPLIER_GLS_RES["mem_mb"]),
         runtime=int(PHENOPLIER_GLS_RES["runtime"]),
     wildcard_constraints:
         fraction=A4_COV_LEVEL_PATTERN,
-        seed=A4_COV_SEED_PATTERN,
+        seed=PHENOPLIER_COV_SEED_PATTERN,
     conda: PHENOPLIER_CFG["conda_env"]
     shell:
         PHENOPLIER_GLS_SHELL
@@ -176,7 +223,7 @@ rule gls_bp_saturation_base:
 
 rule gls_gtex_coverage_base:
     input:
-        rds=lambda wc: f"{a4_cov_gtex_rep_dir(wc.replicate)}/CLAMPbase.rds",
+        rds=lambda wc: phenoplier_gtex_model(wc.replicate),
         script="scripts/phenoplier/run_gls.sh",
         verify="scripts/phenoplier/verify_summary.py",
     output:
@@ -191,7 +238,7 @@ rule gls_gtex_coverage_base:
         mem_mb=int(PHENOPLIER_GLS_RES["mem_mb"]),
         runtime=int(PHENOPLIER_GLS_RES["runtime"]),
     wildcard_constraints:
-        replicate="|".join(map(str, A4_COV_GTEX_REPLICATES)),
+        replicate="|".join(map(str, PHENOPLIER_GTEX_REPLICATES)),
     conda: PHENOPLIER_CFG["conda_env"]
     shell:
         PHENOPLIER_GLS_SHELL

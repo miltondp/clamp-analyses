@@ -1,7 +1,7 @@
 phenoplier:
   conda_env: phenoplier-cli-neo
 
-  version: 0.5.2
+  version: 0.7.3
 
   workspace: ""
 
@@ -11,13 +11,16 @@ phenoplier:
 
   lv_percentile: 0.01
 
-  trait_filter: biomedical
+  trait_filter: phenomexcan-curated
 
   expected_phenotypes:
     biomedical: 2366
+    phenomexcan-curated: 2824
     all: 4049
 
   saturation_k_values: [1728]
+
+  trait_finals: [archs4, gtex]
 
   report_root: output/03_model_biology/02_archs4/05_traits
 

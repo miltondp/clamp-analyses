@@ -569,7 +569,8 @@ rule consensus_traits:
 CON_CORE = [
     f"{CON_ROOT}/{c}/{name}"
     for c in CON_COMPENDIA
-    for name in ["models/links.complete", "B.csv", "ora.csv", "lincs-projection.tsv", "manifest.json"]
+    for name in ["models/links.complete", "B.csv", "ora.csv", "lincs-projection.tsv", "manifest.json",
+                 f"traits/consensus_{c}.tsv.gz"]
 ]
 
 
