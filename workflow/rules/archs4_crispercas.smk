@@ -314,20 +314,27 @@ rule crispercas_metalv_pathways:
 rule crispercas_metalv_l1000:
     input:
         metaz=rules.crispercas_metalv_cluster.output.metaz,
-        gsea=rules.crispercas_metalv_gsea_best.output,
         selected=rules.crispercas_metalv_select.output.selected,
+        model=ancient(f"{A4_CAN_FINAL_ROOT}/archs4/{A4_CAN_MODEL_NAME}.rds"),
         lincs=ancient(f"{A4_DD_DATA}/lincs-data.pkl"),
         drugbank=ancient(A4_DD_CFG["drugbank_tsv"]),
         mapping=ancient(A4_CRISPERCAS_CFG["symbol_ensembl"]),
+        shortlist="workflow/config/fig5_drug_shortlist.csv",
         script="scripts/archs4/crispercas/l1000_metalv.py",
     output:
         scores=f"{A4_METALV}/l1000/l1000_scores.csv",
         ranking=f"{A4_METALV}/l1000/l1000_fig5_ranking.csv",
+        unique=f"{A4_METALV}/l1000/l1000_unique_signatures.csv",
+        curated=f"{A4_METALV}/l1000/l1000_fig5_curated.csv",
+        metadata=f"{A4_METALV}/l1000/l1000_metadata.json",
+    threads: 4
+    resources:
+        mem_mb=16000,
     conda: "clamp-analyses"
     shell:
-        "python {input.script} --metaz {input.metaz} --gsea-best {input.gsea} --selected {input.selected} "
-        "--lincs {input.lincs} --drugbank {input.drugbank} --symbol-ensembl {input.mapping} "
-        "--fdr {A4_CRISPERCAS_CFG[fdr]} --top-n {A4_CRISPERCAS_CFG[top_n]} "
+        "OPENBLAS_NUM_THREADS={threads} OMP_NUM_THREADS={threads} python {input.script} --metaz {input.metaz} --selected {input.selected} "
+        "--reference-model {input.model} --lincs {input.lincs} --drugbank {input.drugbank} --symbol-ensembl {input.mapping} "
+        "--shortlist {input.shortlist} --fdr {A4_CRISPERCAS_CFG[fdr]} "
         "--n-perm {A4_CRISPERCAS_CFG[l1000_n_perm]} --seed {A4_CRISPERCAS_CFG[l1000_seed]} --out-dir {A4_METALV}/l1000"
 
 
@@ -372,7 +379,7 @@ rule crispercas_metalv_composition:
 
 A4_FIG5_DATA = ["modules.csv", "module_genes.csv", "pathway_edges.csv", "module_trait_groups.csv",
                 "module_traits_all.csv", "gene_trait_edges.csv", "ring_pvalues.csv", "twas_rcp_matrix.csv",
-                "projection_composition.csv"]
+                "projection_composition.csv", "module_drugs.csv"]
 
 
 rule crispercas_fig5_data:
@@ -386,7 +393,7 @@ rule crispercas_fig5_data:
         members=rules.crispercas_metalv_pathways.output.members,
         top=rules.crispercas_metalv_pathways.output.top,
         composition=rules.crispercas_metalv_composition.output,
-        l1000=rules.crispercas_metalv_l1000.output.ranking,
+        l1000=rules.crispercas_metalv_l1000.output.curated,
         script="scripts/archs4/crispercas/fig5_data.py",
     output:
         expand(f"{A4_METALV}/fig5/{{f}}", f=A4_FIG5_DATA),
@@ -411,6 +418,8 @@ rule crispercas_mgm_report:
         traits=f"{A4_METALV}/fig5/module_trait_groups.csv",
         composition=rules.crispercas_metalv_composition.output[0],
         ranking=rules.crispercas_metalv_l1000.output.ranking,
+        curated=rules.crispercas_metalv_l1000.output.curated,
+        unique=rules.crispercas_metalv_l1000.output.unique,
         notebook=f"{A4_BIO_NB}/04_crispercas/00_mgm.ipynb",
     output:
         complete=touch(f"{A4_METALV}/notebook.complete"),

@@ -50,13 +50,13 @@ def composition_main(args):
 
 
 MODULES = {
-    "metaLV175": {"crispr": ["DGAT2"], "cells": "Hepatocyte", "drug": "Cortisone acetate",
+    "metaLV175": {"crispr": ["DGAT2"], "cells": "Hepatocyte",
                   "pathways": ["Complement and coagulation", "Acylglycerol homeostasis", "Bile acid metabolism"]},
-    "metaLV335": {"crispr": ["DGAT2"], "cells": "Macrophage", "drug": "Calcitriol",
+    "metaLV335": {"crispr": ["DGAT2"], "cells": "Macrophage",
                   "pathways": ["Macrophage activation", "Acute inflammatory response", "Amyloid-beta clearance"]},
-    "metaLV588": {"crispr": ["PCYT2", "ACACA"], "cells": "Adrenocortical, oligodendrocyte", "drug": "Clomifene",
+    "metaLV588": {"crispr": ["PCYT2", "ACACA"], "cells": "Adrenocortical, oligodendrocyte",
                   "pathways": ["Cholesterol biosynthesis", "SREBP signaling", "Mevalonate pathway"]},
-    "metaLV91": {"crispr": ["ACACA"], "cells": "Adrenocortical, oligodendrocyte", "drug": "Clomifene",
+    "metaLV91": {"crispr": ["ACACA"], "cells": "Adrenocortical, oligodendrocyte",
                  "pathways": ["Cholesterol biosynthesis", "SREBP signaling", "Omega-9 fatty acid synthesis"]},
 }
 
@@ -126,7 +126,11 @@ def figure_main(args):
     z = pd.read_csv(a.metaz, index_col=0)
     rank = z.rank(ascending=False, method="min").astype(int)
     mem = pd.read_csv(a.pathway_members)
-    l1000 = pd.read_csv(a.l1000).set_index(["metaLV", "drug"])
+    l1000 = pd.read_csv(a.l1000)
+    assert set(l1000.metaLV) == set(selected) and l1000.fdr.lt(a.fdr).all()
+    assert l1000.direction_agrees_with_null.all()
+    l1000["label"] = np.where(l1000.direction.eq("Activation-like"), "↑ ", "↓ ") + l1000.drug
+    l1000.to_csv(out / "module_drugs.csv", index=False)
     top = pd.read_csv(a.pathway_top)
 
     mods, genes, edges = [], [], []
@@ -141,8 +145,7 @@ def figure_main(args):
         mods.append({"metaLV": m, "models": f"{summ.at[m, 'n_models']}/10", "cells": d["cells"],
                      "pathways": "; ".join(d["pathways"]),
                      "pathway_terms": "; ".join(top[top.metaLV == m].pathway.head(3)),
-                     "drug": d["drug"], "drug_rank": int(l1000.at[(m, d["drug"]), "rank"]),
-                     "drug_fdr": l1000.at[(m, d["drug"]), "fdr"]})
+                     "drug": "; ".join(l1000.loc[l1000.metaLV.eq(m), "label"])})
     genes = pd.DataFrame(genes)
 
     info = pd.read_csv(a.phenotypes_info, sep="\t", dtype={"short_code": str}).set_index("short_code")

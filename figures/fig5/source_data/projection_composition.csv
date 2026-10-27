@@ -1,0 +1,54 @@
+metaLV,set,category,pct,n
+metaLV91,top 0.1%,tumour / cancer,36.96369636963696,606
+metaLV91,top 0.1%,other,23.762376237623762,606
+metaLV91,top 0.1%,brain / neural,10.231023102310232,606
+metaLV91,top 0.1%,blood / immune,9.735973597359736,606
+metaLV91,top 0.1%,pancreas / islet / ductal,6.6006600660066,606
+metaLV91,top 0.1%,monocyte / macrophage,6.435643564356436,606
+metaLV91,top 0.1%,cell-free / plasma,4.9504950495049505,606
+metaLV91,top 0.1%,liver / hepatocyte,1.3201320132013201,606
+metaLV91,top 1%,other,39.03566710700132,6056
+metaLV91,top 1%,brain / neural,33.074636723910174,6056
+metaLV91,top 1%,tumour / cancer,14.217305151915454,6056
+metaLV91,top 1%,blood / immune,5.217965653896962,6056
+metaLV91,top 1%,pancreas / islet / ductal,2.955746367239102,6056
+metaLV91,top 1%,cell-free / plasma,2.559445178335535,6056
+metaLV91,top 1%,monocyte / macrophage,2.0145310435931307,6056
+metaLV91,top 1%,liver / hepatocyte,0.9247027741083224,6056
+metaLV175,top 0.1%,liver / hepatocyte,95.21452145214522,606
+metaLV175,top 0.1%,tumour / cancer,3.1353135313531353,606
+metaLV175,top 0.1%,other,0.825082508250825,606
+metaLV175,top 0.1%,pancreas / islet / ductal,0.6600660066006601,606
+metaLV175,top 0.1%,blood / immune,0.16501650165016502,606
+metaLV175,top 1%,liver / hepatocyte,84.67635402906208,6056
+metaLV175,top 1%,tumour / cancer,7.793923381770146,6056
+metaLV175,top 1%,other,2.526420079260238,6056
+metaLV175,top 1%,blood / immune,1.66776750330251,6056
+metaLV175,top 1%,cell-free / plasma,1.2714663143989433,6056
+metaLV175,top 1%,pancreas / islet / ductal,0.8916776750330251,6056
+metaLV175,top 1%,monocyte / macrophage,0.6935270805812417,6056
+metaLV175,top 1%,brain / neural,0.47886393659180976,6056
+metaLV335,top 0.1%,monocyte / macrophage,82.01320132013201,606
+metaLV335,top 0.1%,other,15.181518151815181,606
+metaLV335,top 0.1%,blood / immune,1.65016501650165,606
+metaLV335,top 0.1%,tumour / cancer,1.155115511551155,606
+metaLV335,top 1%,monocyte / macrophage,49.471598414795245,6056
+metaLV335,top 1%,other,29.095112285336853,6056
+metaLV335,top 1%,tumour / cancer,10.287318361955085,6056
+metaLV335,top 1%,blood / immune,7.1499339498018495,6056
+metaLV335,top 1%,liver / hepatocyte,3.038309114927345,6056
+metaLV335,top 1%,brain / neural,0.6605019815059445,6056
+metaLV335,top 1%,pancreas / islet / ductal,0.297225891677675,6056
+metaLV588,top 0.1%,liver / hepatocyte,93.23432343234323,606
+metaLV588,top 0.1%,other,4.125412541254125,606
+metaLV588,top 0.1%,brain / neural,1.8151815181518154,606
+metaLV588,top 0.1%,blood / immune,0.6600660066006601,606
+metaLV588,top 0.1%,pancreas / islet / ductal,0.16501650165016502,606
+metaLV588,top 1%,other,41.69418758256275,6056
+metaLV588,top 1%,liver / hepatocyte,34.28005284015852,6056
+metaLV588,top 1%,brain / neural,18.989431968295907,6056
+metaLV588,top 1%,tumour / cancer,2.97225891677675,6056
+metaLV588,top 1%,blood / immune,1.1889035667107,6056
+metaLV588,top 1%,pancreas / islet / ductal,0.8256274768824308,6056
+metaLV588,top 1%,monocyte / macrophage,0.03302509907529723,6056
+metaLV588,top 1%,cell-free / plasma,0.016512549537648614,6056

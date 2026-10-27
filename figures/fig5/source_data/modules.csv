@@ -1,0 +1,5 @@
+metaLV,models,cells,pathways,pathway_terms,drug
+metaLV175,9/10,Hepatocyte,Complement and coagulation; Acylglycerol homeostasis; Bile acid metabolism,KEGG_COMPLEMENT_AND_COAGULATION_CASCADES; acylglycerol homeostasis; bile acid metabolic process,↑ Cortisone acetate; ↑ Prednisolone
+metaLV335,7/10,Macrophage,Macrophage activation; Acute inflammatory response; Amyloid-beta clearance,macrophage activation; acute inflammatory response; amyloid-beta clearance,↓ Mecamylamine
+metaLV588,6/10,"Adrenocortical, oligodendrocyte",Cholesterol biosynthesis; SREBP signaling; Mevalonate pathway,WP_CHOLESTEROL_METABOLISM_WITH_BLOCH_AND_KANDUTSCHRUSSELL_PATHWAYS; WP_STEROL_REGULATORY_ELEMENTBINDING_PROTEINS_SREBP_SIGNALING; WP_MEVALONATE_ARM_OF_CHOLESTEROL_BIOSYNTHESIS_PATHWAY,↑ Atorvastatin; ↑ Clomifene; ↑ Ketoconazole; ↓ Sorafenib
+metaLV91,10/10,"Adrenocortical, oligodendrocyte",Cholesterol biosynthesis; SREBP signaling; Omega-9 fatty acid synthesis,WP_CHOLESTEROL_METABOLISM_WITH_BLOCH_AND_KANDUTSCHRUSSELL_PATHWAYS; WP_STEROL_REGULATORY_ELEMENTBINDING_PROTEINS_SREBP_SIGNALING; WP_OMEGA9_FATTY_ACID_SYNTHESIS,↑ Atorvastatin; ↑ Ketoconazole; ↓ Sorafenib

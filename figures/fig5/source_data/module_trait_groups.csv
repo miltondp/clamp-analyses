@@ -1,0 +1,8 @@
+metaLV,trait_group,fdr,n_traits,traits
+metaLV175,Gallstones,1.507715244e-28,4,"Non-cancer illness code, self-reported: cholelithiasis/gall stones; Diagnoses - main ICD10: K80 Cholelithiasis; Disorders of gallbladder, biliary tract and pancreas; Diagnoses - main ICD10: K81 Cholecystitis"
+metaLV335,Alzheimer's,5.0941774014545445e-11,3,Illnesses of mother: Alzheimer's disease/dementia; Illnesses of father: Alzheimer's disease/dementia; Illnesses of siblings: Alzheimer's disease/dementia
+metaLV588,Alzheimer's,0.0004767808047567,1,Illnesses of mother: Alzheimer's disease/dementia
+metaLV588,High cholesterol,0.00025203061575,1,"Non-cancer illness code, self-reported: high cholesterol"
+metaLV91,Alzheimer's,0.0003482071878857,1,Illnesses of mother: Alzheimer's disease/dementia
+metaLV91,High cholesterol,1.666975077e-07,1,"Non-cancer illness code, self-reported: high cholesterol"
+metaLV91,Venous thrombosis,4.085698248e-12,8,"Diagnoses - main ICD10: I80 Phlebitis and thrombophlebitis; Blood clot, DVT, bronchitis, emphysema, asthma, rhinitis, eczema, allergy diagnosed by doctor: Blood clot in the leg (DVT); DVT of lower extremities; Non-cancer illness code, self-reported: deep venous thrombosis (dvt); Venous thromboembolism; DVT of lower extremities and pulmonary embolism; Non-cancer illness code, self-reported: pulmonary embolism +/- dvt; Blood clot, DVT, bronchitis, emphysema, asthma, rhinitis, eczema, allergy diagnosed by doctor: Blood clot in the lung"
