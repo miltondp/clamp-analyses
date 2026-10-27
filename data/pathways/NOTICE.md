@@ -2,8 +2,7 @@
 
 These files are unchanged snapshots. Their upstream sources, versions, DOI
 citations, SHA-256 checksums and provenance limitations are recorded in
-[reference_inputs.json](../../workflow/config/reference_inputs.json) and the
-[reference guide](../../docs/reference_inputs.md). The repository's general
+[reference manifest](../../workflow/config/reference_inputs.json). The repository's general
 license does not replace third-party terms.
 
 MSigDB v2026.1.Hs: copyright (c) 2004–2025 Broad Institute, Inc., Massachusetts
