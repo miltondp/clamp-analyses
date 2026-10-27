@@ -45,6 +45,8 @@ clamp_k <- if (identical(k_rule, "n_samples_minus_1")) {
   as.integer(PCAtools::chooseGavishDonoho(.dim = c(n_genes, n_samples),
                                           var.explained = eig,
                                           noise = median(eig)) * 2)
+} else if (identical(k_rule, "elbow")) {
+  min(2L * as.integer(CLAMP::num.pc(norm, method = "elbow")), min(n_genes, n_samples) - 1L)
 } else {
   stop("Unknown --k-rule: ", k_rule)
 }

@@ -22,7 +22,7 @@ projections:
         sheet: human
         term_column: cell_name
         gene_column: Symbol
-    k_rule: n_samples_minus_1
+    k_rule: elbow
     max_iter: 200
     seed: 123
 

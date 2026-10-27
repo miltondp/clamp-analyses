@@ -304,7 +304,7 @@ archs4:
     azimuth_max_size: 3000
     smultixcan_zscores: data/archs4/drug_diseases_associations/smultixcan-mashr-zscores.pkl
     l1000_n_perm: 10000
-    l1000_seed: 7
+    l1000_seed: 20261027
 
   ora:
     databases:
