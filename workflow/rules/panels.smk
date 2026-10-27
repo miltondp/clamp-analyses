@@ -348,11 +348,11 @@ rule publish_figures:
     input:
         figures=expand(f"{PANELS}/{{name}}/{{name}}.{{ext}}", name=PUBLISHED_FIGURES, ext=["pdf", "png", "svg"]),
         tables=expand(f"{PANELS}/tables/supplementary_table_{{n}}.xlsx", n=range(1, 9)),
-        fig5_sources=rules.crispercas_fig5_data.output,
+        fig5_sources=expand(f"{A4_METALV}/fig5/{{f}}", f=["modules.csv", "module_drugs.csv"]),
     output:
         figures=expand("figures/{name}/{name}.{ext}", name=PUBLISHED_FIGURES, ext=["pdf", "png", "svg"]),
         tables=expand("figures/tables/supplementary_table_{n}.xlsx", n=range(1, 9)),
-        fig5_sources=expand("figures/fig5/source_data/{f}", f=A4_FIG5_DATA),
+        fig5_sources=expand("figures/fig5/source_data/{f}", f=["modules.csv", "module_drugs.csv"]),
     run:
         import shutil
         for src, dst in zip(list(input.figures) + list(input.tables) + list(input.fig5_sources),
