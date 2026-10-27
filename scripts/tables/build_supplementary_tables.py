@@ -185,13 +185,13 @@ def table_projection_targets():
     df = pd.DataFrame(rows)
     assert len(df) == 33, len(df)
     assert df.ARCHS4_projection_recovered.sum() == 27
-    assert df.dataset_trained_recovered.sum() == 12
+    assert df.dataset_trained_recovered.sum() == 11
     readme = [
         "Supplementary Table 2. Curated pathway, process and cell-type targets for the external-dataset projection comparison (Figure 4b and Supplementary Figure 6c,d).",
         "Each target is a pathway, cellular process or cell type reported by the source study. A target was recovered when a module's top 1% of gene loadings was enriched (ORA FDR < 0.05) for a gene set matched to it; LV and gene set give the best match, blank when not recovered.",
         "ARCHS4_*: projection into the frozen ARCHS4 CLAMPfull model. dataset_trained_*: CLAMPfull model trained on the evaluated dataset.",
         "non_transcriptomic_evidence_in_source_study: measurements other than RNA-seq that the source study reported for the target, curated from its full text. 'Experimental design' marks cell types defined by the cells profiled.",
-        "Totals: 33 targets; 27 recovered by ARCHS4 projection and 12 by the dataset-trained models.",
+        "Totals: 33 targets; 27 recovered by ARCHS4 projection and 11 by the dataset-trained models.",
     ]
     return readme, {"targets": df}
 
