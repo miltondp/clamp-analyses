@@ -4,10 +4,13 @@ from pathlib import Path
 
 import argparse
 import re
+import sys
 import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts/archs4/crispercas"))
+from fig5_data import CATEGORIES as SAMPLE_TYPE_RULES
 OUT = ROOT / "output/99_panels/tables"
 ARCHS4 = ROOT / "output/03_model_biology/02_archs4"
 parser = argparse.ArgumentParser()
@@ -298,8 +301,12 @@ def table_metalv_selection():
         "CRISPR_screen_genes_top1pct: every HepG2 lipid-screen gene (any confidence tier) among the metaLV's top 1% of loadings (185 genes), whether or not it is in a GSEA leading edge, ordered by loading rank, with the screen's lipid effect (increase/decrease; *** high-confidence sets used for GSEA, ** and * lower tiers).",
         "Selection flags (cumulative): pass_gsea, adjusted P < 0.05 for either set; pass_trait, at least one PhenoPLIER GLS trait association at FDR < 0.05 (Supplementary Table 5); pass_canonical, at least one canonical pathway at ORA FDR < 0.05 (Supplementary Table 6); pass_screen_gene_top, a leading-edge screen gene among the metaLV's top 1% of loadings (185 genes); pass_missed_by_twas, that gene has single-gene S-MultiXcan P >= 0.05 for an associated trait; pass_lipid_pathway, at least one lipid-related canonical pathway (keywords: lipid, cholesterol, sterol, fatty, lipoprotein, triglyceride, eicosanoid, phospholipid, bile, prostaglandin, leukotriene, arachidonic, sphingo, PPAR, LDL, HDL). Copy-number amplicon programs were not excluded.",
         "figure5_metaLVs sheet: summary of the four metaLVs shown in Figure 5. CRISPR_GSEA_leading_edge: leading edge of each significant screen set (same order as CRISPR_gene_set); CRISPR_screen_genes: leading-edge genes in the top 1% that pass the S-MultiXcan filter; CRISPR_screen_genes_top1pct: as in the metaLVs sheet. CellMarker_top and Azimuth_top: most significant ORA term; cell_type: label used in Figure 5. ARCHS4_top1pct_samples: sample types among the 1% of ARCHS4 samples with the highest projected metaLV activity (B), excluding 'other'. traits_FDR_0.05: traits with at least 1,000 cases grouped by disease. genes_SMultiXcan_FDR_0.05: displayed genes with S-MultiXcan FDR < 0.05 for a linked disease (circled in Figure 5a).",
+        "sample_type_rules sheet: keyword rules that assign ARCHS4 samples to the sample types of ARCHS4_top1pct_samples. Each sample's GEO source, title and characteristics are joined and lower-cased, and the sample takes the first sample type, in the order listed, whose regular expression matches; samples matching none are 'other'.",
     ]
-    return readme, {"metaLVs": t, "selection_counts": counts, "figure5_metaLVs": pd.DataFrame(rows)}
+    rules = pd.DataFrame([{"order": i, "sample_type": name, "regular_expression": pattern}
+                          for i, (name, pattern) in enumerate(SAMPLE_TYPE_RULES, start=1)])
+    return readme, {"metaLVs": t, "selection_counts": counts, "figure5_metaLVs": pd.DataFrame(rows),
+                    "sample_type_rules": rules}
 
 
 def table_technical_noise():
