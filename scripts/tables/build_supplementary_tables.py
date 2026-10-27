@@ -15,7 +15,9 @@ OUT = ROOT / "output/99_panels/tables"
 ARCHS4 = ROOT / "output/03_model_biology/02_archs4"
 parser = argparse.ArgumentParser()
 parser.add_argument("--phenomexcan-dir", type=Path, default=ROOT / "data/phenomexcan")
-PHENOMEXCAN = parser.parse_args().phenomexcan_dir
+parser.add_argument("--tables", type=int, nargs="+", choices=range(1, 9), default=list(range(1, 9)))
+ARGS = parser.parse_args()
+PHENOMEXCAN = ARGS.phenomexcan_dir
 COVERAGE_SUMMARIES = ROOT / "output/01_model_building/02_archs4/clampbase_coverage/summaries"
 SUPP6_SOURCE = ROOT / "output/99_panels/supp6/source_data"
 CRISPR = ARCHS4 / "04_crispercas"
@@ -434,24 +436,25 @@ def table_metalv_smultixcan():
     return readme, {"smultixcan": s}
 
 
-L1000_DRUG = {"metaLV91": "Clomifene", "metaLV588": "Clomifene", "metaLV175": "Cortisone acetate", "metaLV335": "Calcitriol"}
-
-
 def table_metalv_l1000():
     r = pd.read_csv(METALV / "l1000/l1000_fig5_ranking.csv")
-    cols = ["rank", "drugbank_id", "drug", "atc_codes", "score", "mean_z", "perm_z", "perm_p", "fdr", "n_genes"]
+    picks = pd.read_csv(METALV / "l1000/l1000_fig5_curated.csv")
+    unique = pd.read_csv(METALV / "l1000/l1000_unique_signatures.csv")
+    cols = ["direction_rank", "drugbank_id", "drug", "atc_codes", "projection", "null_mean", "null_sd",
+            "null_z", "p_upper", "p_lower", "p_two_sided", "fdr", "direction", "direction_agrees_with_null",
+            "signature_group", "signature_names", "signature_drugbank_ids", "n_genes"]
     sheets = {m: r[r.metaLV == m][cols] for m in ["metaLV91", "metaLV588", "metaLV175", "metaLV335"]}
-    assert all(len(d) == 1170 for d in sheets.values())
-    picks = pd.concat([r[(r.metaLV == m) & (r.drug == d)] for m, d in L1000_DRUG.items()])
-    picks = picks.assign(n_drugs_fdr_0_05=picks.metaLV.map(r[r.fdr < FDR].groupby("metaLV").size()))
+    assert all(len(d) == 1170 for d in sheets.values()) and len(r) == 4680
+    assert len(picks) == 10 and picks.fdr.lt(FDR).all() and picks.direction_agrees_with_null.all()
     readme = [
-        "Supplementary Table 7. LINCS L1000 drug signatures scored on the four Figure 5 metaLVs.",
-        f"Drugs: the 1,170 DrugBank-mapped LINCS L1000 consensus signatures used for drug-disease prediction. Genes: each metaLV's top 1% of gene loadings ({TOP_N} of 18,423) that are measured in LINCS (n_genes), mapped one-to-one from symbols to Ensembl identifiers.",
-        "mean_z: mean LINCS z-score of the drug over these genes. score: mean_z standardized per drug across the 27 GSEA-significant metaLVs (the PhenoPLIER set), so drugs that change many programs are not favoured. rank: descending score (program induced).",
-        "perm_p: one-sided permutation P from 10,000 random sets of the same number of LINCS genes, scored in the same way; perm_z: (score - null mean) / null SD; fdr: Benjamini-Hochberg across the 1,170 drugs within each metaLV. Random gene sets ignore co-expression among module genes, so perm_p and fdr are lenient; rank and perm_z are the more informative quantities.",
-        "figure5_drugs sheet: the drug shown for each metaLV in Figure 5, the highest-ranked drug with an established mechanism on the program (clomifene, sterol-synthesis inhibitor; cortisone acetate, glucocorticoid; calcitriol, vitamin D); n_drugs_fdr_0_05: drugs at FDR < 0.05 for that metaLV.",
+        "Supplementary Table 7. Projected LINCS L1000 drug perturbations of the four Figure 5 MGMs.",
+        "The 1,170 DrugBank-mapped LINCS signatures used for drug-disease prediction were projected jointly onto all 618 ARCHS4 MGMs by ridge regression, using the primary ARCHS4 model's L2 penalty. Gene symbols were mapped one-to-one to Ensembl identifiers; unmeasured genes were set to zero, with no additional gene-wise standardization.",
+        "projection: fitted MGM coefficient. null_mean and null_sd: exact mean and SD under gene-label permutations among mapped genes measured in LINCS (n_genes), with missing-gene positions fixed. null_z: (projection - null_mean) / null_sd.",
+        "p_upper and p_lower: empirical permutation tails, including ties, with a plus-one correction over 10,000 permutations. p_two_sided: min(1, 2*min(p_upper, p_lower)); fdr: Benjamini-Hochberg correction jointly across all 4,680 drug-MGM pairs, retaining identical signatures as separate original entries.",
+        "direction: coefficient sign, Activation-like (positive) or Suppression-like (negative), describing projected transcriptional responses rather than direct biochemical pathway activity. direction_agrees_with_null: agreement of the coefficient sign with the null_z sign. direction_rank: separate ranks by decreasing absolute null_z within each MGM and response direction, requiring this agreement and collapsing identical full LINCS signatures for display. Entries in an identical-signature group share its rank; nonconcordant entries have no rank.",
+        "signature_group, signature_names and signature_drugbank_ids identify identical full LINCS signatures. unique_signatures sheet retains one entry per signature per MGM; the four MGM sheets retain all original drug entries. figure5_drugs sheet contains the manually curated associations displayed in Figure 5, each at joint FDR < 0.05, with known actions, curation rationale and supporting sources.",
     ]
-    return readme, {**sheets, "figure5_drugs": picks[["metaLV", *cols, "n_drugs_fdr_0_05"]]}
+    return readme, {**sheets, "unique_signatures": unique[["metaLV", *cols]], "figure5_drugs": picks}
 
 
 def main():
@@ -459,6 +462,8 @@ def main():
 
     for n, builder in enumerate([table_traits, table_projection_targets, table_technical_noise, table_metalv_selection,
                                  table_metalv_gls, table_metalv_ora, table_metalv_l1000, table_metalv_smultixcan], start=1):
+        if n not in ARGS.tables:
+            continue
         readme, sheets = builder()
         write_workbook(OUT / f"supplementary_table_{n}.xlsx", readme, sheets)
 

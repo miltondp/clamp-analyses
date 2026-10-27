@@ -298,7 +298,7 @@ rule fig5_panel:
 # Step 4: build supplementary tables
 # ============================================================
 
-rule supplementary_tables:
+rule supplementary_tables_non_l1000:
     input:
         metalv=rules.crispercas_fig5_data.output,
         coverage_traits=PHENOPLIER_COV_BASE,
@@ -310,13 +310,31 @@ rule supplementary_tables:
         flags=rules.crispercas_noise_flags.output,
         ora=expand(rules.crispercas_metalv_ora.output.ora_dir, database=A4_METALV_ORA),
         lipid_deg=A4_CRISPERCAS_CFG["lipid_deg"],
-        l1000=rules.crispercas_metalv_l1000.output.ranking,
         script="scripts/tables/build_supplementary_tables.py",
     output:
-        expand(f"{PANELS}/tables/supplementary_table_{{n}}.xlsx", n=range(1, 9)),
+        expand(f"{PANELS}/tables/supplementary_table_{{n}}.xlsx", n=[1, 2, 3, 4, 5, 6, 8]),
     conda: "clamp-analyses"
     shell:
-        "python {input.script:q} --phenomexcan-dir {A4_CRISPERCAS_CFG[phenomexcan_dir]:q}"
+        "python {input.script:q} --phenomexcan-dir {A4_CRISPERCAS_CFG[phenomexcan_dir]:q} --tables 1 2 3 4 5 6 8"
+
+
+rule crispercas_l1000_table:
+    input:
+        ranking=rules.crispercas_metalv_l1000.output.ranking,
+        curated=rules.crispercas_metalv_l1000.output.curated,
+        unique=rules.crispercas_metalv_l1000.output.unique,
+        script="scripts/tables/build_supplementary_tables.py",
+    output:
+        f"{PANELS}/tables/supplementary_table_7.xlsx",
+    conda: "clamp-analyses"
+    shell:
+        "python {input.script:q} --tables 7"
+
+
+rule supplementary_tables:
+    input:
+        rules.supplementary_tables_non_l1000.output,
+        rules.crispercas_l1000_table.output,
 
 
 PUBLISHED_FIGURES = ["fig2", "fig3", "fig4", "fig5"] + [f"supp{i}" for i in range(1, 9)]
@@ -329,12 +347,15 @@ PUBLISHED_FIGURES = ["fig2", "fig3", "fig4", "fig5"] + [f"supp{i}" for i in rang
 rule publish_figures:
     input:
         figures=expand(f"{PANELS}/{{name}}/{{name}}.{{ext}}", name=PUBLISHED_FIGURES, ext=["pdf", "png", "svg"]),
-        tables=rules.supplementary_tables.output,
+        tables=expand(f"{PANELS}/tables/supplementary_table_{{n}}.xlsx", n=range(1, 9)),
+        fig5_sources=expand(f"{A4_METALV}/fig5/{{f}}", f=["modules.csv", "module_drugs.csv"]),
     output:
         figures=expand("figures/{name}/{name}.{ext}", name=PUBLISHED_FIGURES, ext=["pdf", "png", "svg"]),
         tables=expand("figures/tables/supplementary_table_{n}.xlsx", n=range(1, 9)),
+        fig5_sources=expand("figures/fig5/source_data/{f}", f=["modules.csv", "module_drugs.csv"]),
     run:
         import shutil
-        for src, dst in zip(list(input.figures) + list(input.tables), list(output.figures) + list(output.tables)):
+        for src, dst in zip(list(input.figures) + list(input.tables) + list(input.fig5_sources),
+                            list(output.figures) + list(output.tables) + list(output.fig5_sources)):
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.copy2(src, dst)
