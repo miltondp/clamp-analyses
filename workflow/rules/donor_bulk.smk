@@ -70,38 +70,46 @@ rule donor_bulk_data:
 
 rule donor_bulk_expression_umap:
     input:
-        counts=rules.build_donor_bulk.output.sample_counts,
-        cells=rules.build_donor_bulk.output.sample_cells,
-        genes=rules.build_donor_bulk.output.sample_genes,
+        raw=donor_bulk_raw_inputs,
+        manifest=donor_bulk_manifest,
+        aggregation=rules.build_donor_bulk.output.summary,
+        config="workflow/config/pseudobulk.yaml",
         script="scripts/donor_bulk/build_expression_umap.py",
     output:
-        points=f"{DB_PROD}/{{dataset}}/single_cell_umap/umap_points.csv",
-        summary=f"{DB_PROD}/{{dataset}}/single_cell_umap/umap_summary.csv",
+        points=f"{DB_PROD}/{{dataset}}/expression_umap/umap_points.csv",
+        summary=f"{DB_PROD}/{{dataset}}/expression_umap/umap_summary.csv",
     params:
+        work_dir=f"{DB_PROD}/{{dataset}}/expression_umap/work",
         target_sum=DB_CFG["umap"]["target_sum"],
         n_hvg=DB_CFG["umap"]["n_hvg"],
         n_pcs=DB_CFG["umap"]["n_pcs"],
+        pca_iterations=DB_CFG["umap"]["pca_iterations"],
         n_neighbors=DB_CFG["umap"]["n_neighbors"],
         min_dist=DB_CFG["umap"]["min_dist"],
+        n_epochs=DB_CFG["umap"]["n_epochs"],
         seed=DB_CFG["umap"]["seed"],
     wildcard_constraints:
         dataset=DB_DATASET_PATTERN
+    threads: 16
     resources:
-        mem_mb=64000,
+        mem_mb=128000,
         runtime=1440,
+        donor_bulk_io=1,
     conda: "clamp-analyses"
     shell:
-        "python {input.script} --dataset {wildcards.dataset} --counts {input.counts} "
-        "--cells {input.cells} --genes {input.genes} --output {output.points} "
-        "--summary {output.summary} --target-sum {params.target_sum} "
-        "--n-hvg {params.n_hvg} --n-pcs {params.n_pcs} "
+        "NUMBA_NUM_THREADS={threads} python {input.script} --config {input.config} "
+        "--dataset {wildcards.dataset} --manifest {input.manifest} "
+        "--aggregation {input.aggregation} --output {output.points} "
+        "--summary {output.summary} --work-dir {params.work_dir} "
+        "--target-sum {params.target_sum} --n-hvg {params.n_hvg} "
+        "--n-pcs {params.n_pcs} --pca-iterations {params.pca_iterations} "
         "--n-neighbors {params.n_neighbors} --min-dist {params.min_dist} "
-        "--seed {params.seed}"
+        "--n-epochs {params.n_epochs} --seed {params.seed} --threads {threads}"
 
 
 rule donor_bulk_umaps:
     input:
-        expand(f"{DB_PROD}/{{dataset}}/single_cell_umap/umap_points.csv", dataset=DB_DATASETS)
+        expand(f"{DB_PROD}/{{dataset}}/expression_umap/umap_points.csv", dataset=DB_DATASETS)
 
 
 # ============================================================
@@ -318,7 +326,7 @@ rule donor_bulk_analysis_tables:
 rule validate_donor_bulk:
     input:
         analysis=rules.donor_bulk_analysis_tables.output,
-        umaps=expand(f"{DB_PROD}/{{dataset}}/single_cell_umap/umap_points.csv", dataset=DB_DATASETS),
+        umaps=expand(f"{DB_PROD}/{{dataset}}/expression_umap/umap_points.csv", dataset=DB_DATASETS),
         config="workflow/config/cell_type_analysis.yaml",
         script="scripts/donor_bulk/validate_donor_bulk.py",
     output:
@@ -329,13 +337,12 @@ rule validate_donor_bulk:
         runtime=240,
     params:
         datasets=" ".join(DB_DATASETS),
-        sample_target=DB_CFG["aggregation"]["sample_cells"],
     conda: "clamp-analyses"
     shell:
         "python {input.script} --config {input.config} "
         "--production-root {DB_PROD} --analysis-dir {DB_BIO}/analysis "
         "--output-summary {output.summary} --output-json {output.json} "
-        "--sample-target {params.sample_target} --datasets {params.datasets}"
+        "--datasets {params.datasets}"
 
 
 rule donor_bulk_model_qc:
@@ -344,7 +351,7 @@ rule donor_bulk_model_qc:
         aggregation=expand(f"{DB_PROD}/{{dataset}}/bulk/aggregation_summary.csv", dataset=DB_DATASETS),
         ranks=expand(f"{DB_PROD}/{{dataset}}/preprocessing/rank_diagnostics.csv", dataset=DB_DATASETS),
         projections=expand(f"{DB_PROD}/{{dataset}}/single_cell_projection/projection_summary.csv", dataset=DB_DATASETS),
-        umaps=expand(f"{DB_PROD}/{{dataset}}/single_cell_umap/umap_summary.csv", dataset=DB_DATASETS),
+        umaps=expand(f"{DB_PROD}/{{dataset}}/expression_umap/umap_summary.csv", dataset=DB_DATASETS),
         notebook=f"{DB_MODEL_NB}/01_donor_bulk_qc.ipynb",
     output:
         summary=f"{DB_PROD}/qc/donor_bulk_qc.csv",
@@ -369,7 +376,7 @@ rule donor_bulk_recovery_report:
         specificity=rules.donor_bulk_analysis_tables.output.specificity,
         specificity_summary=rules.donor_bulk_analysis_tables.output.specificity_summary,
         validation=rules.validate_donor_bulk.output.summary,
-        umaps=expand(f"{DB_PROD}/{{dataset}}/single_cell_umap/umap_points.csv", dataset=DB_DATASETS),
+        umaps=expand(f"{DB_PROD}/{{dataset}}/expression_umap/umap_points.csv", dataset=DB_DATASETS),
         projections=expand(f"{DB_PROD}/{{dataset}}/single_cell_projection/single_cell_lv_scores.h5", dataset=DB_DATASETS),
         notebook=f"{DB_BIO_NB}/06_donor_bulk_recovery.ipynb",
     output:

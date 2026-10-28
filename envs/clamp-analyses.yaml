@@ -83,6 +83,7 @@ dependencies:
   - scipy
   - h5py
   - r-ggrastr
+  - r-hexbin
 
   # PyTorch with CUDA support
   - pytorch
