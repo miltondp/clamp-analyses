@@ -24,8 +24,10 @@ donor_bulk:
     target_sum: 10000
     n_hvg: 2000
     n_pcs: 50
+    pca_iterations: 4
     n_neighbors: 30
     min_dist: 0.30
+    n_epochs: 200
     seed: 123
 
   projection:

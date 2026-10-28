@@ -49,7 +49,6 @@ def main() -> None:
     parser.add_argument("--output-json", required=True)
     parser.add_argument("--datasets", nargs="+", required=True)
     parser.add_argument("--config", required=True)
-    parser.add_argument("--sample-target", type=int, default=60_000)
     args = parser.parse_args()
     production = resolve(args.production_root)
     analysis = resolve(args.analysis_dir)
@@ -113,14 +112,13 @@ def main() -> None:
         projection_summary = pd.read_csv(root / "single_cell_projection/projection_summary.csv").iloc[0]
         if int(projection_summary.n_cells_projected) != n_projected:
             raise ValueError(f"{dataset}: projection coverage failure")
-        umap = pd.read_csv(root / "single_cell_umap/umap_points.csv")
-        umap_summary = pd.read_csv(root / "single_cell_umap/umap_summary.csv").iloc[0]
+        umap = pd.read_csv(root / "expression_umap/umap_points.csv")
+        umap_summary = pd.read_csv(root / "expression_umap/umap_summary.csv").iloc[0]
         if (
             umap.cell_index.duplicated().any()
-            or len(umap) != int(aggregation.n_cells_sampled)
-            or len(umap) != min(args.sample_target, int(aggregation.n_cells_retained))
+            or len(umap) != int(aggregation.n_cells_retained)
             or not np.isfinite(umap[["umap1", "umap2"]].to_numpy()).all()
-            or umap_summary.embedding_source != "sampled_raw_expression_normalize_hvg_pca_neighbors_umap"
+            or umap_summary.embedding_source != "all_retained_raw_expression_normalize_hvg_pca_neighbors_umap"
         ):
             raise ValueError(f"{dataset}: expression UMAP validation failure")
         rows.append(
@@ -129,7 +127,7 @@ def main() -> None:
                 "n_genes": donor.shape[0],
                 "n_donors": donor.shape[1],
                 "n_retained_cells": int(counts.sum()),
-                "n_sampled_umap_cells": len(umap),
+                "n_umap_cells": len(umap),
                 "full_rank": rank,
                 "n_projected_cells": n_projected,
                 "n_mapped_projection_cells": int(projection_summary.n_cells_mapped),
