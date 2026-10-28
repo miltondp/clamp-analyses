@@ -109,33 +109,49 @@ rule runtime_fit_gtex:
 # Step 3: summarize benchmark results
 # ============================================================
 
-rule computational_timing_report_gtex:
-    input:
-        timings=RUNTIME_GTEX_TIMING_FILES,
-        shape=rules.runtime_gtex_matrix_shape.output.shape,
-        gmt=rules.pathway_prior.output,
-        cogaps_evidence=RUNTIME_GTEX_CFG["cogaps_evidence"],
-        gtex_config="workflow/config/gtex.yaml",
-        runtime_config="workflow/config/runtime_benchmark_gtex.yaml",
-        figure_config="config.yaml",
-        notebook=RUNTIME_GTEX_NB,
-    output:
-        long=f"{RUNTIME_GTEX_ROOT}/runtime_long.csv",
-        per_fit=f"{RUNTIME_GTEX_ROOT}/runtime_per_fit.csv",
-        summary=f"{RUNTIME_GTEX_ROOT}/runtime_summary.csv",
-        complete=touch(f"{RUNTIME_GTEX_ROOT}/notebook.complete"),
-    log:
-        notebook=os.path.join(os.path.dirname(RUNTIME_GTEX_NB),
-                              "00_computational_timing.executed.ipynb")
-    params:
-        dataset=RUNTIME_GTEX_DATASET,
-        methods=RUNTIME_GTEX_METHODS,
-        seeds=RUNTIME_GTEX_SEEDS,
-        threads=RUNTIME_GTEX_THREADS,
-        out_dir=RUNTIME_GTEX_ROOT,
-    conda: "clamp-analyses"
-    notebook:
-        RUNTIME_GTEX_NB
+if TIMING_MODE == "recorded":
+    rule computational_timing_report_gtex:
+        input:
+            manifest="references/runtime/recorded_timings.json",
+            records=["references/runtime/gtex/" + name for name in ['runtime_long.csv', 'runtime_per_fit.csv', 'runtime_summary.csv']],
+        output:
+            long=f"{RUNTIME_GTEX_ROOT}/runtime_long.csv",
+            per_fit=f"{RUNTIME_GTEX_ROOT}/runtime_per_fit.csv",
+            summary=f"{RUNTIME_GTEX_ROOT}/runtime_summary.csv",
+            complete=touch(f"{RUNTIME_GTEX_ROOT}/notebook.complete"),
+        params:
+            out_dir=RUNTIME_GTEX_ROOT,
+        conda: "snakemake"
+        shell:
+            "python scripts/inputs/restore_recorded_timings.py --dataset gtex --out-dir {params.out_dir:q}"
+else:
+    rule computational_timing_report_gtex:
+        input:
+            timings=RUNTIME_GTEX_TIMING_FILES,
+            shape=rules.runtime_gtex_matrix_shape.output.shape,
+            gmt=rules.pathway_prior.output,
+            cogaps_evidence=RUNTIME_GTEX_CFG["cogaps_evidence"],
+            gtex_config="workflow/config/gtex.yaml",
+            runtime_config="workflow/config/runtime_benchmark_gtex.yaml",
+            figure_config="config.yaml",
+            notebook=RUNTIME_GTEX_NB,
+        output:
+            long=f"{RUNTIME_GTEX_ROOT}/runtime_long.csv",
+            per_fit=f"{RUNTIME_GTEX_ROOT}/runtime_per_fit.csv",
+            summary=f"{RUNTIME_GTEX_ROOT}/runtime_summary.csv",
+            complete=touch(f"{RUNTIME_GTEX_ROOT}/notebook.complete"),
+        log:
+            notebook=os.path.join(os.path.dirname(RUNTIME_GTEX_NB),
+                                  "00_computational_timing.executed.ipynb")
+        params:
+            dataset=RUNTIME_GTEX_DATASET,
+            methods=RUNTIME_GTEX_METHODS,
+            seeds=RUNTIME_GTEX_SEEDS,
+            threads=RUNTIME_GTEX_THREADS,
+            out_dir=RUNTIME_GTEX_ROOT,
+        conda: "clamp-analyses"
+        notebook:
+            RUNTIME_GTEX_NB
 
 
 rule computational_timing_analysis_gtex:

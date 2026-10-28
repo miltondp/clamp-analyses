@@ -349,7 +349,7 @@ https://conda.anaconda.org/conda-forge/linux-64/liblapack-3.11.0-5_h47877c9_open
 https://conda.anaconda.org/conda-forge/noarch/libnvimgcodec-0.6.0-hd8ed1ab_0.conda
 https://conda.anaconda.org/rapidsai/linux-64/libraft-headers-only-25.12.00-cuda12_251211_d226bc96.conda
 https://conda.anaconda.org/conda-forge/linux-64/librdkafka-2.8.0-h2e2c4f7_0.conda
-https://conda.anaconda.org/rapidsai/linux-64/libxgboost-3.1.2-rapidsai_hc3bde56_1.conda
+https://conda.anaconda.org/rapidsai/label/legacy-xgboost/linux-64/libxgboost-3.1.2-rapidsai_hc3bde56_1.conda#3805a41bd45d03f3048f7e857fcbe272
 https://conda.anaconda.org/conda-forge/linux-64/libxml2-2.15.1-h26afc86_0.conda
 https://conda.anaconda.org/conda-forge/noarch/linkify-it-py-2.0.3-pyhd8ed1ab_1.conda
 https://conda.anaconda.org/conda-forge/noarch/markdown-it-py-4.0.0-pyhd8ed1ab_0.conda
@@ -488,7 +488,7 @@ https://conda.anaconda.org/conda-forge/noarch/mapclassify-2.10.0-pyhd8ed1ab_1.co
 https://conda.anaconda.org/conda-forge/noarch/nbclient-0.10.4-pyhd8ed1ab_0.conda
 https://conda.anaconda.org/nvidia/noarch/numba-cuda-0.19.1-py_0.conda
 https://conda.anaconda.org/conda-forge/noarch/panel-1.8.5-pyhd8ed1ab_0.conda
-https://conda.anaconda.org/rapidsai/noarch/py-xgboost-3.1.2-rapidsai_pyh395bae7_1.conda
+https://conda.anaconda.org/rapidsai/label/legacy-xgboost/noarch/py-xgboost-3.1.2-rapidsai_pyh395bae7_1.conda#ba961a3a93250dba314ee5605503daaf
 https://conda.anaconda.org/conda-forge/linux-64/pyogrio-0.12.1-py313hae45665_0.conda
 https://conda.anaconda.org/conda-forge/linux-64/pyside6-6.10.1-py313h85046ba_0.conda
 https://conda.anaconda.org/conda-forge/linux-64/r-base-4.5.2-h835929b_3.conda
@@ -507,14 +507,14 @@ https://conda.anaconda.org/rapidsai/linux-64/pylibcudf-25.12.00-cuda12_py313_251
 https://conda.anaconda.org/conda-forge/linux-64/rpy2-3.6.6-py313r45h269ec90_1.conda
 https://conda.anaconda.org/conda-forge/noarch/seaborn-0.13.2-hd8ed1ab_3.conda
 https://conda.anaconda.org/rapidsai/linux-64/ucxx-0.47.00-cuda12_py313_251210_5d6f0af3.conda
-https://conda.anaconda.org/rapidsai/noarch/xgboost-3.1.2-rapidsai_pyh3432f66_1.conda
+https://conda.anaconda.org/rapidsai/label/legacy-xgboost/noarch/xgboost-3.1.2-rapidsai_pyh3432f66_1.conda#25946d6ec61511abe0d14e28ac828c93
 https://conda.anaconda.org/rapidsai/linux-64/cudf-polars-25.12.00-cuda12_py313_251210_580975be.conda
 https://conda.anaconda.org/rapidsai/linux-64/cudf_kafka-25.12.00-cuda12_py313_251210_580975be.conda
 https://conda.anaconda.org/conda-forge/noarch/jupyter_server-2.17.0-pyhcf101f3_0.conda
 https://conda.anaconda.org/conda-forge/linux-64/libarrow-acero-21.0.0-hb826db4_14_cuda.conda
 https://conda.anaconda.org/rapidsai/linux-64/libraft-headers-25.12.00-cuda12_251211_d226bc96.conda
 https://conda.anaconda.org/conda-forge/linux-64/pyarrow-core-21.0.0-py313hc6b0d6e_1_cuda.conda
-https://conda.anaconda.org/rapidsai/noarch/rapids-xgboost-25.12.00-cuda12_251211_be953127.conda
+https://conda.anaconda.org/rapidsai/label/legacy-xgboost/noarch/rapids-xgboost-25.12.00-cuda12_251211_be953127.conda#475105830ecb105907f6aed23c15bb5b
 https://conda.anaconda.org/conda-forge/noarch/statannotations-0.7.2-pyhcf101f3_10.conda
 https://conda.anaconda.org/conda-forge/noarch/jupyter-lsp-2.3.0-pyhcf101f3_0.conda
 https://conda.anaconda.org/conda-forge/noarch/jupyter-server-proxy-4.4.0-pyhd8ed1ab_1.conda

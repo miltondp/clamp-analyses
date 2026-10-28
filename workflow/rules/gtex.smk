@@ -263,6 +263,7 @@ rule kmeans_clustering_gtex:
         gene_fractions=" ".join(str(x) for x in config["gtex"]["kmeans_clustering"]["gene_fractions"]),
     resources:
         mem_mb=128000,
+        gpu=1,
         runtime=2880,
     conda: "gpu-kmeans"
     shell:
@@ -357,9 +358,13 @@ rule lv_importance_rf_true_labels_biology_gtex:
 
 rule global_alignment_rf_true_labels_gtex:
     input:
+        model=rules.clamp_gtex.output.full_rds,
+        tissue_db="data/archs4/GTEx_Tissues_pathMat.rds",
         shap_dir=rules.lv_importance_rf_true_labels_gtex.output.out_dir,
         notebook=f"{GTEX_BIO_NB}/03_global_alignment.ipynb",
     output:
+        top1_detail=f"{GTEX_BIO}/07_global_alignment_rf_true_labels/top1/gtex_global_alignment_detail.csv",
+        tissue_ora=f"{GTEX_BIO}/07_global_alignment_rf_true_labels/gtex_tissue_ora_per_lv.csv",
         grouped_summary=f"{GTEX_BIO}/07_global_alignment_rf_true_labels/gtex_global_alignment_grouped_summary.csv",
         subtissue_summary=f"{GTEX_BIO}/07_global_alignment_rf_true_labels/cumulative20/gtex_global_alignment_summary.csv",
         complete=touch(f"{GTEX_BIO}/07_global_alignment_rf_true_labels/notebook.complete"),
@@ -372,6 +377,8 @@ rule global_alignment_rf_true_labels_gtex:
 
 rule liver_disentangle_xcell_rf_true_labels_gtex:
     input:
+        model=rules.clamp_gtex.output.full_rds,
+        xcell=config["gtex"]["xcell_scores"],
         shap_dir=rules.lv_importance_rf_true_labels_gtex.output.out_dir,
         notebook=f"{GTEX_BIO_NB}/05_liver_disentangle_xcell.ipynb",
     output:

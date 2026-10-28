@@ -156,62 +156,14 @@ rule crispercas_metalv_gsea_best:
         "python {input.script} gsea-best --fgsea {input.fgsea} --out {output}"
 
 
-rule crispercas_metalv_gls_input:
-    input:
-        metaz=rules.crispercas_metalv_cluster.output.metaz,
-        gsea=rules.crispercas_metalv_gsea_best.output,
-        script="scripts/phenoplier/metalv/export_metalv_z.py",
-    output:
-        z=f"{A4_METALV}/phenoplier/metalv_z.pkl",
-        mapping=f"{A4_METALV}/phenoplier/lv_mapping.csv",
-    conda: "clamp-analyses"
-    shell:
-        "python {input.script:q} --metaz {input.metaz:q} --gsea-best {input.gsea:q} "
-        "--fdr {A4_CRISPERCAS_CFG[fdr]} --out-pkl {output.z:q} --out-mapping {output.mapping:q}"
-
-
-rule crispercas_metalv_gls:
-    input:
-        z=rules.crispercas_metalv_gls_input.output.z,
-        script="scripts/phenoplier/run_gls.sh",
-        verify="scripts/phenoplier/verify_summary.py",
-    output:
-        summary=f"{A4_METALV}/phenoplier/gls_summary.tsv.gz",
-    log:
-        f"{A4_METALV}/phenoplier/gls.log",
-    params:
-        rds=lambda wc, input: input.z,
-        name="metalv",
-    threads: int(PHENOPLIER_GLS_RES["threads"])
-    resources:
-        mem_mb=int(PHENOPLIER_GLS_RES["mem_mb"]),
-        runtime=int(PHENOPLIER_GLS_RES["runtime"]),
-    conda: PHENOPLIER_CFG["conda_env"]
-    shell:
-        PHENOPLIER_GLS_SHELL
-
-
-rule crispercas_metalv_gls_summary:
-    input:
-        summary=rules.crispercas_metalv_gls.output.summary,
-        mapping=rules.crispercas_metalv_gls_input.output.mapping,
-        script="scripts/phenoplier/metalv/collect_summary.py",
-    output:
-        A4_CRISPERCAS_CFG["gls_summary"],
-    conda: "clamp-analyses"
-    shell:
-        "python {input.script:q} --summary {input.summary:q} --mapping {input.mapping:q} --out {output:q}"
-
-
 rule fetch_azimuth_gmt:
     output:
         A4_CRISPERCAS_CFG["azimuth_gmt"],
     log:
         A4_CRISPERCAS_CFG["azimuth_gmt"] + ".log"
+    conda: "snakemake"
     shell:
-        "mkdir -p $(dirname {output:q}) && "
-        "curl --fail --location --retry 3 '{A4_CRISPERCAS_CFG[azimuth_url]}' "
-        "--output {output} 2> {log}"
+        "python scripts/inputs/reference_inputs.py --only azimuth --destination {output:q} > {log:q} 2>&1"
 
 
 rule fetch_archs4_cell_lines_gmt:
@@ -219,10 +171,9 @@ rule fetch_archs4_cell_lines_gmt:
         A4_CRISPERCAS_CFG["archs4_cell_lines_gmt"],
     log:
         A4_CRISPERCAS_CFG["archs4_cell_lines_gmt"] + ".log"
+    conda: "snakemake"
     shell:
-        "mkdir -p $(dirname {output:q}) && "
-        "curl --fail --location --retry 3 '{A4_CRISPERCAS_CFG[archs4_cell_lines_url]}' "
-        "--output {output} 2> {log}"
+        "python scripts/inputs/reference_inputs.py --only archs4_cell_lines --destination {output:q} > {log:q} 2>&1"
 
 
 rule crispercas_metalv_ora:

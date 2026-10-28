@@ -52,7 +52,13 @@ add_tag <- function(p, label, x = 0.002, y = 0.998, top = 0.94) {
                size = FS_TAG, fontface = "bold", fontfamily = "Helvetica")
 }
 
-nm_p <- function(p) ifelse(p < .001, format(p, scientific = TRUE, digits = 2), sprintf("%.3f", p))
+nm_p <- function(p) {
+  m <- formatC(p, format = "e", digits = 1)
+  sci <- sprintf("%s×10%s", sub("e.*", "", m),
+                 chartr("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹",
+                        as.character(suppressWarnings(as.integer(sub(".*e", "", m))))))
+  ifelse(p < .001, sci, sprintf("%.3f", p))
+}
 
 main_figure_dirs <- function(name) {
   out <- here("output/99_panels", name)

@@ -4,6 +4,27 @@ data/*
 !data/gtex/
 data/gtex/*
 !data/gtex/GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt
+# Small, pinned reference inputs distributed with the analysis code.
+!data/pathways/
+data/pathways/*
+!data/pathways/*.v2026.1.Hs.symbols.gmt
+!data/pathways/Cell_marker_Human.xlsx
+!data/pathways/Allen_Brain_Atlas_10x_scRNA_2021.gmt
+!data/pathways/Azimuth_2023.txt
+!data/pathways/archs4_cell_lines.gmt
+!data/pathways/NOTICE.md
+!data/pathways/MSIGDB_LICENSE.txt
+!data/pathways/BIOCARTA_DISCLAIMER.txt
+!data/archs4/
+data/archs4/*
+!data/archs4/gene_lengths.rds
+!data/archs4/GTEx_Tissues_pathMat.rds
+!data/archs4/crispr_cas9/
+data/archs4/crispr_cas9/*
+!data/archs4/crispr_cas9/lipid_DEG.csv
+!data/phenomexcan/
+data/phenomexcan/*
+!data/phenomexcan/phenotypes_info.tsv
 output
 *.swp
 .ipynb_checkpoints/
@@ -63,3 +84,17 @@ workflow/profiles/site-*/
 Rplots.pdf
 **/Rplots.pdf
 logs_claude/
+
+# Local runtime/JIT caches
+.cache/
+
+# Personal credentials and local authentication files
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+*.p12
+*.pfx
+.secrets/

@@ -1,3 +1,5 @@
+snakefile: workflow/Snakefile
+latency-wait: 120
 # Portable Slurm profile for high-memory coverage fits.
 #
 # Supply site-specific account and partition values outside the repository,
@@ -20,6 +22,8 @@ resources:
   - ora_mem_mb=64000
   - fit_slots=20
   - ora_slots=8
+  - gpu=1
+  - timing_slot=1
   - large_fit_slot=1
 
 default-resources:

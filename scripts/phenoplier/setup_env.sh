@@ -7,9 +7,9 @@
 # see https://github.com/pivlab/phenoplier-cli#installation.
 set -euo pipefail
 
-# Pin the release the 86 as-run models were produced with (RUN_SUMMARY.md).
-# This integration depends on fixes that landed after the v0.5.1 tag, so
-# anything older than v0.5.2 is not enough:
+# Pin the release the curated-trait results were produced with (v0.7.3; the
+# phenomexcan-curated trait filter needs v0.7.2 or later). Earlier fixes this
+# integration depends on, all included:
 #   * the GLS standard-error collapse fix (phenoplier-cli #85) -- removes the
 #     artifactual ~0 p-values that hit the sub-sampling models this runs
 #     against (see workflow/rules/phenoplier.smk);
@@ -22,14 +22,21 @@ set -euo pipefail
 # Keep in step with workflow/config/phenoplier.yaml: version -- the rules
 # refuse to run on any other release. Override PHENOPLIER_REF only to test a
 # branch; do not mix releases within one model set.
-REF="${PHENOPLIER_REF:-v0.5.2}"
+REF="${PHENOPLIER_REF:-v0.7.3}"
 CLONE_DIR="${PHENOPLIER_CLONE_DIR:-$HOME/phenoplier-cli}"
 TARGET_ENV="${PHENOPLIER_TARGET_ENV:-phenoplier-cli-neo}"
 
-# install_phenoplier_cli.sh clones/updates $CLONE_DIR itself if needed --
-# see https://github.com/pivlab/phenoplier-cli/blob/main/scripts/install_phenoplier_cli.sh
-curl -fsSL "https://raw.githubusercontent.com/pivlab/phenoplier-cli/main/scripts/install_phenoplier_cli.sh" \
-  | bash -s -- --dir "$CLONE_DIR" --env "$TARGET_ENV" --ref "$REF" --extras slurm "$@"
+# Fetch the installer from the requested release using Git authentication.
+# Anonymous raw.githubusercontent.com access cannot read a private repository.
+REPO_URL="${PHENOPLIER_REPO_URL:-https://github.com/pivlab/phenoplier-cli.git}"
+bootstrap_dir="$(mktemp -d)"
+trap 'rm -rf "$bootstrap_dir"' EXIT
+if ! git clone --depth 1 --branch "$REF" "$REPO_URL" "$bootstrap_dir/source"; then
+    echo "Cannot access phenoplier-cli $REF. Request repository access or set PHENOPLIER_REPO_URL to an authenticated Git URL." >&2
+    exit 1
+fi
+bash "$bootstrap_dir/source/scripts/install_phenoplier_cli.sh" \
+  --repo "$REPO_URL" --dir "$CLONE_DIR" --env "$TARGET_ENV" --ref "$REF" --extras slurm "$@"
 
 cat <<EOF
 

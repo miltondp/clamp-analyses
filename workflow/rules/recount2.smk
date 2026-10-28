@@ -10,6 +10,7 @@ rule download_recount2:
     output:
         plier=R2_CFG["plier_rds"],
         rpkm=R2_CFG["rpkm_rds"],
+        metadata_archive=R2_CFG["metadata_archive"],
     log:
         f"{R2_DIR}/download.log"
     params:
@@ -23,6 +24,20 @@ rule download_recount2:
         "curl -L --fail -o {params.out_dir}/recount2.zip {params.url} && "
         "unzip -o {params.out_dir}/recount2.zip -d {params.out_dir} "
         "> {log} 2>&1"
+
+
+rule extract_recount2_metadata:
+    input:
+        archive=rules.download_recount2.output.metadata_archive,
+        script="scripts/inputs/extract_recount2_metadata.py",
+    output:
+        directory(config["consensus"]["compendia"]["recount2"]["rse_dir"]),
+    resources:
+        mem_mb=2000,
+        runtime=120,
+    conda: "snakemake"
+    shell:
+        "python {input.script:q} {input.archive:q} {output:q}"
 
 
 rule preprocess_recount2:

@@ -1,349 +1,202 @@
-# PhenoPLIER GLS integration — LV–trait association for CLAMP models
+# PhenoPLIER setup TODO and integration handoff
 
-Runs `phenoplier shortcut gls` (the GLS module–trait regression from
-[pivlab/phenoplier-cli](https://github.com/pivlab/phenoplier-cli)) against the CLAMP
-models this repo's ARCHS4 workflow fits, and publishes one GLS summary per model
-where `workflow/rules/archs4_traits.smk` picks them up for the coverage /
-saturation / final-model trait-recovery reports.
+This is the handoff for the phenoplier-cli maintainer. The CLAMP workflow already
+uses **phenoplier-cli v0.7.3** with the expert-reviewed `phenomexcan-curated` trait
+filter (2,824 of 4,049 phenotypes) to compute GLS. Existing results were generated
+with that CLI and an initialized reference workspace (see "As-run results"). The unresolved task is reproducing
+that environment and its inputs for a new user. This document describes the current
+workflow after PR #53, not the older CLAMPfull_bp launchers.
 
-**Contents**
+## Setup problems to resolve
 
-1. [How it is wired](#1-how-it-is-wired)
-2. [Requirements](#2-requirements)
-3. [phenoplier-cli environment and workspace](#3-phenoplier-cli-environment-and-workspace)
-4. [Configuration](#4-configuration)
-5. [Running locally](#5-running-locally)
-6. [Running on a Slurm cluster](#6-running-on-a-slurm-cluster)
-7. [Targets and outputs](#7-targets-and-outputs)
-8. [Verifying a run](#8-verifying-a-run)
-9. [Troubleshooting](#9-troubleshooting)
-10. [Layout](#10-layout)
-11. [As-run record (pico)](#11-as-run-record-pico)
+| Item | Current evidence | Needed for automatic setup |
+| --- | --- | --- |
+| CLI environment | `scripts/phenoplier/setup_env.sh` installs tag v0.7.3 into `phenoplier-cli-neo`. Repository setup does not call it. Any other release fails the explicit version check. | A reproducible v0.7.3 installation and confirmed reviewer repository access; do not silently upgrade scientific runs. |
+| MGM names and matrix input | MGM/consensus columns can be named `metaLV...` or other module IDs, while the current integration requires `LV1`, `LV2`, ... . Their source is `metaZ.csv` / `Z.csv`, not a fitted-model RDS. | Support matrix-only inputs and arbitrary module names, or document a supported conversion with lossless identifier mapping. |
+| Workspace | `run_gls.sh` requires `config.toml`. Existing author workspace links the reference bundle's `data/` and `software/`. | Initialization plus acquisition of the actual references below in a new writable workspace. |
+| Downloader coverage | At v0.5.2, `full_data` includes 1000G covariance and MASHR models; its S-MultiXcan download entry is explicitly unimplemented. `t21` includes rapid-GWAS results and GTEx covariance. | A supported download route for this exact GTEx/rapid-GWAS GLS workflow. The 1000G panel is not an interchangeable default. |
+| GTEx references | Prior audit: Zenodo 11851741 was restricted. Author covariance MD5 `0d805415b43049c0bcb2d59d3579db65` differs from CLI's `0d7895b07665d5d3afab1ba26d445901`. This alone does not prove numerical differences. Step 1 computes covariance and may require the original genotype/parquet references. | Identify the references actually consumed by v0.5.2, whether cached covariance can be reused, and the authorized acquisition route. |
+| Template inputs | The original workspace contains the template GWAS, 49 raw tissue CSVs and template S-MultiXcan result. They are not the processed 49 tissue pickle matrices. | Download or reproduce these exact templates, including SNP-count fields consumed by GLS. |
+| Downstream exact matrices | Two historical Box links failed during the previous audit; local pickles match upstream historical checksums. Public TSVs differ in precision. | Restore acquisition of the exact P-value and fastENLOC matrices, or validate a scientifically equivalent reconstruction. These are figure/CRISPR inputs, separate from CLI GLS. |
 
-> Sections marked **`[MARC: …]`** cover CLAMP-side inputs this integration consumes
-> but does not produce; please fill them in.
+The prior input audit is in [input_equivalence_audit.json](../../references/phenoplier/input_equivalence_audit.json).
+It records checks performed previously; access conditions have not been rechecked here.
+There is no new preflight system. PhenoPLIER remains TODO; full `all` and
+`archs4_biology` execution require this setup even when their DAGs resolve.
 
----
+## Required inputs
 
-## 1. How it is wired
+Paths below are relative to the CLI workspace's data directory unless stated otherwise.
 
-`workflow/rules/phenoplier.smk` is included by `workflow/Snakefile` (config:
-`workflow/config/phenoplier.yaml`). It has one rule per model family, and each
-takes its model from the rule file that builds that model — no model path is
-written down here:
+| Input | Location / acquisition status |
+| --- | --- |
+| CLAMP model | Workflow-generated `.rds`; consensus/MGM inputs are genes-by-LV pandas pickles. No external model download is needed. |
+| Template GWAS | `phenomexcan/gwas_parsing/full/22617_7112.txt.gz`; exists in author bundle; public preparation remains TODO. |
+| Template S-PrediXcan | `phenomexcan/gene_assoc/spredixcan/rapid_gwas_project/22617_7112/22617_7112-gtex_v8-{tissue}-2018_10.csv`, 49 tissues; author bundle. |
+| Template S-MultiXcan | `phenomexcan/gene_assoc/smultixcan/rapid_gwas_project/smultixcan_22617_7112_ccn30.tsv.gz`; author bundle. |
+| Phenotype results | `smultixcan/rapid_gwas/*.tsv.gz`, 4,049 files; public Zenodo 13274496. Repository helper `scripts/inputs/rapid_gwas_inputs.py` exists; CLI workspace wiring remains TODO. |
+| MASHR prediction models | Zenodo 3518299, `mashr_eqtl.tar`; prior audit matched all 98 members to author copies. |
+| GTEx panel and gene metadata | Exact workspace/config paths resolved by CLI; genotype/parquet dependencies and covariance reuse need maintainer confirmation. Keep GTEx v8/MASHR. |
+| Trait descriptions, coding tables, gene mappings | CLI common download resources. Needed for biomedical filtering and gene identifiers. |
+| External software | Bundle's `software/`; maintainer should specify the minimal packages/tools needed by GLS alone. Avoid requiring unused GWAS/TWAS regeneration tools. |
 
-| rule | model, from | summary, into (`archs4.yaml: traits.*`) |
-|---|---|---|
-| `gls_bp_coverage_full` | `a4_cov_model_dir()` CLAMPfull_bp, after `validate_bp_coverage_model` | `coverage.clampfull_bp_dir/cov_rs<f>_seed<s>.tsv.gz` |
-| `gls_bp_coverage_base` | `a4_cov_cell()/CLAMPbase.rds` | `coverage.clampbase_dir/cov_rs<f>_seed<s>.tsv.gz` |
-| `gls_bp_saturation_full` | `a4_sat_model_dir()` CLAMPfull_bp, after `validate_bp_saturation_model` | `saturation.clampfull_bp_dir/sat_rs<f>_k<k>_seed<s>.tsv.gz` |
-| `gls_bp_saturation_base` | `a4_sat_base_rds()` | `saturation.clampbase_dir/sat_rs<f>_k<k>_seed<s>.tsv.gz` |
-| `gls_bp_final_full` | gtex / recount2: `final_models.clampfull.bp.<ds>`, after `publish_bp_model` | `finals.clampfull_bp_dir/final_<ds>.tsv.gz` |
-| `gls_final_base` | gtex / recount2: `coverage.clampbase_source.<ds>` (`clamp_gtex`, `clampbase_recount2`) | `finals.clampbase_dir/final_<ds>.tsv.gz` |
-| `link_bp_final_full`, `link_final_base` | archs4: the finals *are* the coverage rs100/seed1 cells, so their summaries are copied, not re-run | `finals.*_dir/final_archs4.tsv.gz` |
-| `gls_canonical` | `A4_CAN_FINAL_ROOT/<ds>/CLAMPfull_canonical.rds` | beside the model: `<ds>/traits/canon_<ds>.tsv.gz` |
-| `store_bp_final_full`, `store_final_base` | the finals above | `finals.*_dir/../stores/final_<ds>_<model>.h5` |
+Separate repository inputs are declared in `workflow/config/phenoplier_inputs.json`:
+LINCS, gold-standard drug-disease associations, ontology mappings, Z scores and gene
+name mappings have pinned public sources. The CRISPR `lipid_DEG.csv` (50,836 bytes)
+and phenotype metadata are bundled with provenance. All 49 processed S-PrediXcan
+matrices can now be downloaded/converted automatically, with exact numerical
+agreement to author copies. They are no longer an unresolved input.
 
-The filenames are the ones `scripts/archs4/traits/aggregate_*_traits.R` parse; the
-directory, not the filename, says whether a summary is CLAMPfull_bp or CLAMPbase.
-`aggregate_archs4_{coverage,saturation}_traits` list these files as inputs, so
-`snakemake archs4_traits` fits any missing model, runs GLS on it and renders the
-trait-recovery reports in one DAG.
+The two unresolved repository matrices are:
 
-Each GLS job is one shell step (`run_gls.sh`) that drives phenoplier-cli's own
-pipeline in one workspace project per model: register + init once, pin the step-6/7
-pools, resume-safe run, completeness gate, atomic publish. Workspace project names
-(`cov_rs5_seed2_CLAMPfull_bp`, …) match the as-run pico names, so a workspace that
-already holds a finished project is reused. `run_gls.sh` fingerprints the `.rds` it
-registered (`<project>/clamp_source.sha256`); if a model is refit, the next run moves
-the old project aside (`<project>.stale.<timestamp>`), re-registers and starts over.
-Projects made before this wiring carry no fingerprint and are reused as-is (with a
-warning) — delete the project to recompute.
+- `data/phenomexcan/gene_assoc/smultixcan-mashr-pvalues.pkl`, SHA256
+  `f2480ff11d33e815e330579393644a16c64ee7f3c9c8301677a814702d9e274a`.
+- `data/phenomexcan/gene_assoc/fastenloc-torus-rcp.pkl`, SHA256
+  `c9da922040769cb6f3169edeafe6871bf8ae3817ba466dc5a9e712b5d3a3b341`.
 
-## 2. Requirements
+Existing-copy staging supports `PHENOPLIER_DATA_ROOT` or `phenoplier_input_root`.
+That is a reuse option, not a complete public acquisition solution.
 
-| what | where it comes from |
-|---|---|
-| Snakemake 8 (`envs/snakemake.yaml`) | `./setup.sh` or `conda env create -n snakemake -f envs/snakemake.yaml`. Includes `snakemake-executor-plugin-slurm` for cluster runs. |
-| `clamp-analyses` conda env | `./setup.sh` (see the top-level README). Needed by every rule that fits, validates or publishes a CLAMP model and by the R aggregators / report notebooks. |
-| phenoplier-cli **v0.5.2** in its own env | §3. Pinned in `phenoplier.yaml: version`; every GLS/store job refuses any other release. |
-| phenoplier reference data bundle (`phenoplier_full_data`) | §3. Provided per site; not downloaded by this workflow. |
-| CLAMP models to test | produced by the ARCHS4 / GTEx / recount2 rules, or already published. **`[MARC: which of `output/98_final_models/**`, `output/01_model_building/02_archs4/00_preprocess/*` and `data/pathways/*.gmt` are published inputs that must be staged before a fresh checkout can run, and where they come from.]`** |
+## Models and expected GLS outputs
 
-phenoplier-cli needs `snakemake>=9` / Python ≥3.12, which is incompatible with this
-repo's own `snakemake=8` / Python 3.11. That is why it lives in a separate env and
-why each GLS run is a shell job rather than rules of this DAG.
+Path abbreviations: `A=output/01_model_building/02_archs4`,
+`F=output/98_final_models/clampfull/canonical`,
+`C=output/98_final_models/consensus_models`,
+`M=output/03_model_biology/02_archs4/04_crispercas/00_mgm`.
+`ds` is `archs4`, `gtex` or `recount2`.
 
-## 3. phenoplier-cli environment and workspace
+| Family | Models / project name | Published GLS output |
+| --- | --- | --- |
+| Coverage CLAMPbase | 70: fractions 1,5,10,25,50,75,100 x replicates 1-10 (`archs4.coverage.pathway` seeds); `cov_rs{f}_seed{s}_CLAMPbase`, except 100% replicates 2-10 named `archs4_rs100_seed{2,3,1001..1007}_CLAMPbase`. Replicates 1-3 start from `CLAMPbase.rds`, 4-10 from `CLAMPbase/Z.csv` | `A/clampbase_coverage/summaries/cov_rs{f}_seed{s}.tsv.gz` |
+| GTEx coverage comparators | 9: replicates 2-10, RNG seeds 456,789,1001-1007; `gtex_rs100_seed{rep}_CLAMPbase` | `A/clampbase_coverage/comparators/gtex/summaries/gtex_rs100_seed{rep}.tsv.gz` |
+| Saturation CLAMPbase GLS | 17: fractions 1,5,10,25,50,75 x replicates 1,2,3 at K=1728, excluding (1,1728,1); `sat_rs{f}_k1728_seed{s}_CLAMPbase`. **Pending: 43 more** (replicates 4-10 at every fraction plus (1,1728,1)); their models are `A/01_saturation/study_saturation_rs{f}_k1728_seed_{s}/CLAMPbase/Z.csv` | `A/clampbase_saturation/summaries/sat_rs{f}_k1728_seed{s}.tsv.gz` |
+| Final CLAMPbase | `phenoplier.trait_finals`: GTEx `final_gtex_CLAMPbase`; ARCHS4 reuses coverage 100%, replicate 1. **Pending:** recount2 (the current Gavish-Donoho model, 364 LVs; the as-run summary is the earlier 544-LV model) | `A/clampbase_finals/summaries/final_{ds}.tsv.gz` |
+| Canonical CLAMPfull | 3: `canon_{ds}_CLAMPfull_canonical`; input `F/{ds}/CLAMPfull_canonical.rds` | `F/{ds}/traits/canon_{ds}.tsv.gz` |
+| Consensus (MGM) | 3: `consensus_{ds}_CLAMPfull`, all metaLVs; input `C/{ds}/traits/phenoplier_Z.pkl` | `C/{ds}/traits/gls_summary.tsv.gz`; mapped `consensus_{ds}.tsv.gz` |
 
-### 3.1 Environment (once per machine or cluster)
+`consensus_models` requests the consensus GLS. The CRISPR MGM selection
+(`crispercas.gls_summary`) reads `C/archs4/traits/consensus_archs4.tsv.gz` and
+recomputes Benjamini-Hochberg over the GSEA-significant metaLVs; there is no
+separate CRISPR MGM GLS run.
 
-```bash
-bash scripts/phenoplier/setup_env.sh       # creates conda env `phenoplier-cli-neo` with phenoplier-cli v0.5.2 + rpy2/R
-conda activate phenoplier-cli-neo
-phenoplier --version                        # must print v0.5.2
-```
+## Snakemake integration: model outputs to downstream results
 
-`setup_env.sh` delegates to phenoplier-cli's own installer and pins the tag that
-`phenoplier.yaml: version` requires. To use another release, bump both together and
-re-run the whole model set — results from different releases are not comparable.
-On an air-gapped cluster install from wheels transferred from a networked host (see
-`final_models/README.md`). Reading a CLAMP `.rds` (registration, `store build`) goes
-through rpy2 → R, which the env ships.
+PhenoPLIER is a stage of the same Snakemake DAG. Each GLS job takes a model or
+matrix produced by an upstream rule as a declared `input`, then publishes a
+summary as a declared `output`. Downstream analysis rules consume those summaries
+as inputs. No manual model copying, GLS invocation or result placement should be
+required once the separate environment/workspace setup is resolved.
 
-### 3.2 Workspace (once per site)
+| Upstream model / matrix | GLS rule | Downstream consumer |
+| --- | --- | --- |
+| Coverage CLAMPbase model outputs | `gls_bp_coverage_base` | `aggregate_archs4_coverage_traits`, `aggregate_archs4_saturation_traits` (100% references), and `link_final_base` |
+| Saturation CLAMPbase outputs at **K=1728 only** | `gls_bp_saturation_base` | `aggregate_archs4_saturation_traits`, then `saturation_traits_report_archs4` |
+| GTEx coverage comparator models | `gls_gtex_coverage_base` | `aggregate_archs4_coverage_traits` |
+| Final GTEx/recount2 CLAMPbase models | `gls_final_base` | Coverage/final trait aggregation and `store_final_base` |
+| Canonical CLAMPfull outputs from `fit_canonical_clampfull` | `gls_canonical` | `aggregate_phenoplier_traits` |
+| Coverage / GTEx replicate `CLAMPbase/Z.csv` (replicates without an `.rds`) | `phenoplier_z_input` -> `gls_bp_coverage_base` / `gls_gtex_coverage_base` | as above |
+| Consensus `Z.csv` from `consensus_model` | `consensus_gls_input` -> `consensus_gls` | `consensus_traits` maps LV names back to module identifiers; `crispercas_metalv_select` reads the ARCHS4 result |
 
-A phenoplier workspace is a directory with `config.toml`, `data/`, `models/`,
-`projects/`. GLS reads ~6 GB of reference data from `data/` (PhenomeXcan GWAS,
-S-PrediXcan / S-MultiXcan results, the GTEx v8 reference panel, MASHR models, the
-4,049 phenotype files) and writes one project per model under `projects/`.
+The current saturation selection is `saturation_k_values: [1728]` in
+`workflow/config/phenoplier.yaml`. `phenoplier_saturation` requests exactly those
+17 GLS outputs; the report uses those summaries plus full-data coverage references.
+Other K values are fitted for the saturation model analysis, not for PhenoPLIER.
 
-```bash
-conda activate phenoplier-cli-neo
-export PHENOPLIER_HOME=/shared/phenoplier_workspace           # any writable path on the shared filesystem
-phenoplier workspace init
-phenoplier workspace link /path/to/phenoplier_full_data        # symlinks data/, software/ (and models/) from the bundle
-```
+Snakemake resolves upstream producers from the declared model paths (or explicit
+`rules.<name>.output` references). Missing models are generated first, followed by
+GLS and its consumers. Requesting a downstream trait/figure target therefore
+includes the required GLS jobs. Updated saturation model files invalidate their
+GLS outputs; the wrapper fingerprints model content to prevent stale project reuse.
+The environment and reference acquisition issues above remain
+TODO even though these model-to-summary dependencies are already connected.
 
-Known bundle locations: Alpine `/pl/active/pivlab/projects/hzhang/data/phenoplier_full_data.tar.gz`,
-server_cu (pico) `/pividori_lab/data/phenoplier_full_data.tar.gz`; the pico workspace
-is `/pividori_lab/phenoplier_workspace`. `workspace link` also links `models/` and
-re-bootstraps the registry inside the bundle, so link from a copy you own, not from a
-bundle another group is using.
+Additional model families generated before these analyses:
 
-Tell the workflow where the workspace is with **`phenoplier.yaml: workspace`**
-(recommended for clusters: every job resolves the same path whatever environment
-`sbatch` hands it). If it is empty, the jobs use `$PHENOPLIER_HOME`, then
-`~/phenoplier`. A job fails early with a clear message if the workspace has no
-`config.toml`.
+- Coverage: 70 CLAMPbase cells under `A/02_coverage_study/<configured-level>/study_coverage_rs{f}_seed_{s}/` (replicates 4-10 hold `CLAMPbase/Z.csv` only).
+- Saturation model fitting covers 107 cells across K=86,173,432,864,1296,1728 under `A/01_saturation/`. **PhenoPLIER runs only on K=1728: 17 models**, excluding fraction 1%, replicate 1. No GLS runs are requested for K=86,173,432,864 or 1296.
+- Canonical finals: `F/{ds}/` contains `CLAMPfull_canonical.rds`, `Z.csv`, `B.csv`, `summary.csv`, `manifest.json`.
+- Stability seeds: 456,789,1001,1002,1003,1004,1005,1006,1007. ARCHS4 uses `A/05_stability`; GTEx/recount2 use `output/01_model_building/{01_gtex,03_recount2}/stability/seed{seed}/CLAMPfull_canonical/`.
+- Each compendium contributes its reference plus nine seed CLAMPfull models to consensus. ARCHS4 reference is S123; GTEx/recount2 references are S124. GTEx reuses two coverage base fits, adding seven; recount2 adds nine base fits. GTEx/recount2 together add 18 CLAMPfull fits.
+- Consensus: `C/{ds}/` contains `Z.csv`, `B.csv`, `manifest.json`, `metaZ.csv`, cluster membership/summary, `models/` links, `noise/`, `ora.csv`, `ora/`, and `lincs-projection.tsv`. ARCHS4 reuses the CRISPR MGM clustering.
+- Optional final CLAMPbase stores: `A/clampbase_finals/stores/final_{ds}_CLAMPbase.h5`, target `phenoplier_final_stores`.
+- Combined traits: `output/03_model_biology/02_archs4/05_traits/phenoplier_traits_long.csv.gz`, target `phenoplier_long_table`.
 
-## 4. Configuration
+The authoritative lists are `workflow/config/{archs4,consensus,phenoplier}.yaml`
+and the corresponding rule files. Pseudobulk benchmark models are not GLS inputs.
 
-All keys live in `workflow/config/phenoplier.yaml` (comments there are the
-authoritative reference). The ones you are likely to touch:
+## MGM input compatibility: module names and Z matrices
 
-| key | meaning |
-|---|---|
-| `version` | phenoplier-cli release every job must run (`0.5.2`). |
-| `workspace` | phenoplier workspace path (§3.2). Empty → `$PHENOPLIER_HOME` → `~/phenoplier`. |
-| `conda_env` | the phenoplier-cli conda env name (`phenoplier-cli-neo`). |
-| `namespace` | registry namespace models are registered under (`clamp`). |
-| `cohort` | GWAS cohort (`phenomexcan_rapid_gwas`); also names the per-phenotype results dir stores read. |
-| `lv_percentile` | top gene percentile per LV for the GLS binarisation (`0.01`, = `archs4.yaml: ora.top_pct`). |
-| `trait_filter` | `biomedical` (2,366 of 4,049 phenotypes) or `all`. Keep it fixed across a comparison: it changes the BH test count. |
-| `expected_phenotypes` | unique phenotypes a complete summary must contain per filter; the completeness gate. |
-| `saturation_k_values` | saturation ranks to run (`[1728]`, what the report uses). |
-| `workers` | phenoplier-cli's step-6/7 pools: `step6: 1` (serial; the forked pool deadlocks), `step7 × blas_step7` = the job's threads. On a host without a cgroup prefer `step7: 12, blas_step7: 1`. |
-| `resources.gls` / `resources.store` | threads, memory and wall clock this repo's scheduler requests per job. |
-| `clusters` / `target` | which of phenoplier-cli's *own* Slurm profiles `shortcut gls` submits to. `local` (default and the validated path) runs each model's whole pipeline inside the allocation this repo gives the job. See §6. |
-| `report_root` | where the cross-model long table lands. |
+MGM and consensus models have module identifiers such as `metaLV1`, `metaLV2`,
+or other names. These names are not accepted by the current PhenoPLIER integration,
+which expects `LV1`, `LV2`, ... . The original identifiers must survive in the
+published results so traits can be joined back to clustering, ORA and CRISPR outputs.
 
-Overrides without editing the checked-in YAML: `snakemake <target> --configfile my.yaml`
-(merged recursively; lists replace, dict keys can only be added; put the target
-*before* `--configfile`, which otherwise swallows it as another file) or
-`snakemake <target> --config phenoplier_target=server_cu` for the target.
+These analyses start from **gene-loading matrices (`metaZ.csv` or `Z.csv`), not a
+fitted CLAMP `.rds` object**. The current workaround is:
 
-## 5. Running locally
+1. Read the CSV with gene identifiers as rows and module identifiers as columns.
+2. Rename columns to consecutive `LV1`, `LV2`, ... and save the correspondence in
+   `lv_mapping.csv` (`phenoplier_lv`, `metaLV`).
+3. Serialize the matrix as a pandas pickle and pass that file to the CLI's `--input`.
+4. Map GLS results back to the original module identifiers with `collect_summary.py`.
 
-From the repo root, in the `snakemake` env:
+For consensus, `consensus_gls_input` converts the full `Z.csv` and keeps
+`lv_mapping.csv`; the CRISPR MGM analysis uses the ARCHS4 consensus result.
+The wrapper's argument is still called `--rds`, even though it passes these pickles
+through to `phenoplier shortcut gls --input`.
 
-```bash
-conda activate snakemake
-snakemake --profile workflow/profiles/local -n phenoplier_finals     # always dry-run first
-snakemake --profile workflow/profiles/local phenoplier_finals
-```
+**Maintainer TODO:** confirm and document matrix-only GLS support without requiring
+an RDS, B matrix or fitted-model metadata; define the accepted orientation and gene
+identifiers; support arbitrary module names or preserve a supplied name mapping
+through registration, GLS summaries and exports. A direct `Z.csv` input should have
+a documented conversion or native support. The repository currently supplies a
+converted pickle, not the CSV itself. This compatibility path needs a fresh-workspace
+test; existing RDS-based runs alone do not validate it.
 
-`workflow/profiles/local/config.yaml` caps the run at 24 cores / 96 GB. A GLS job
-takes hours to a day per model (it scales with the model's **gene** count: ~15 h for
-the 21k-gene GTEx final on 32 cores, ~2.7 h for the 6k-gene recount2 final), so a
-workstation is for one or two models, not the sweep. `resources.gls.mem_mb` must be
-≤ the profile's `mem_mb` or Snakemake refuses to schedule the job; lower it with a
-`--configfile` override on a small machine.
+## CLI contract and runtime behavior
 
-## 6. Running on a Slurm cluster
+Workspace selection: `phenoplier.workspace` config, then `PHENOPLIER_HOME`, then
+`~/phenoplier`. Both `PHENOPLIER_HOME` and `PHENOPLIER_ROOT_DIR` are exported.
+A writable `projects/` and model registry are required. The wrapper serializes
+registration with `flock`; each model otherwise has an independent project.
 
-There are two Slurm layers to keep apart:
+`run_gls.sh` calls `shortcut gls --unlock` to initialize, then `workflow gls run
+--config-file <workspace>/projects/<name>/pipeline_config.yaml`. It fingerprints
+inputs, preserves sentinels for resumption, and moves stale projects aside when
+an input fingerprint changes. Legacy projects without fingerprints are reused
+with a warning; use a fresh workspace for reproduction.
 
-1. **This repo's Snakemake** submits each rule (CLAMP fits, `gls_*`, `store_*`,
-   aggregations) as a Slurm job via `snakemake-executor-plugin-slurm`. This is the
-   layer you configure with a site profile.
-2. **phenoplier-cli's pipeline inside a `gls_*` job.** With `phenoplier.yaml:
-   target: local` (default) it runs entirely inside that job's allocation, sized by
-   `resources.gls.threads` and pinned by `workers` — the path all 86 as-run models
-   used. Only switch `target` to `server_cu` / `alpine` if you want phenoplier-cli to
-   spawn its own sub-jobs from inside the allocation; account/partition for those
-   live in phenoplier-cli's profiles (`phenoplier/workflow/clusters.py`), not here.
+Parameters: namespace `clamp`, cohort `phenomexcan_rapid_gwas`, GTEx v8/MASHR,
+LV percentile 0.01, `phenomexcan-curated` trait filter, expected 2,824 phenotypes
+(4,049 before filtering). Step 6 uses one worker x eight BLAS threads; step 7 uses six
+workers x two BLAS threads. Outer GLS jobs request 12 CPUs, 100 GB, 4,320 minutes.
+The nested executor defaults to `local`, including when the outer Snakemake job
+uses Pico's `server_cu` submission profile.
 
-### 6.1 Site profile
+CLI summary source:
+`<workspace>/projects/<name>/results/gls/phenoplier/gls-summary-phenomexcan_rapid_gwas.tsv.gz`.
+The wrapper publishes it to the paths above, together with available pickle and
+trait-filter exclusion sidecars. Logs sit alongside each requested summary.
+Summaries must contain `phenotype`, `lv`, `pvalue`, a complete phenotype x LV
+grid and no duplicate pairs or zero/nonfinite P values; NaNs are allowed only for
+flagged degenerate LVs. Downstream scripts also consume FDR and trait annotations.
+MGM/consensus exports rename columns to LV1, LV2, ... and preserve a mapping CSV
+back to metaLV IDs.
 
-`workflow/profiles/slurm/config.yaml` is the portable part (executor, job limits,
-memory pools, per-rule overrides for the ARCHS4 fits). Site specifics — account,
-partition, QOS — stay out of the repo. Create a user-owned profile that starts from
-it and adds them, e.g. `~/.config/snakemake/clamp-slurm/config.yaml`:
+## Maintainer acceptance goal
 
-```yaml
-# Site profile for <cluster>. Everything not listed here comes from
-# workflow/profiles/slurm/config.yaml, which you copy in or keep in step with.
-executor: slurm
-jobs: 20                      # concurrent Slurm jobs
-use-conda: true
-printshellcmds: true
-rerun-incomplete: true
-retries: 2
-rerun-triggers: [mtime]
-latency-wait: 120             # shared filesystems lag; avoid false "missing output"
+From a new environment and empty workspace: install the pinned CLI, obtain its
+references through documented commands, initialize a small synthetic project and
+validate input resolution without reusing author outputs. Then validate one small
+GLS case against the pinned release. Full model fits and a full GLS campaign are
+outside the repository's lightweight validation. No files have been sent externally.
 
-resources:                    # cluster-wide pools this workflow's rules draw from
-  - mem_mb=800000
-  - fit_mem_mb=800000
-  - ora_mem_mb=64000
-  - fit_slots=20
-  - ora_slots=8
-  - large_fit_slot=1
+## As-run results
 
-default-resources:
-  - slurm_account=<account>
-  - slurm_partition=<partition>
-  - mem_mb=8000
-  - runtime=5760
-  - tasks=1
-
-set-resources:
-  # phenoplier GLS: one node, one task, `threads` cpus; 100 GB covers the 8 GB
-  # archs4 .rds (~88 GB to load). Wall clock 3 days > the ~20 h archs4 final.
-  gls_bp_coverage_full:   {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_bp_coverage_base:   {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_bp_saturation_full: {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_bp_saturation_base: {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_bp_final_full:      {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_final_base:         {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  gls_canonical:          {slurm_partition: <long-partition>, mem_mb: 100000, runtime: 4320}
-  # [MARC: the ARCHS4 fit overrides from workflow/profiles/slurm/config.yaml
-  # (preprocess_archs4 / svd_archs4 / clampbase_archs4 / clampfull_archs4) and any
-  # high-memory partition they need.]
-
-set-threads:
-  preprocess_archs4: 30
-  svd_archs4: 30
-```
-
-Notes:
-
-- `slurm_account` / `slurm_partition` are ordinary Snakemake resources; put them in
-  `default-resources` and override per rule in `set-resources`. Any `mem_mb`,
-  `runtime` (minutes) and `threads` a rule declares are translated to `--mem`,
-  `--time` and `--cpus-per-task` by the plugin.
-- `gls_*` jobs need **one node**: phenoplier-cli's pools are process pools, not MPI.
-  The plugin submits `tasks=1` by default; keep it.
-- The job's cgroup is what pins phenoplier-cli: `workers.step7 × blas_step7` should
-  equal `resources.gls.threads` (default 6 × 2 = 12). Un-pinned it over-detects the
-  node's cores and thrashes.
-- `phenoplier.yaml: workspace` should be set to the shared-filesystem workspace so
-  jobs never depend on `PHENOPLIER_HOME` being exported through `sbatch`.
-- The conda envs (`snakemake`, `clamp-analyses`, `phenoplier-cli-neo`) must be
-  visible on the compute nodes (same `$HOME`/shared conda install). `use-conda`
-  resolves them by name; nothing is created on the fly.
-
-### 6.2 Submitting
-
-Run the scheduler itself from a login node inside a persistent session (`tmux` /
-`screen`, or a small long-running Slurm job), since it stays alive for the whole
-DAG:
-
-```bash
-conda activate snakemake
-cd /path/to/clamp-analyses
-snakemake --profile ~/.config/snakemake/clamp-slurm -n phenoplier_finals            # dry-run
-snakemake --profile ~/.config/snakemake/clamp-slurm phenoplier_finals                # 6 GLS jobs (3 datasets x 2 models)
-snakemake --profile ~/.config/snakemake/clamp-slurm phenoplier_final_stores          # + 6 HDF5 stores
-snakemake --profile ~/.config/snakemake/clamp-slurm archs4_traits                    # everything the trait reports need
-```
-
-Monitoring: `squeue -u $USER`, the per-model log next to each summary
-(`…/summaries/<name>.log`), and inside the workspace project
-`projects/<name>/pipeline_results/*/sentinels/step{1..7}.done` and
-`results/gls/phenoplier/<cohort>/` (one file per phenotype, 2,366 when complete).
-
-Interrupted runs resume: re-issue the same command. `run_gls.sh` re-enters
-phenoplier-cli's pipeline where its sentinels stopped; a summary that fails the
-completeness gate is deleted so the requeue finishes step 7 instead of skipping.
-
-### 6.3 Throughput
-
-Registration + init of concurrent jobs is serialised by a lock on
-`<workspace>/.clamp_registry.lock` (phenoplier-cli rewrites its registry without
-one); the hours-long pipeline phase is not. `jobs:` in the profile bounds how many
-GLS runs are in flight; each holds ~100 GB on its node. The as-run sweep ran
-~6 concurrent on pico (168 cores / 900 GB) at 22–32 cores per job.
-
-## 7. Targets and outputs
-
-| target | what |
-|---|---|
-| `phenoplier_coverage` / `phenoplier_saturation` / `phenoplier_finals` | GLS summaries for one family (CLAMPfull_bp + CLAMPbase) |
-| `phenoplier_canonical` | GLS summaries for the three canonical-prior models |
-| `phenoplier_final_stores` | one HDF5 composite study store per final model (`phenoplier store build`) |
-| `phenoplier_traits` | every per-model summary (coverage, saturation, finals, canonical) |
-| `phenoplier_long_table` | every LV × trait row of every summary, streamed into one gzipped CSV under `report_root` (tens of GB) |
-| `archs4_traits` | the trait-recovery reports (`archs4_traits.smk`); pulls the GLS runs it needs |
-
-Per model, next to the summary (`<name>.tsv.gz`): `<name>.pkl.gz` (same table as
-pickle), `<name>_trait_filter_excluded.tsv` (which traits the filter dropped and
-why), `<name>.log`. Summary columns: `phenotype, phenotype_desc, lv, pvalue,
-binarized_n_pos, lv_se_ratio, lv_degenerate, degenerate_reason, fdr`.
-
-Inputs the ARCHS4 families need that this integration does not produce. The
-CLAMPfull_bp prior `data/pathways/go_bp.Hs.symbols.gmt` is generated by
-`generate_archs4_go_bp_gmt` (`workflow/rules/archs4.smk`, checksum-verified). Still to
-document: **`[MARC: ARCHS4 raw h5 + preprocess outputs
-(`00_preprocess/metadata_filtered.rds`, `fbm_filtered.bk`), the coverage cells'
-`fbm_subsampled.bk` (written by `subsample_cells.R` but undeclared),
-`scripts/archs4/clamp.R` referenced by `clampbase_bp_coverage_cell`, and the other
-gene-set files under `data/pathways/` (`c2.cp.*`, `c5.go.cc.*`, `c8.all.*`, `h.all.*`,
-`Cell_marker_Human.xlsx`) — where they come from and how to stage them.]`**
-
-## 8. Verifying a run
-
-- Every summary passes the gate the runner already applied:
-  `python scripts/phenoplier/verify_summary.py <summary.tsv.gz> 2366` → `OK`
-  (expected phenotype count, full phenotype × LV grid, p-values in (0, 1], NaN only
-  on LVs flagged degenerate).
-- Stores open: `python -c "import h5py,sys; h5py.File(sys.argv[1]).close()" <store.h5>`.
-- Long table rows = Σ over models of (phenotypes × LVs); `model` ∈ {CLAMPfull_bp,
-  CLAMPbase, CLAMPfull_canonical}.
-- `snakemake -n <target>` afterwards reports nothing to do.
-- Workspace: `<workspace>/models/registry.toml` lists `clamp/<name>` per model and
-  each project carries `clamp_source.sha256` matching its `.rds`.
-
-## 9. Troubleshooting
-
-| symptom | cause / fix |
-|---|---|
-| `[ERROR] phenoplier-cli X in env … but 0.5.2 is required` | wrong release in the env; re-run `setup_env.sh` (or bump `phenoplier.yaml: version` deliberately). |
-| `[ERROR] no phenoplier workspace at …` | set `phenoplier.yaml: workspace` (or `PHENOPLIER_HOME`) to a directory with `config.toml`. |
-| `ModuleNotFoundError: rich` / `h5py` inside a job | a `phenoplier`/`python` shim earlier on PATH than the env; the runner prepends the env's bin, so check the job's shell startup files. |
-| `[stale] model changed since this project was initialised` | expected after a refit: the old project is moved aside and the model re-registered. |
-| `summary failed the completeness gate` | partial step 7 or wrong `trait_filter` for the project; the summary was deleted, re-run the target to resume. |
-| `BrokenProcessPool` in step 7 | pools not matching the cgroup; lower `workers.step7` (keep `step7 × blas_step7 ≤ threads`). |
-| Snakemake: `Job needs mem_mb=100000 but only … available` | local profile pool smaller than `resources.gls.mem_mb`; override the latter. |
-| Zero p-values in a summary | the SE-collapse artifact fixed in v0.5.2 (#85); the gate refuses them — check the version. |
-
-## 10. Layout
-
-| path | what |
-|---|---|
-| `setup_env.sh` | one-time: build the `phenoplier-cli-neo` env (phenoplier-cli **v0.5.2** + rpy2/R) |
-| `run_gls.sh` | one model → one GLS summary (version gate, fingerprint, register + init, pin pools, run, gate, publish); driven by the rules |
-| `store_build.sh` | one model → one HDF5 study store; driven by the rules |
-| `verify_summary.py` | completeness gate |
-| `aggregate_traits.{py,sh}` | stream per-model summaries into one long cross-model table (chunked, gzipped) |
-| `final_models/`, `saturation_k1728/`, `coverage/`, `clampbase/` | the as-run pico `sbatch` recipes (§11) |
-| `RUN_SUMMARY.md` | what was actually run (86 models across 3 CLAMP families) + reproduce-on-pico index |
-
-## 11. As-run record (pico)
-
-The 86 models in `RUN_SUMMARY.md` were produced with the `sbatch` recipes under
-`final_models/`, `saturation_k1728/`, `coverage/` and `clampbase/` before this module
-was wired into the Snakefile. They remain the record of what ran; the rules above
-are the reproducible path from here on and go through the same hardened flow
-(`run_gls.sh` ≡ `clampbase/_run_clampbase_model.sh` minus the store step).
+The summaries in `output/` come from the pico campaign
+`server_cu:/pividori_lab/phenoplier_workspace/projects/marc/10-15-2026-trait-filtering-fix/`
+(one folder per project name above; `INDEX-curated.tsv` and `INDEX-new.tsv` list
+models, LVs and hits). Each published summary is that project's
+`summary/gls-summary-phenomexcan_rapid_gwas-phenomexcan-curated.tsv.gz`, copied to
+the output path its rule declares. The earlier biomedical (2,366-trait) summaries
+are kept in `output/archive/traits_biomedical_20261026/`.

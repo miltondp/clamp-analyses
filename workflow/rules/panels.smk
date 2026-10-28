@@ -257,24 +257,19 @@ rule fig3_panel:
         f"{PANELS_NB}/fig3.ipynb"
 
 
+# Figure 4 is supplied in the repository; source artwork regeneration is optional.
 rule fig4_panel:
     input:
-        projections=rules.aggregate_projections.output.agg,
-        drug_diseases=rules.prepare_three_model_comparison_data.output,
-        scheme="scripts/panels/assets/projection_scheme.svg",
-        mechanism_plots="scripts/archs4/projections/plots.R",
-        notebook=f"{PANELS_NB}/fig4.ipynb",
-        helpers="scripts/panels/main_figure.R",
+        png=ancient("figures/fig4/fig4.png"),
+        pdf=ancient("figures/fig4/fig4.pdf"),
+        svg=ancient("figures/fig4/fig4.svg"),
     output:
         png=f"{PANELS}/fig4/fig4.png",
         pdf=f"{PANELS}/fig4/fig4.pdf",
         svg=f"{PANELS}/fig4/fig4.svg",
         complete=touch(f"{PANELS}/fig4/notebook.complete"),
-    log:
-        notebook=f"{PANELS_NB}/fig4.executed.ipynb",
-    conda: "clamp-analyses"
-    notebook:
-        f"{PANELS_NB}/fig4.ipynb"
+    shell:
+        "cp {input.png:q} {output.png:q} && cp {input.pdf:q} {output.pdf:q} && cp {input.svg:q} {output.svg:q}"
 
 
 rule fig5_panel:
@@ -337,7 +332,7 @@ rule supplementary_tables:
         rules.crispercas_l1000_table.output,
 
 
-PUBLISHED_FIGURES = ["fig2", "fig3", "fig4", "fig5"] + [f"supp{i}" for i in range(1, 9)]
+PUBLISHED_FIGURES = ["fig2", "fig3", "fig5"] + [f"supp{i}" for i in range(1, 9)]
 
 
 # ============================================================

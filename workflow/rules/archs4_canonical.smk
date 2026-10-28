@@ -189,6 +189,8 @@ rule ora_canonical:
 
 
 rule aggregate_canonical_ora:
+    wildcard_constraints:
+        dataset=A4_CAN_COMPENDIUM_PATTERN,
     input:
         ora=lambda wc: [
             f"{A4_CAN_FINAL_ROOT}/{wc.dataset}/ora/{database}"
