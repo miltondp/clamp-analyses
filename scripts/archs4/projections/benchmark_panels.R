@@ -53,7 +53,8 @@ projection_benchmark_panels <- function(root) {
     comparisons[,y:=ymax+yrange*(bracket_start+bracket_step*(level-1L))]
     comparisons[,label_y:=y+yrange*.04]
     ggplot(d,aes(method,value,fill=method))+
-      geom_boxplot(width=.56,outlier.shape=NA,linewidth=.3,alpha=.8)+
+      geom_violin(width=.9,trim=TRUE,scale="width",linewidth=.3,alpha=.65)+
+      geom_boxplot(width=.18,outlier.shape=NA,linewidth=.3,alpha=.8)+
       geom_point(position=position_jitter(width=.2,height=0,seed=123),shape=21,size=.6,fill='white',stroke=.2)+
       geom_point(data=means,aes(method,mean_value),shape=23,size=1.6,fill='white',colour='black',inherit.aes=FALSE)+
       geom_text(data=means,aes(method,label_y,label=sprintf('%.3f',mean_value)),vjust=0,size=5/.pt,inherit.aes=FALSE)+
