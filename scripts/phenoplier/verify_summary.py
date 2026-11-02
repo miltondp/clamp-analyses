@@ -2,7 +2,7 @@
 """Completeness/validity gate for a GLS combined summary.
 
 Exit 0 only if the summary is COMPLETE and clean:
-  - exactly EXPECT_PHENOS (default 2366) unique phenotypes,
+  - exactly EXPECT_PHENOS (default 2824) unique phenotypes,
   - a full phenotype x LV grid: no duplicate (phenotype, lv) pair, and every
     phenotype tested against the same LV set,
   - every non-NaN p-value finite and in (0, 1] (a zero p-value is the SE
@@ -21,16 +21,16 @@ import numpy as np
 import pandas as pd
 
 f = sys.argv[1]
-expect = int(sys.argv[2]) if len(sys.argv) > 2 else 2366
+expect = int(sys.argv[2]) if len(sys.argv) > 2 else 2824
 
 try:
-    d = pd.read_csv(f, sep="\t", low_memory=False)
+    d = pd.read_pickle(f) if f.endswith(".pkl.gz") else pd.read_csv(f, sep="\t", low_memory=False)
 except Exception as e:  # noqa: BLE001
     print(f"FAIL read: {e}")
     sys.exit(1)
 
 problems = []
-for col in ("phenotype", "lv", "pvalue"):
+for col in ("phenotype", "lv", "pvalue", "fdr"):
     if col not in d.columns:
         problems.append(f"missing column {col}")
 if problems:
@@ -39,6 +39,10 @@ if problems:
 
 nph = d["phenotype"].nunique()
 nlv = d["lv"].nunique()
+if len(sys.argv) > 3 and nlv != int(sys.argv[3]):
+    problems.append(f"LVs {nlv} != {sys.argv[3]}")
+if d[["phenotype", "lv"]].isna().any().any() or nlv == 0:
+    problems.append("empty or missing phenotype/LV identifiers")
 if nph != expect:
     problems.append(f"phenotypes {nph} != {expect}")
 
@@ -67,6 +71,10 @@ if zero_p:
 out_of_range = int((~nan_p & (~np.isfinite(p) | (p < 0) | (p > 1))).sum())
 if out_of_range:
     problems.append(f"{out_of_range} p-values outside (0, 1] or non-finite")
+
+fdr = pd.to_numeric(d["fdr"], errors="coerce")
+if ((~degenerate) & (fdr.isna() | ~np.isfinite(fdr) | (fdr < 0) | (fdr > 1))).any():
+    problems.append("invalid FDR on non-degenerate rows")
 
 status = "OK" if not problems else "FAIL"
 print(

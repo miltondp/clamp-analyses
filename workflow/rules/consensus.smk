@@ -533,6 +533,7 @@ rule consensus_gls:
     input:
         rds=rules.consensus_gls_input.output.z,
         script="scripts/phenoplier/run_gls.sh",
+        adapter="scripts/phenoplier/workflow.py",
         verify="scripts/phenoplier/verify_summary.py",
     output:
         summary=f"{CON_ROOT}/{{compendium}}/traits/gls_summary.tsv.gz",
