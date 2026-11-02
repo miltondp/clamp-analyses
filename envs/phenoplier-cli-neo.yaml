@@ -1,0 +1,22 @@
+# Isolated from the outer Snakemake 8 / Python 3.11 environment.
+# Numerical/engine pins match v0.7.3's poetry.lock; this is not a full binary lock.
+name: phenoplier-cli-neo
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - git
+  - r-base=4.4
+  - rpy2>=3.5,<3.7
+  - pip:
+      - numpy==2.3.4
+      - scipy==1.16.2
+      - pandas==2.3.3
+      - statsmodels==0.14.5
+      - h5py==3.15.1
+      - anndata==0.13.2
+      - snakemake==9.16.3
+      - snakemake-executor-plugin-slurm==2.3.1
+      # v0.7.3, installed non-editably. Git authentication is required.
+      - phenoplier[slurm] @ git+https://github.com/pivlab/phenoplier-cli.git@a6f22db4c3df864a7cd13d08bb8cf8b9bb5d8640

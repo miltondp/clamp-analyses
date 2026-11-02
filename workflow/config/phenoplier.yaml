@@ -1,5 +1,5 @@
 phenoplier:
-  conda_env: phenoplier-cli-neo
+  conda_env_file: envs/phenoplier-cli-neo.yaml
 
   version: 0.7.3
 

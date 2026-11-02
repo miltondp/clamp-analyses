@@ -123,5 +123,26 @@ class WorkflowTest(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
 
 
+class EnvironmentTest(unittest.TestCase):
+    def test_wrappers_keep_activated_prefix_ahead_of_python_shims(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            prefix = root / 'active'
+            shim = root / 'shims'
+            (prefix / 'bin').mkdir(parents=True)
+            shim.mkdir()
+            for path, marker in [(prefix / 'bin/python', 'active'),
+                                 (shim / 'python', 'wrong-python')]:
+                path.write_text(f'#!/bin/sh\necho {marker}\n')
+                path.chmod(0o755)
+            env = dict(os.environ, CONDA_PREFIX=str(prefix),
+                       PATH=f'{shim}:{os.environ["PATH"]}')
+            for wrapper in ['run_gls.sh', 'store_build.sh']:
+                with self.subTest(wrapper=wrapper):
+                    result = subprocess.run(['bash', str(SCRIPT / wrapper), '--help'],
+                                            env=env, check=True, capture_output=True, text=True)
+                    self.assertEqual(result.stdout.strip(), 'active')
+
+
 if __name__ == '__main__':
     unittest.main()

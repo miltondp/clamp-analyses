@@ -548,7 +548,7 @@ rule consensus_gls:
         runtime=int(PHENOPLIER_GLS_RES["runtime"]),
     wildcard_constraints:
         compendium=CON_COMPENDIUM_PATTERN,
-    conda: PHENOPLIER_CFG["conda_env"]
+    conda: PHENOPLIER_CONDA_ENV
     shell:
         PHENOPLIER_GLS_SHELL
 

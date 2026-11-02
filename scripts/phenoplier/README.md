@@ -8,13 +8,54 @@ Changing the trait family changes the cross-trait BH-FDR correction.
 To use completed pico results, start with **Collect completed results** below.
 The reference setup is needed only for new GLS computations.
 
-## Fresh environment and references
+## Dedicated software environment
 
-From the repository root:
+All PhenoPLIER rules, including collection, declare
+[`envs/phenoplier-cli-neo.yaml`](../../envs/phenoplier-cli-neo.yaml).
+With `--use-conda`, Snakemake creates and activates its own environment under
+`.snakemake/conda/`; an existing environment named `phenoplier-cli-neo` is not
+required or silently reused. The wrappers keep that activated environment.
+The CLI is a hard software dependency for these rules; collection checks it but
+does not require workspace initialization or reference data.
+
+The environment pins v0.7.3 by its full Git commit, installed non-editably, plus
+NumPy, SciPy, pandas, statsmodels, HDF5 bindings and the inner workflow engine to
+versions in that release's `poetry.lock`. PhenoPLIER's Python 3.12 / Snakemake 9
+stack stays separate from this repository's Python 3.11 / Snakemake 8 orchestrator.
+Git authentication for the private `pivlab/phenoplier-cli` repository is required.
+
+Prepare the environment on a node with package-download access, without running
+any analysis or requiring campaign files:
 
 ```bash
-bash scripts/phenoplier/setup_env.sh
-conda activate phenoplier-cli-neo
+conda activate snakemake
+snakemake -s workflow/Snakefile phenoplier_environment --cores 1 --use-conda \
+  --conda-create-envs-only --conda-frontend conda
+# Import/version checks only; writes environment.json, never launches GLS:
+snakemake -s workflow/Snakefile phenoplier_environment --cores 1 --use-conda
+```
+
+The environment report is `output/03_model_biology/03_phenoplier/environment.json`.
+These pins improve repeatability but are not a complete binary lock: some
+transitive packages, Conda builds and BLAS libraries can still vary. Exact
+cross-host numerical identity is not guaranteed (see
+[upstream #242](https://github.com/pivlab/phenoplier-cli/issues/242)). A validated
+platform lock or container digest would be the next stronger deployment option,
+tracked in [upstream #252](https://github.com/pivlab/phenoplier-cli/issues/252).
+Snakemake's [environment deployment guide](https://snakemake.readthedocs.io/en/v8.30.0/snakefiles/deployment.html)
+describes the YAML and platform pin-file approaches.
+
+For interactive CLI work, `bash scripts/phenoplier/setup_env.sh` creates a named
+environment from the same YAML; set `PHENOPLIER_TARGET_ENV` to choose another name.
+It refuses to overwrite an existing environment. Activate it before manual CLI
+commands. `run_gls.sh` and `store_build.sh` also accept an explicit `--conda-env`
+name or prefix for manual use; Snakemake never passes that override.
+
+## Workspace and references (recomputation only)
+
+Using the CLI environment above:
+
+```bash
 export PHENOPLIER_HOME=/absolute/path/to/new-phenoplier-workspace
 export PHENOPLIER_ROOT_DIR="$PHENOPLIER_HOME"
 phenoplier workspace init --home "$PHENOPLIER_HOME"
@@ -22,12 +63,10 @@ phenoplier workspace link /path/to/extracted/phenoplier_full_data
 phenoplier doctor
 ```
 
-The installer needs authenticated access to `pivlab/phenoplier-cli`. It uses the
-release's installer and environment, including R support for existing RDS inputs.
-Use a new workspace for this campaign; old v0.5.x model registries require the
-CLI's migration procedure. Set `phenoplier.workspace` and `conda_env` in
-`workflow/config/phenoplier.yaml` for batch jobs. Both wrappers accept an environment
-name or its absolute directory.
+Use a new workspace for recomputation; old v0.5.x model registries require the
+CLI's migration procedure. Set `phenoplier.workspace` in
+`workflow/config/phenoplier.yaml` for batch jobs. Set `conda_env_file` only when
+intentionally changing the checked-in environment specification.
 
 **A complete public reference download is still unavailable in v0.7.3.** The
 `reference_subset` download mode (formerly `full_data`) does not assemble all the
@@ -86,6 +125,26 @@ Directory replicate indices and fitted RNG seeds are recorded separately.
 | ARCHS4 full-data stability RNG seeds 1001–1007 | 7 | curated 2,824 | curated summary/store |
 | GTEx full-data comparator indices 4–10 | 7 | curated 2,824 | curated summary/store |
 | Additional saturation K=1728, including 1%/index 1 | 43 | curated 2,824 | curated summary/store |
+
+### Dry runs
+
+The dedicated campaign target covers all 192 units. On pico, or with the campaign
+mounted locally:
+
+```bash
+snakemake -s workflow/Snakefile phenoplier_campaign -n --cores 2 --use-conda
+# Optional recomputation DAG for the 102 new units:
+snakemake -s workflow/Snakefile phenoplier_campaign_new -n --cores 28 --use-conda \
+  --config phenoplier_campaign_mode=recompute
+# Environment check DAG, requiring no scientific inputs:
+snakemake -s workflow/Snakefile phenoplier_environment -n --cores 1 --use-conda
+```
+
+A dry run resolves inputs and jobs; it does not install software or execute GLS.
+Collection needs the delivered files visible at `phenoplier_results_root`.
+Recomputing all 192 requires recovery of the historical inputs described below;
+the full recompute DAG correctly stops if they are missing. The campaign target
+does not include downstream plotting or change the existing figure selection.
 
 ### Collect completed results (default)
 
@@ -155,6 +214,34 @@ targets keep their downstream paths. The historical recount2 final model in the
 campaign is not a substitute for the current model selected by the repository.
 Do not mix the old biomedical outputs with curated results.
 
+## Store contents and model locations
+
+The delivered and newly built study stores contain association results, trait
+metadata and LV identifiers; they do **not** embed the Z matrix, fitted RDS or
+hyperparameters. This also applies to the existing final-store targets. Use the
+separate upstream model files for loadings and model interpretation. The missing
+`/clamp` group is intentional here; see
+[phenoplier-cli #235](https://github.com/pivlab/phenoplier-cli/issues/235).
+
+- **New campaign models:** the manifest's `source` column gives each upstream
+  path relative to `campaign.source_root` (the checkout by default). Coverage,
+  saturation, stability and comparator rules produce `CLAMPbase/Z.csv`; fitted
+  model RDS files live beside those exports where the producer supplies them.
+- **Consensus models:** `output/98_final_models/consensus_models/<dataset>/`
+  contains the model products. `traits/phenoplier_Z.pkl` is the workflow's
+  LV-renamed GLS input, and `traits/lv_mapping.csv` maps back to metaLV names.
+- **Delivered copies of the 102 new inputs:** `<results_root>/<unit>/model/`
+  contains the registered Z pickle and model metadata. The upstream producer
+  paths are retained in the manifest; this delivery is useful for checking the
+  exact input used by the recorded run.
+- **Historical models:** use `campaign.historical_root` plus the manifest's
+  `source` path. These old fits are not all reproducible from the current model
+  rules; the recovery caveat above still applies. Do not substitute a current
+  refit when interpreting a historical store.
+- **Existing final-model targets:** the model input is the `CLAMPbase.rds`
+  selected by `a4_final_base_rds` in `workflow/rules/phenoplier.smk`, including
+  the linked ARCHS4 coverage model.
+
 ## Matrix names and downstream mapping
 
 v0.7.3 accepts genes-by-modules CSV/TSV, pandas pickle and fitted RDS inputs in
@@ -178,6 +265,26 @@ cohort and LV percentile determine a separate project/model key. Changed inputs
 therefore cannot reuse an old project's results. It does not remove registrations,
 projects, Snakemake locks or completion records. Registration and same-project
 calls are serialized. The CLI's own run-state checks remain in effect.
+
+For an interrupted recomputation, the CLI project is
+`<workspace>/projects/<namespace>/<model>/<fingerprint>/` (campaign namespace:
+`clamp/oct2026`). Its `clamp_source.json` records the source fingerprint; the
+failed command in the GLS log names `pipeline_config.yaml` in that directory.
+From the same CLI environment, inspect and preview recovery first:
+
+```bash
+phenoplier run status -p /absolute/path/to/project --workflow gls --verify
+phenoplier run resume gls -p /absolute/path/to/project --dry-run
+# When ready to continue computations, under the intended allocation/profile:
+phenoplier run resume gls -p /absolute/path/to/project
+```
+
+Then rerun the original outer Snakemake target to validate and publish its outputs.
+A settled previous attempt can be launched again normally. If workers still run
+or their ownership cannot be established, resolve that first and follow the CLI's
+recovery instructions. The wrapper never deletes locks or forces takeover. For a
+SLURM profile, run recovery from the same scheduler context or select the intended
+`--executor`/`--profile`; do not launch heavy recovery on a login node.
 
 Defaults: GTEx v8/MASHR, condition number 30, distance 5 Mb, LV percentile 0.01,
 `keep-first` duplicate genes, correlation mode `sub`, recomputed LV membership,
