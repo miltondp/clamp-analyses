@@ -409,15 +409,20 @@ rule phenoplier_long_table:
         rules.aggregate_phenoplier_traits.output.long,
 
 
-# October 2026 campaign: exact delivered inputs, including historical CLAMPfull
-# models and the 43 saturation units still running at the handoff date.
+# October 2026 campaign: 192 delivered units, checked on pico on 2026-11-02.
 PHENOPLIER_CAMPAIGN = PHENOPLIER_CFG["campaign"]
 with open(PHENOPLIER_CAMPAIGN["manifest"]) as handle:
     _campaign_rows = list(csv.DictReader(handle, delimiter="\t"))
 PHENOPLIER_MODELS = {row["model"]: row for row in _campaign_rows}
 if len(PHENOPLIER_MODELS) != len(_campaign_rows):
     raise ValueError("Duplicate model names in the PhenoPLIER campaign manifest")
+PHENOPLIER_CAMPAIGN_MODE = config.get("phenoplier_campaign_mode", PHENOPLIER_CAMPAIGN["mode"])
+if PHENOPLIER_CAMPAIGN_MODE not in {"recorded", "recompute"}:
+    raise ValueError("phenoplier_campaign_mode must be recorded or recompute")
+PHENOPLIER_RESULTS_ROOT = config.get("phenoplier_results_root", PHENOPLIER_CAMPAIGN["results_root"])
 PHENOPLIER_CAMPAIGN_ROOT = PHENOPLIER_CAMPAIGN["output_root"]
+if PHENOPLIER_CAMPAIGN_MODE == "recompute":
+    PHENOPLIER_CAMPAIGN_ROOT += "-recomputed"
 PHENOPLIER_MODEL_PATTERN = "|".join(re.escape(name) for name in PHENOPLIER_MODELS)
 
 
@@ -451,55 +456,88 @@ def phenoplier_campaign_args(wc):
     return shlex.join(str(arg) for arg in args)
 
 
-rule gls_campaign:
-    input:
-        model=phenoplier_campaign_source,
-        manifest=PHENOPLIER_CAMPAIGN["manifest"],
-        script="scripts/phenoplier/run_gls.sh",
-        adapter="scripts/phenoplier/workflow.py",
-        verify="scripts/phenoplier/verify_summary.py",
-    output:
-        summary=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated.tsv.gz",
-        pickle=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated.pkl.gz",
-    params:
-        args=phenoplier_campaign_args,
-    log:
-        f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/gls.log",
-    threads: int(PHENOPLIER_GLS_RES["threads"])
-    resources:
-        mem_mb=int(PHENOPLIER_GLS_RES["mem_mb"]),
-        runtime=int(PHENOPLIER_GLS_RES["runtime"]),
-    wildcard_constraints:
-        model=PHENOPLIER_MODEL_PATTERN,
-    conda: PHENOPLIER_CFG["conda_env"]
-    shell:
-        "bash {input.script:q} --rds {input.model:q} --summary-out {output.summary:q} "
-        "--n-jobs {threads} --mem-mb {resources.mem_mb} {params.args} > {log:q} 2>&1"
+if PHENOPLIER_CAMPAIGN_MODE == "recorded":
+    rule collect_campaign:
+        input:
+            summary=f"{PHENOPLIER_RESULTS_ROOT}/{{model}}/summary/gls-summary-phenomexcan_rapid_gwas-phenomexcan-curated.tsv.gz",
+            pickle=f"{PHENOPLIER_RESULTS_ROOT}/{{model}}/summary/gls-summary-phenomexcan_rapid_gwas-phenomexcan-curated.pkl.gz",
+            store=f"{PHENOPLIER_RESULTS_ROOT}/{{model}}/study-phenomexcan-curated.h5",
+            excluded=f"{PHENOPLIER_RESULTS_ROOT}/{{model}}/summary/trait-filter-excluded-phenomexcan-curated.tsv",
+            manifest=PHENOPLIER_CAMPAIGN["manifest"],
+            script="scripts/phenoplier/collect_campaign.py",
+            verify="scripts/phenoplier/verify_summary.py",
+        output:
+            summary=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated.tsv.gz",
+            pickle=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated.pkl.gz",
+            store=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/study-phenomexcan-curated.h5",
+            excluded=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated_excluded.tsv",
+            provenance=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/source.json",
+        params:
+            source=lambda wc: os.path.join(PHENOPLIER_RESULTS_ROOT, wc.model),
+            dest=lambda wc: os.path.join(PHENOPLIER_CAMPAIGN_ROOT, wc.model),
+            lvs=lambda wc: PHENOPLIER_MODELS[wc.model]["lvs"],
+        log:
+            f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/collect.log",
+        resources:
+            mem_mb=32000,
+            runtime=60,
+        wildcard_constraints:
+            model=PHENOPLIER_MODEL_PATTERN,
+        conda: PHENOPLIER_CFG["conda_env"]
+        shell:
+            "python {input.verify:q} {input.pickle:q} 2824 {params.lvs} > {log:q} 2>&1 && "
+            "python {input.script:q} --source {params.source:q} --dest {params.dest:q} "
+            "--manifest {input.manifest:q} --model {wildcards.model:q} >> {log:q} 2>&1"
+
+else:
+    rule gls_campaign:
+        input:
+            model=phenoplier_campaign_source,
+            manifest=PHENOPLIER_CAMPAIGN["manifest"],
+            script="scripts/phenoplier/run_gls.sh",
+            adapter="scripts/phenoplier/workflow.py",
+            verify="scripts/phenoplier/verify_summary.py",
+        output:
+            summary=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated.tsv.gz",
+            pickle=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated.pkl.gz",
+        params:
+            args=phenoplier_campaign_args,
+        log:
+            f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/gls.log",
+        threads: int(PHENOPLIER_GLS_RES["threads"])
+        resources:
+            mem_mb=int(PHENOPLIER_GLS_RES["mem_mb"]),
+            runtime=int(PHENOPLIER_GLS_RES["runtime"]),
+        wildcard_constraints:
+            model=PHENOPLIER_MODEL_PATTERN,
+        conda: PHENOPLIER_CFG["conda_env"]
+        shell:
+            "bash {input.script:q} --rds {input.model:q} --summary-out {output.summary:q} "
+            "--n-jobs {threads} --mem-mb {resources.mem_mb} {params.args} > {log:q} 2>&1"
 
 
-rule store_campaign:
-    input:
-        summary=rules.gls_campaign.output.summary,
-        pickle=rules.gls_campaign.output.pickle,
-        model=phenoplier_campaign_source,
-        script="scripts/phenoplier/store_build.sh",
-        adapter="scripts/phenoplier/workflow.py",
-    output:
-        store=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/study-phenomexcan-curated.h5",
-    params:
-        args=phenoplier_campaign_args,
-    log:
-        f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/store.log",
-    resources:
-        mem_mb=int(PHENOPLIER_STORE_RES["mem_mb"]),
-        runtime=int(PHENOPLIER_STORE_RES["runtime"]),
-    wildcard_constraints:
-        model=PHENOPLIER_MODEL_PATTERN,
-    conda: PHENOPLIER_CFG["conda_env"]
-    shell:
-        "bash {input.script:q} --rds {input.model:q} --store-out {output.store:q} "
-        "{params.args} > {log:q} 2>&1"
-
+    rule store_campaign:
+        input:
+            summary=rules.gls_campaign.output.summary,
+            pickle=rules.gls_campaign.output.pickle,
+            model=phenoplier_campaign_source,
+            script="scripts/phenoplier/store_build.sh",
+            adapter="scripts/phenoplier/workflow.py",
+        output:
+            store=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/study-phenomexcan-curated.h5",
+        params:
+            args=phenoplier_campaign_args,
+        log:
+            f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/store.log",
+        resources:
+            mem_mb=int(PHENOPLIER_STORE_RES["mem_mb"]),
+            runtime=int(PHENOPLIER_STORE_RES["runtime"]),
+        wildcard_constraints:
+            model=PHENOPLIER_MODEL_PATTERN,
+        conda: PHENOPLIER_CFG["conda_env"]
+        shell:
+            "bash {input.script:q} --rds {input.model:q} --store-out {output.store:q} "
+            "{params.args} > {log:q} 2>&1"
 
 rule phenoplier_campaign:
     input:

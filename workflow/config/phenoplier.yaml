@@ -19,6 +19,8 @@ phenoplier:
 
   saturation_k_values: [1728]
 
+  trait_finals: [archs4, gtex]
+
   report_root: output/03_model_biology/02_archs4/05_traits
 
   workers:
@@ -48,8 +50,10 @@ phenoplier:
       mem_mb: 32000
       runtime: 120
 
-  # Exact October campaign inputs; historical matrices must be recovered, not refitted.
+  # Reuse the delivered pico campaign by default. Recompute is opt-in.
   campaign:
+    mode: recorded
+    results_root: /pividori_lab/phenoplier_workspace/projects/marc/10-15-2026-trait-filtering-fix
     manifest: workflow/config/phenoplier_models.tsv
     source_root: .
     historical_root: data/phenoplier/historical_models

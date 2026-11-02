@@ -1,10 +1,12 @@
 # PhenoPLIER GLS workflow
 
 The workflow pins **phenoplier-cli v0.7.3**, the release used for the October
-2026 campaign. It replaces v0.5.2 and its retired `biomedical` filter. Current
-comparisons use `phenomexcan-curated`: 2,824 available PhenomeXcan rapid-GWAS
+2026 campaign. Current comparisons use `phenomexcan-curated`: 2,824 available PhenomeXcan rapid-GWAS
 traits from the CLI's 2,866-code allow-list. Unfiltered runs contain 4,049 traits.
 Changing the trait family changes the cross-trait BH-FDR correction.
+
+To use completed pico results, start with **Collect completed results** below.
+The reference setup is needed only for new GLS computations.
 
 ## Fresh environment and references
 
@@ -62,62 +64,96 @@ rules. These remaining data-access constraints cannot be fixed by a CLI upgrade.
 
 ## The October campaign: 192 explicit units
 
-`workflow/config/phenoplier_models.tsv` records every unit from the October 27
-handoff: 149 delivered plus 43 saturation units in flight at that date. Status is
-an inventory snapshot, not a completion claim or a reason to exclude a target.
+`workflow/config/phenoplier_models.tsv` lists all 192 units delivered under:
+
+```text
+/pividori_lab/phenoplier_workspace/projects/marc/10-15-2026-trait-filtering-fix/
+```
+
+On November 2, 2026, a read-only pico inventory confirmed every listed unit has
+its curated TSV, full-precision pickle, trait-exclusion sidecar and study store.
+The 43 previously pending saturation units are now delivered. All 102 new units
+have `PASS` entries in `INDEX-new.tsv`; the 90 historical units are described in
+`INDEX-curated.tsv`. The preliminary ARCHS4 canonical summary contains 89 LVs;
+the earlier handoff incorrectly listed 1,728 for this result.
 Directory replicate indices and fitted RNG seeds are recorded separately.
 
-| Batch | Units | Fit traits | Published comparison |
+| Batch | Units | Fit traits | Delivered comparison |
 |---|---:|---|---|
-| Historical reruns, including CLAMPbase and CLAMPfull models | 90 | all 4,049 | all-trait sidecars and curated summary/store |
+| Historical reruns, including CLAMPbase and CLAMPfull models | 90 | all 4,049 | curated summary/store |
 | Full consensus models | 3 | curated 2,824 | curated summary/store |
 | Coverage fractions 1, 5, 10, 25, 50, 75, indices 4–10 | 42 | curated 2,824 | curated summary/store |
 | ARCHS4 full-data stability RNG seeds 1001–1007 | 7 | curated 2,824 | curated summary/store |
 | GTEx full-data comparator indices 4–10 | 7 | curated 2,824 | curated summary/store |
-| Saturation K=1728, including the formerly excluded 1%/index 1 cell | 43 | curated 2,824 | curated summary/store |
+| Additional saturation K=1728, including 1%/index 1 | 43 | curated 2,824 | curated summary/store |
 
-Activate the repository's `snakemake` environment (pinned to 8.30.0) first.
+### Collect completed results (default)
+
+Activate the repository's `snakemake` environment (8.30.0). On pico:
 
 ```bash
 conda activate snakemake
-# All 102 new units, using their upstream model producers when sources are absent:
-snakemake -s workflow/Snakefile phenoplier_campaign_new --cores 28 --resources mem_mb=200000 --use-conda
-
-# All 192, once the historical matrices are recovered:
-snakemake -s workflow/Snakefile phenoplier_campaign --cores 28 --resources mem_mb=200000 --use-conda
+snakemake -s workflow/Snakefile phenoplier_campaign --cores 2 --use-conda
 ```
 
-The campaign config has independent `source_root`, `historical_root` and
-`output_root` paths. `source_root: .` connects new units to this repository's model
-rules. Set it to another checkout root to consume already fitted inputs there.
-Consensus inputs use the workflow's equivalent `traits/phenoplier_Z.pkl`, with its
-`lv_mapping.csv`; the campaign's original pickle lived one directory higher.
-The converted matrices retain the same values and order.
+This target validates each full-precision summary's phenotype × LV grid, P values
+and FDR, then creates absolute symlinks to the delivered summaries and stores.
+It does not require model matrices, CLI reference data, registration or GLS jobs.
+The source tree must remain available. Each unit exposes these files under
+`output/03_model_biology/03_phenoplier/campaign/<unit>/`:
 
-Historical fits must be staged as
-`<historical_root>/<unit>/model/<unit>_z.pkl`. The handoff located 70 of 90 under
-`/pividori_lab/haoyu_projects/trait-filtering-fix/run`; the other 20 still need
-recovery. This folder can be used directly as `historical_root` on pico. Missing
-matrices produce explicit missing-input errors. The campaign never substitutes
-current refits for missing historical models. Pickle bytes can differ after
-serialization; compare gene/LV labels and values, not only file hashes.
+- `curated.tsv.gz` and `curated.pkl.gz`;
+- `study-phenomexcan-curated.h5` and `curated_excluded.tsv`;
+- `source.json` identifying the manifest entry and original files.
 
-Each unit publishes to `<output_root>/<unit>/`:
+The collector checks that all source files exist and are nonempty; it revalidates
+the pickle summary, but does not rerun the delivered store's numerical QA.
+The original `VERIFY` reports and campaign indices remain in the source tree.
+Historical all-trait summaries also remain there under `summary/`.
 
-- `curated.tsv.gz` and the full-precision `curated.pkl.gz`;
-- `study-phenomexcan-curated.h5`, built with that exact summary and trait filter;
-- historical units additionally publish `all-traits.{tsv,pkl}.gz`;
-- available trait-exclusion sidecars and GLS/store logs.
+For a local copy or mounted campaign directory, override its root:
 
-Individual summary or store paths are also valid Snakemake targets. The campaign
-is explicit and separate from `all` so the historical input recovery and the
-additional expensive models do not silently expand the existing figure workflow.
-Existing `phenoplier_coverage`, `phenoplier_saturation`, `phenoplier_finals`,
+```bash
+snakemake -s workflow/Snakefile phenoplier_campaign --cores 2 --use-conda \
+  --config phenoplier_results_root=/absolute/path/to/copied-campaign
+```
+
+`phenoplier_campaign_new` selects just the 102 new units. Individual output paths
+are also valid targets. Missing recorded files cause missing-input errors; there
+is no fallback to fitting models. This explicit campaign target is separate from
+`all`. Existing figure targets retain their own model selection and paths.
+
+### Recompute explicitly
+
+Only use this mode when new computations are intended, after completing the CLI
+setup above. Recomputed outputs go to `campaign-recomputed/`, so delivered and
+recomputed files cannot silently satisfy each other's targets.
+
+```bash
+snakemake -s workflow/Snakefile phenoplier_campaign_new --cores 28 \
+  --resources mem_mb=200000 --use-conda --config phenoplier_campaign_mode=recompute
+```
+
+`campaign.source_root: .` connects the 102 new units to this repository's upstream
+model rules. Set it to another checkout root to consume existing fitted inputs.
+Consensus uses `traits/phenoplier_Z.pkl` and preserves the `lv_mapping.csv` needed
+by downstream metaLV consumers.
+
+Recomputing historical units additionally requires their exact matrices under
+`<campaign.historical_root>/<unit>/model/<unit>_z.pkl`. The handoff located 70 of
+90 under `/pividori_lab/haoyu_projects/trait-filtering-fix/run`; recovery of the
+remaining inputs has not been verified. The `canon_archs4_prelim89` input must
+contain the original 89 selected LVs: the 1,728-column matrix in the earlier
+inventory is not interchangeable. Missing inputs or wrong dimensions fail
+explicitly. These limitations do not affect collection of the delivered results.
+Historical recomputation fits all 4,049 traits, then recomputes the curated
+summary's BH-FDR without a second fit. It also publishes all-trait sidecars.
+
+The existing `phenoplier_coverage`, `phenoplier_saturation`, `phenoplier_finals`,
 `phenoplier_canonical`, `phenoplier_final_stores` and `phenoplier_long_table`
-targets retain their downstream paths, but now use v0.7.3 and curated traits.
-The old long table retains its existing model selection; it is not the 192-unit
-campaign index. Do not mix old biomedical outputs with current curated results;
-force the affected GLS targets to rerun when migrating an existing output tree.
+targets keep their downstream paths. The historical recount2 final model in the
+campaign is not a substitute for the current model selected by the repository.
+Do not mix the old biomedical outputs with curated results.
 
 ## Matrix names and downstream mapping
 
@@ -128,14 +164,15 @@ or fitted RDS is required for matrix-only GLS.
 
 The existing consensus/MGM conversion rules remain because their downstream
 consumers use `lv_mapping.csv` (`phenoplier_lv`, `metaLV`) and
-`metalv/collect_summary.py`. Consensus uses every module; CRISPR MGM uses the
-GSEA-selected subset. Their mappings and projects are distinct. The historical
+`metalv/collect_summary.py`. Consensus uses every module; the CRISPR selection
+consumes the consensus ARCHS4 summary and recomputes BH-FDR over its
+GSEA-selected modules, as on `main`. The historical
 `--rds` wrapper argument accepts matrices too (`--model-input` is an alias).
 
 ## Execution and validation
 
-The wrappers activate the CLI environment, then call `workflow.py`. It registers
-an input and initializes `run gls` with all scientific and execution options
+For recomputation, the wrappers activate the CLI environment, then call
+`workflow.py`. It registers an input and initializes `run gls` with all scientific and execution options
 before launching the generated config. Source content, CLI version, trait family,
 cohort and LV percentile determine a separate project/model key. Changed inputs
 therefore cannot reuse an old project's results. It does not remove registrations,
