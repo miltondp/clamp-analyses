@@ -533,6 +533,7 @@ rule consensus_gls:
     input:
         rds=rules.consensus_gls_input.output.z,
         script="scripts/phenoplier/run_gls.sh",
+        adapter="scripts/phenoplier/workflow.py",
         verify="scripts/phenoplier/verify_summary.py",
     output:
         summary=f"{CON_ROOT}/{{compendium}}/traits/gls_summary.tsv.gz",
@@ -547,7 +548,7 @@ rule consensus_gls:
         runtime=int(PHENOPLIER_GLS_RES["runtime"]),
     wildcard_constraints:
         compendium=CON_COMPENDIUM_PATTERN,
-    conda: PHENOPLIER_CFG["conda_env"]
+    conda: PHENOPLIER_CONDA_ENV
     shell:
         PHENOPLIER_GLS_SHELL
 

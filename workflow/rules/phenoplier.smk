@@ -1,7 +1,13 @@
 import os
+import csv
+import re
+import shlex
 
 
 PHENOPLIER_CFG = config["phenoplier"]
+PHENOPLIER_CONDA_ENV = os.path.join(REPO_ROOT, PHENOPLIER_CFG["conda_env_file"])
+# Some shell managers prepend shims even during Conda activation.
+PHENOPLIER_ENV_SHELL = 'export PATH="${{CONDA_PREFIX:?Use --use-conda}}/bin:$PATH"; '
 PHENOPLIER_TARGET = config.get("phenoplier_target", PHENOPLIER_CFG["target"])
 PHENOPLIER_CLUSTER = PHENOPLIER_CFG["clusters"][PHENOPLIER_TARGET]
 PHENOPLIER_WORKERS = PHENOPLIER_CFG["workers"]
@@ -15,7 +21,7 @@ PHENOPLIER_EXPECTED_PHENOTYPES = int(
 
 
 PHENOPLIER_WORKSPACE_ARG = (
-    f"--workspace {PHENOPLIER_CFG['workspace']} " if PHENOPLIER_CFG.get("workspace") else ""
+    f"--workspace {shlex.quote(PHENOPLIER_CFG['workspace'])} " if PHENOPLIER_CFG.get("workspace") else ""
 )
 
 
@@ -125,11 +131,10 @@ PHENOPLIER_COMP_BASE = [
 ]
 
 
-PHENOPLIER_GLS_SHELL = "".join([
-    "bash {input.script} --rds {params.rds} --name {params.name} ",
-    "--summary-out {output.summary} --n-jobs {threads} ",
+PHENOPLIER_GLS_SHELL = PHENOPLIER_ENV_SHELL + "".join([
+    "bash {input.script:q} --rds {params.rds:q} --name {params.name:q} ",
+    "--summary-out {output.summary:q} --n-jobs {threads} --mem-mb {resources.mem_mb} ",
     PHENOPLIER_WORKSPACE_ARG,
-    f"--conda-env {PHENOPLIER_CFG['conda_env']} ",
     f"--require-version {PHENOPLIER_CFG['version']} ",
     f"--namespace {PHENOPLIER_CFG['namespace']} ",
     f"--cohort {PHENOPLIER_CFG['cohort']} ",
@@ -142,17 +147,19 @@ PHENOPLIER_GLS_SHELL = "".join([
     f"--blas-step6 {PHENOPLIER_WORKERS['blas_step6']} ",
     f"--workers-step7 {PHENOPLIER_WORKERS['step7']} ",
     f"--blas-step7 {PHENOPLIER_WORKERS['blas_step7']} ",
-    "> {log} 2>&1",
+    "> {log:q} 2>&1",
 ])
 
-PHENOPLIER_STORE_SHELL = "".join([
-    "bash {input.script} --rds {params.rds} --name {params.name} ",
-    "--store-out {output.store} ",
+PHENOPLIER_STORE_SHELL = PHENOPLIER_ENV_SHELL + "".join([
+    "bash {input.script:q} --rds {params.rds:q} --name {params.name:q} ",
+    "--store-out {output.store:q} ",
+    f"--namespace {PHENOPLIER_CFG['namespace']} ",
+    f"--lv-percentile {PHENOPLIER_CFG['lv_percentile']} ",
+    f"--trait-filter {PHENOPLIER_TRAIT_FILTER} ",
     PHENOPLIER_WORKSPACE_ARG,
-    f"--conda-env {PHENOPLIER_CFG['conda_env']} ",
     f"--require-version {PHENOPLIER_CFG['version']} ",
     f"--cohort {PHENOPLIER_CFG['cohort']} ",
-    "> {log} 2>&1",
+    "> {log:q} 2>&1",
 ])
 
 
@@ -176,6 +183,7 @@ rule gls_bp_coverage_base:
     input:
         rds=lambda wc: phenoplier_cov_model(wc.fraction, wc.seed),
         script="scripts/phenoplier/run_gls.sh",
+        adapter="scripts/phenoplier/workflow.py",
         verify="scripts/phenoplier/verify_summary.py",
     output:
         summary=f"{PHENOPLIER_COV_BASE_DIR}/cov_rs{{fraction}}_seed{{seed}}.tsv.gz",
@@ -191,7 +199,7 @@ rule gls_bp_coverage_base:
     wildcard_constraints:
         fraction=A4_COV_LEVEL_PATTERN,
         seed=PHENOPLIER_COV_SEED_PATTERN,
-    conda: PHENOPLIER_CFG["conda_env"]
+    conda: PHENOPLIER_CONDA_ENV
     shell:
         PHENOPLIER_GLS_SHELL
 
@@ -200,6 +208,7 @@ rule gls_bp_saturation_base:
     input:
         rds=lambda wc: a4_sat_base_rds(wc.fraction, wc.k, wc.seed),
         script="scripts/phenoplier/run_gls.sh",
+        adapter="scripts/phenoplier/workflow.py",
         verify="scripts/phenoplier/verify_summary.py",
     output:
         summary=f"{PHENOPLIER_SAT_BASE_DIR}/sat_rs{{fraction}}_k{{k}}_seed{{seed}}.tsv.gz",
@@ -216,7 +225,7 @@ rule gls_bp_saturation_base:
         fraction=A4_SAT_FRACTION_PATTERN,
         k=PHENOPLIER_SAT_K_PATTERN,
         seed=A4_SAT_SEED_PATTERN,
-    conda: PHENOPLIER_CFG["conda_env"]
+    conda: PHENOPLIER_CONDA_ENV
     shell:
         PHENOPLIER_GLS_SHELL
 
@@ -225,6 +234,7 @@ rule gls_gtex_coverage_base:
     input:
         rds=lambda wc: phenoplier_gtex_model(wc.replicate),
         script="scripts/phenoplier/run_gls.sh",
+        adapter="scripts/phenoplier/workflow.py",
         verify="scripts/phenoplier/verify_summary.py",
     output:
         summary=f"{PHENOPLIER_COMP_BASE_DIR}/gtex_rs100_seed{{replicate}}.tsv.gz",
@@ -239,7 +249,7 @@ rule gls_gtex_coverage_base:
         runtime=int(PHENOPLIER_GLS_RES["runtime"]),
     wildcard_constraints:
         replicate="|".join(map(str, PHENOPLIER_GTEX_REPLICATES)),
-    conda: PHENOPLIER_CFG["conda_env"]
+    conda: PHENOPLIER_CONDA_ENV
     shell:
         PHENOPLIER_GLS_SHELL
 
@@ -248,6 +258,7 @@ rule gls_final_base:
     input:
         rds=lambda wc: a4_final_base_rds(wc.dataset),
         script="scripts/phenoplier/run_gls.sh",
+        adapter="scripts/phenoplier/workflow.py",
         verify="scripts/phenoplier/verify_summary.py",
     output:
         summary=f"{PHENOPLIER_FIN_BASE_DIR}/final_{{dataset}}.tsv.gz",
@@ -262,7 +273,7 @@ rule gls_final_base:
         runtime=int(PHENOPLIER_GLS_RES["runtime"]),
     wildcard_constraints:
         dataset=A4_FINAL_RUN_PATTERN,
-    conda: PHENOPLIER_CFG["conda_env"]
+    conda: PHENOPLIER_CONDA_ENV
     shell:
         PHENOPLIER_GLS_SHELL
 
@@ -284,6 +295,7 @@ rule gls_canonical:
     input:
         rds=f"{A4_CAN_FINAL_ROOT}/{{dataset}}/{A4_CAN_MODEL_NAME}.rds",
         script="scripts/phenoplier/run_gls.sh",
+        adapter="scripts/phenoplier/workflow.py",
         verify="scripts/phenoplier/verify_summary.py",
     output:
         summary=f"{A4_CAN_FINAL_ROOT}/{{dataset}}/traits/canon_{{dataset}}.tsv.gz",
@@ -298,7 +310,7 @@ rule gls_canonical:
         runtime=int(PHENOPLIER_GLS_RES["runtime"]),
     wildcard_constraints:
         dataset=A4_CAN_COMPENDIUM_PATTERN,
-    conda: PHENOPLIER_CFG["conda_env"]
+    conda: PHENOPLIER_CONDA_ENV
     shell:
         PHENOPLIER_GLS_SHELL
 
@@ -312,6 +324,7 @@ rule store_final_base:
         summary=f"{PHENOPLIER_FIN_BASE_DIR}/final_{{dataset}}.tsv.gz",
         model=lambda wc: a4_final_base_rds(wc.dataset),
         script="scripts/phenoplier/store_build.sh",
+        adapter="scripts/phenoplier/workflow.py",
     output:
         store=f"{phenoplier_store_dir(PHENOPLIER_FIN_BASE_DIR)}/final_{{dataset}}_CLAMPbase.h5",
     log:
@@ -324,7 +337,7 @@ rule store_final_base:
         runtime=int(PHENOPLIER_STORE_RES["runtime"]),
     wildcard_constraints:
         dataset=A4_FINAL_DATASET_PATTERN,
-    conda: PHENOPLIER_CFG["conda_env"]
+    conda: PHENOPLIER_CONDA_ENV
     shell:
         PHENOPLIER_STORE_SHELL
 
@@ -338,21 +351,23 @@ rule aggregate_phenoplier_traits:
         clampbase=PHENOPLIER_COV_BASE + PHENOPLIER_SAT_BASE + PHENOPLIER_FIN_BASE,
         canonical=PHENOPLIER_CANONICAL,
         script="scripts/phenoplier/aggregate_traits.py",
-        wrapper="scripts/phenoplier/aggregate_traits.sh",
+        check_env="scripts/phenoplier/check_env.py",
     output:
         long=f"{PHENOPLIER_REPORT}/phenoplier_traits_long.csv.gz",
     log:
         f"{PHENOPLIER_REPORT}/aggregate.log"
     params:
-        conda_env=PHENOPLIER_CFG["conda_env"],
+        version=PHENOPLIER_CFG["version"],
     resources:
         mem_mb=8000,
         runtime=720,
-    conda: PHENOPLIER_CFG["conda_env"]
+    conda: PHENOPLIER_CONDA_ENV
     shell:
-        "bash {input.wrapper} {params.conda_env} --out {output.long} "
+        PHENOPLIER_ENV_SHELL +
+        "python {input.check_env:q} --require-version {params.version:q} && "
+        "python {input.script:q} --out {output.long:q} "
         "--clampbase {input.clampbase} "
-        "--canonical {input.canonical} > {log} 2>&1"
+        "--canonical {input.canonical} > {log:q} 2>&1"
 
 
 # ============================================================
@@ -395,3 +410,162 @@ rule phenoplier_traits:
 rule phenoplier_long_table:
     input:
         rules.aggregate_phenoplier_traits.output.long,
+
+
+# October 2026 campaign: 192 delivered units, checked on pico on 2026-11-02.
+PHENOPLIER_CAMPAIGN = PHENOPLIER_CFG["campaign"]
+with open(PHENOPLIER_CAMPAIGN["manifest"]) as handle:
+    _campaign_rows = list(csv.DictReader(handle, delimiter="\t"))
+PHENOPLIER_MODELS = {row["model"]: row for row in _campaign_rows}
+if len(PHENOPLIER_MODELS) != len(_campaign_rows):
+    raise ValueError("Duplicate model names in the PhenoPLIER campaign manifest")
+PHENOPLIER_CAMPAIGN_MODE = config.get("phenoplier_campaign_mode", PHENOPLIER_CAMPAIGN["mode"])
+if PHENOPLIER_CAMPAIGN_MODE not in {"recorded", "recompute"}:
+    raise ValueError("phenoplier_campaign_mode must be recorded or recompute")
+PHENOPLIER_RESULTS_ROOT = config.get("phenoplier_results_root", PHENOPLIER_CAMPAIGN["results_root"])
+PHENOPLIER_CAMPAIGN_ROOT = PHENOPLIER_CAMPAIGN["output_root"]
+if PHENOPLIER_CAMPAIGN_MODE == "recompute":
+    PHENOPLIER_CAMPAIGN_ROOT += "-recomputed"
+PHENOPLIER_MODEL_PATTERN = "|".join(re.escape(name) for name in PHENOPLIER_MODELS)
+
+
+def phenoplier_campaign_source(wc):
+    row = PHENOPLIER_MODELS[wc.model]
+    root = PHENOPLIER_CAMPAIGN[
+        "historical_root" if row["batch"] == "historical" else "source_root"
+    ]
+    return os.path.normpath(os.path.join(root, row["source"]))
+
+
+def phenoplier_campaign_args(wc):
+    row = PHENOPLIER_MODELS[wc.model]
+    args = [
+        "--name", wc.model, "--namespace", PHENOPLIER_CFG["namespace"] + "/oct2026",
+        "--require-version", PHENOPLIER_CFG["version"],
+        "--cohort", PHENOPLIER_CFG["cohort"],
+        "--lv-percentile", PHENOPLIER_CFG["lv_percentile"],
+        "--fit-trait-filter", row["fit_trait_filter"],
+        "--trait-filter", "phenomexcan-curated", "--expected-phenotypes", 2824,
+        "--expected-genes", row["genes"], "--expected-lvs", row["lvs"],
+        "--executor", PHENOPLIER_CLUSTER["executor"],
+        "--workers-step6", PHENOPLIER_WORKERS["step6"],
+        "--workers-step7", PHENOPLIER_WORKERS["step7"],
+    ]
+    if PHENOPLIER_CFG.get("workspace"):
+        args += ["--workspace", PHENOPLIER_CFG["workspace"]]
+    if PHENOPLIER_CLUSTER.get("cluster"):
+        args += ["--cluster", PHENOPLIER_CLUSTER["cluster"]]
+    return shlex.join(str(arg) for arg in args)
+
+
+if PHENOPLIER_CAMPAIGN_MODE == "recorded":
+    rule collect_campaign:
+        input:
+            summary=f"{PHENOPLIER_RESULTS_ROOT}/{{model}}/summary/gls-summary-phenomexcan_rapid_gwas-phenomexcan-curated.tsv.gz",
+            pickle=f"{PHENOPLIER_RESULTS_ROOT}/{{model}}/summary/gls-summary-phenomexcan_rapid_gwas-phenomexcan-curated.pkl.gz",
+            store=f"{PHENOPLIER_RESULTS_ROOT}/{{model}}/study-phenomexcan-curated.h5",
+            excluded=f"{PHENOPLIER_RESULTS_ROOT}/{{model}}/summary/trait-filter-excluded-phenomexcan-curated.tsv",
+            manifest=PHENOPLIER_CAMPAIGN["manifest"],
+            script="scripts/phenoplier/collect_campaign.py",
+            check_env="scripts/phenoplier/check_env.py",
+            verify="scripts/phenoplier/verify_summary.py",
+        output:
+            summary=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated.tsv.gz",
+            pickle=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated.pkl.gz",
+            store=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/study-phenomexcan-curated.h5",
+            excluded=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated_excluded.tsv",
+            provenance=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/source.json",
+        params:
+            version=PHENOPLIER_CFG["version"],
+            source=lambda wc: os.path.join(PHENOPLIER_RESULTS_ROOT, wc.model),
+            dest=lambda wc: os.path.join(PHENOPLIER_CAMPAIGN_ROOT, wc.model),
+            lvs=lambda wc: PHENOPLIER_MODELS[wc.model]["lvs"],
+        log:
+            f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/collect.log",
+        resources:
+            mem_mb=32000,
+            runtime=60,
+        wildcard_constraints:
+            model=PHENOPLIER_MODEL_PATTERN,
+        conda: PHENOPLIER_CONDA_ENV
+        shell:
+            PHENOPLIER_ENV_SHELL +
+            "python {input.check_env:q} --require-version {params.version:q} > {log:q} 2>&1 && "
+            "python {input.verify:q} {input.pickle:q} 2824 {params.lvs} >> {log:q} 2>&1 && "
+            "python {input.script:q} --source {params.source:q} --dest {params.dest:q} "
+            "--manifest {input.manifest:q} --model {wildcards.model:q} >> {log:q} 2>&1"
+
+else:
+    rule gls_campaign:
+        input:
+            model=phenoplier_campaign_source,
+            manifest=PHENOPLIER_CAMPAIGN["manifest"],
+            script="scripts/phenoplier/run_gls.sh",
+            adapter="scripts/phenoplier/workflow.py",
+            verify="scripts/phenoplier/verify_summary.py",
+        output:
+            summary=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated.tsv.gz",
+            pickle=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/curated.pkl.gz",
+        params:
+            args=phenoplier_campaign_args,
+        log:
+            f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/gls.log",
+        threads: int(PHENOPLIER_GLS_RES["threads"])
+        resources:
+            mem_mb=int(PHENOPLIER_GLS_RES["mem_mb"]),
+            runtime=int(PHENOPLIER_GLS_RES["runtime"]),
+        wildcard_constraints:
+            model=PHENOPLIER_MODEL_PATTERN,
+        conda: PHENOPLIER_CONDA_ENV
+        shell:
+            "bash {input.script:q} --rds {input.model:q} --summary-out {output.summary:q} "
+            "--n-jobs {threads} --mem-mb {resources.mem_mb} {params.args} > {log:q} 2>&1"
+
+
+    rule store_campaign:
+        input:
+            summary=rules.gls_campaign.output.summary,
+            pickle=rules.gls_campaign.output.pickle,
+            model=phenoplier_campaign_source,
+            script="scripts/phenoplier/store_build.sh",
+            adapter="scripts/phenoplier/workflow.py",
+        output:
+            store=f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/study-phenomexcan-curated.h5",
+        params:
+            args=phenoplier_campaign_args,
+        log:
+            f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/store.log",
+        resources:
+            mem_mb=int(PHENOPLIER_STORE_RES["mem_mb"]),
+            runtime=int(PHENOPLIER_STORE_RES["runtime"]),
+        wildcard_constraints:
+            model=PHENOPLIER_MODEL_PATTERN,
+        conda: PHENOPLIER_CONDA_ENV
+        shell:
+            "bash {input.script:q} --rds {input.model:q} --store-out {output.store:q} "
+            "{params.args} > {log:q} 2>&1"
+
+rule phenoplier_campaign:
+    input:
+        expand(f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/study-phenomexcan-curated.h5",
+               model=list(PHENOPLIER_MODELS)),
+
+
+rule phenoplier_campaign_new:
+    input:
+        expand(f"{PHENOPLIER_CAMPAIGN_ROOT}/{{model}}/study-phenomexcan-curated.h5",
+               model=[name for name, row in PHENOPLIER_MODELS.items() if row["batch"] == "new"]),
+
+
+# Install/check the isolated CLI without model inputs, reference data or GLS.
+rule phenoplier_environment:
+    input:
+        script="scripts/phenoplier/check_env.py",
+    output:
+        report="output/03_model_biology/03_phenoplier/environment.json",
+    params:
+        version=PHENOPLIER_CFG["version"],
+    conda: PHENOPLIER_CONDA_ENV
+    shell:
+        PHENOPLIER_ENV_SHELL +
+        "python {input.script:q} --require-version {params.version:q} --output {output.report:q}"

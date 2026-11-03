@@ -1,5 +1,5 @@
 phenoplier:
-  conda_env: phenoplier-cli-neo
+  conda_env_file: envs/phenoplier-cli-neo.yaml
 
   version: 0.7.3
 
@@ -14,7 +14,6 @@ phenoplier:
   trait_filter: phenomexcan-curated
 
   expected_phenotypes:
-    biomedical: 2366
     phenomexcan-curated: 2824
     all: 4049
 
@@ -25,10 +24,10 @@ phenoplier:
   report_root: output/03_model_biology/02_archs4/05_traits
 
   workers:
-    step6: 1
-    blas_step6: 8
-    step7: 6
-    blas_step7: 2
+    step6: 14
+    blas_step6: 1
+    step7: 14
+    blas_step7: 1
 
   clusters:
     local:
@@ -44,9 +43,18 @@ phenoplier:
 
   resources:
     gls:
-      threads: 12
+      threads: 14
       mem_mb: 100000
       runtime: 4320
     store:
       mem_mb: 32000
       runtime: 120
+
+  # Reuse the delivered pico campaign by default. Recompute is opt-in.
+  campaign:
+    mode: recorded
+    results_root: /pividori_lab/phenoplier_workspace/projects/marc/10-15-2026-trait-filtering-fix
+    manifest: workflow/config/phenoplier_models.tsv
+    source_root: .
+    historical_root: data/phenoplier/historical_models
+    output_root: output/03_model_biology/03_phenoplier/campaign

@@ -1,0 +1,193 @@
+model	batch	group	source	genes	lvs	rng_seed	fit_trait_filter	status	inventory_checked_on
+archs4_rs100_seed2_CLAMPbase	historical		archs4_rs100_seed2_CLAMPbase/model/archs4_rs100_seed2_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+archs4_rs100_seed3_CLAMPbase	historical		archs4_rs100_seed3_CLAMPbase/model/archs4_rs100_seed3_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+canon_archs4_full	historical		canon_archs4_full/model/canon_archs4_full_z.pkl	18423	1728		all	delivered	2026-11-02
+canon_archs4_prelim89	historical		canon_archs4_prelim89/model/canon_archs4_prelim89_z.pkl	18423	89		all	delivered	2026-11-02
+canon_gtex_CLAMPfull_canonical	historical		canon_gtex_CLAMPfull_canonical/model/canon_gtex_CLAMPfull_canonical_z.pkl	21613	578		all	delivered	2026-11-02
+canon_recount2_CLAMPfull_canonical	historical		canon_recount2_CLAMPfull_canonical/model/canon_recount2_CLAMPfull_canonical_z.pkl	5993	544		all	delivered	2026-11-02
+cov_rs100_seed1_CLAMPbase	historical		cov_rs100_seed1_CLAMPbase/model/cov_rs100_seed1_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+cov_rs100_seed1_CLAMPfull_bp	historical		cov_rs100_seed1_CLAMPfull_bp/model/cov_rs100_seed1_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+cov_rs100_seed2_CLAMPbase	historical		cov_rs100_seed2_CLAMPbase/model/cov_rs100_seed2_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+cov_rs100_seed2_CLAMPfull_bp	historical		cov_rs100_seed2_CLAMPfull_bp/model/cov_rs100_seed2_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+cov_rs100_seed3_CLAMPbase	historical		cov_rs100_seed3_CLAMPbase/model/cov_rs100_seed3_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+cov_rs100_seed3_CLAMPfull_bp	historical		cov_rs100_seed3_CLAMPfull_bp/model/cov_rs100_seed3_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+cov_rs10_seed1_CLAMPbase	historical		cov_rs10_seed1_CLAMPbase/model/cov_rs10_seed1_CLAMPbase_z.pkl	18423	944		all	delivered	2026-11-02
+cov_rs10_seed1_CLAMPfull_bp	historical		cov_rs10_seed1_CLAMPfull_bp/model/cov_rs10_seed1_CLAMPfull_bp_z.pkl	18423	944		all	delivered	2026-11-02
+cov_rs10_seed2_CLAMPbase	historical		cov_rs10_seed2_CLAMPbase/model/cov_rs10_seed2_CLAMPbase_z.pkl	18423	1042		all	delivered	2026-11-02
+cov_rs10_seed2_CLAMPfull_bp	historical		cov_rs10_seed2_CLAMPfull_bp/model/cov_rs10_seed2_CLAMPfull_bp_z.pkl	18423	1042		all	delivered	2026-11-02
+cov_rs10_seed3_CLAMPbase	historical		cov_rs10_seed3_CLAMPbase/model/cov_rs10_seed3_CLAMPbase_z.pkl	18423	956		all	delivered	2026-11-02
+cov_rs10_seed3_CLAMPfull_bp	historical		cov_rs10_seed3_CLAMPfull_bp/model/cov_rs10_seed3_CLAMPfull_bp_z.pkl	18423	956		all	delivered	2026-11-02
+cov_rs1_seed1_CLAMPbase	historical		cov_rs1_seed1_CLAMPbase/model/cov_rs1_seed1_CLAMPbase_z.pkl	18423	134		all	delivered	2026-11-02
+cov_rs1_seed1_CLAMPfull_bp	historical		cov_rs1_seed1_CLAMPfull_bp/model/cov_rs1_seed1_CLAMPfull_bp_z.pkl	18423	134		all	delivered	2026-11-02
+cov_rs1_seed2_CLAMPbase	historical		cov_rs1_seed2_CLAMPbase/model/cov_rs1_seed2_CLAMPbase_z.pkl	18423	186		all	delivered	2026-11-02
+cov_rs1_seed2_CLAMPfull_bp	historical		cov_rs1_seed2_CLAMPfull_bp/model/cov_rs1_seed2_CLAMPfull_bp_z.pkl	18423	186		all	delivered	2026-11-02
+cov_rs1_seed3_CLAMPbase	historical		cov_rs1_seed3_CLAMPbase/model/cov_rs1_seed3_CLAMPbase_z.pkl	18423	212		all	delivered	2026-11-02
+cov_rs1_seed3_CLAMPfull_bp	historical		cov_rs1_seed3_CLAMPfull_bp/model/cov_rs1_seed3_CLAMPfull_bp_z.pkl	18423	212		all	delivered	2026-11-02
+cov_rs25_seed1_CLAMPbase	historical		cov_rs25_seed1_CLAMPbase/model/cov_rs25_seed1_CLAMPbase_z.pkl	18423	1338		all	delivered	2026-11-02
+cov_rs25_seed1_CLAMPfull_bp	historical		cov_rs25_seed1_CLAMPfull_bp/model/cov_rs25_seed1_CLAMPfull_bp_z.pkl	18423	1338		all	delivered	2026-11-02
+cov_rs25_seed2_CLAMPbase	historical		cov_rs25_seed2_CLAMPbase/model/cov_rs25_seed2_CLAMPbase_z.pkl	18423	1334		all	delivered	2026-11-02
+cov_rs25_seed2_CLAMPfull_bp	historical		cov_rs25_seed2_CLAMPfull_bp/model/cov_rs25_seed2_CLAMPfull_bp_z.pkl	18423	1334		all	delivered	2026-11-02
+cov_rs25_seed3_CLAMPbase	historical		cov_rs25_seed3_CLAMPbase/model/cov_rs25_seed3_CLAMPbase_z.pkl	18423	1368		all	delivered	2026-11-02
+cov_rs25_seed3_CLAMPfull_bp	historical		cov_rs25_seed3_CLAMPfull_bp/model/cov_rs25_seed3_CLAMPfull_bp_z.pkl	18423	1368		all	delivered	2026-11-02
+cov_rs50_seed1_CLAMPbase	historical		cov_rs50_seed1_CLAMPbase/model/cov_rs50_seed1_CLAMPbase_z.pkl	18423	1550		all	delivered	2026-11-02
+cov_rs50_seed1_CLAMPfull_bp	historical		cov_rs50_seed1_CLAMPfull_bp/model/cov_rs50_seed1_CLAMPfull_bp_z.pkl	18423	1550		all	delivered	2026-11-02
+cov_rs50_seed2_CLAMPbase	historical		cov_rs50_seed2_CLAMPbase/model/cov_rs50_seed2_CLAMPbase_z.pkl	18423	1562		all	delivered	2026-11-02
+cov_rs50_seed2_CLAMPfull_bp	historical		cov_rs50_seed2_CLAMPfull_bp/model/cov_rs50_seed2_CLAMPfull_bp_z.pkl	18423	1562		all	delivered	2026-11-02
+cov_rs50_seed3_CLAMPbase	historical		cov_rs50_seed3_CLAMPbase/model/cov_rs50_seed3_CLAMPbase_z.pkl	18423	1582		all	delivered	2026-11-02
+cov_rs50_seed3_CLAMPfull_bp	historical		cov_rs50_seed3_CLAMPfull_bp/model/cov_rs50_seed3_CLAMPfull_bp_z.pkl	18423	1582		all	delivered	2026-11-02
+cov_rs5_seed1_CLAMPbase	historical		cov_rs5_seed1_CLAMPbase/model/cov_rs5_seed1_CLAMPbase_z.pkl	18423	686		all	delivered	2026-11-02
+cov_rs5_seed1_CLAMPfull_bp	historical		cov_rs5_seed1_CLAMPfull_bp/model/cov_rs5_seed1_CLAMPfull_bp_z.pkl	18423	686		all	delivered	2026-11-02
+cov_rs5_seed2_CLAMPbase	historical		cov_rs5_seed2_CLAMPbase/model/cov_rs5_seed2_CLAMPbase_z.pkl	18423	842		all	delivered	2026-11-02
+cov_rs5_seed2_CLAMPfull_bp	historical		cov_rs5_seed2_CLAMPfull_bp/model/cov_rs5_seed2_CLAMPfull_bp_z.pkl	18423	842		all	delivered	2026-11-02
+cov_rs5_seed3_CLAMPbase	historical		cov_rs5_seed3_CLAMPbase/model/cov_rs5_seed3_CLAMPbase_z.pkl	18423	752		all	delivered	2026-11-02
+cov_rs5_seed3_CLAMPfull_bp	historical		cov_rs5_seed3_CLAMPfull_bp/model/cov_rs5_seed3_CLAMPfull_bp_z.pkl	18423	752		all	delivered	2026-11-02
+cov_rs75_seed1_CLAMPbase	historical		cov_rs75_seed1_CLAMPbase/model/cov_rs75_seed1_CLAMPbase_z.pkl	18423	1676		all	delivered	2026-11-02
+cov_rs75_seed1_CLAMPfull_bp	historical		cov_rs75_seed1_CLAMPfull_bp/model/cov_rs75_seed1_CLAMPfull_bp_z.pkl	18423	1676		all	delivered	2026-11-02
+cov_rs75_seed2_CLAMPbase	historical		cov_rs75_seed2_CLAMPbase/model/cov_rs75_seed2_CLAMPbase_z.pkl	18423	1662		all	delivered	2026-11-02
+cov_rs75_seed2_CLAMPfull_bp	historical		cov_rs75_seed2_CLAMPfull_bp/model/cov_rs75_seed2_CLAMPfull_bp_z.pkl	18423	1662		all	delivered	2026-11-02
+cov_rs75_seed3_CLAMPbase	historical		cov_rs75_seed3_CLAMPbase/model/cov_rs75_seed3_CLAMPbase_z.pkl	18423	1672		all	delivered	2026-11-02
+cov_rs75_seed3_CLAMPfull_bp	historical		cov_rs75_seed3_CLAMPfull_bp/model/cov_rs75_seed3_CLAMPfull_bp_z.pkl	18423	1672		all	delivered	2026-11-02
+final_archs4_CLAMPbase	historical		final_archs4_CLAMPbase/model/final_archs4_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+final_archs4_CLAMPfull_bp	historical		final_archs4_CLAMPfull_bp/model/final_archs4_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+final_gtex_CLAMPbase	historical		final_gtex_CLAMPbase/model/final_gtex_CLAMPbase_z.pkl	21613	578		all	delivered	2026-11-02
+final_gtex_CLAMPfull_bp	historical		final_gtex_CLAMPfull_bp/model/final_gtex_CLAMPfull_bp_z.pkl	21613	578		all	delivered	2026-11-02
+final_recount2_CLAMPbase	historical		final_recount2_CLAMPbase/model/final_recount2_CLAMPbase_z.pkl	5993	544		all	delivered	2026-11-02
+final_recount2_CLAMPfull_bp	historical		final_recount2_CLAMPfull_bp/model/final_recount2_CLAMPfull_bp_z.pkl	6000	724		all	delivered	2026-11-02
+gtex_rs100_seed2_CLAMPbase	historical		gtex_rs100_seed2_CLAMPbase/model/gtex_rs100_seed2_CLAMPbase_z.pkl	21613	578		all	delivered	2026-11-02
+gtex_rs100_seed3_CLAMPbase	historical		gtex_rs100_seed3_CLAMPbase/model/gtex_rs100_seed3_CLAMPbase_z.pkl	21613	578		all	delivered	2026-11-02
+sat_rs10_k1728_seed1_CLAMPbase	historical		sat_rs10_k1728_seed1_CLAMPbase/model/sat_rs10_k1728_seed1_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs10_k1728_seed1_CLAMPfull_bp	historical		sat_rs10_k1728_seed1_CLAMPfull_bp/model/sat_rs10_k1728_seed1_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs10_k1728_seed2_CLAMPbase	historical		sat_rs10_k1728_seed2_CLAMPbase/model/sat_rs10_k1728_seed2_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs10_k1728_seed2_CLAMPfull_bp	historical		sat_rs10_k1728_seed2_CLAMPfull_bp/model/sat_rs10_k1728_seed2_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs10_k1728_seed3_CLAMPbase	historical		sat_rs10_k1728_seed3_CLAMPbase/model/sat_rs10_k1728_seed3_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs10_k1728_seed3_CLAMPfull_bp	historical		sat_rs10_k1728_seed3_CLAMPfull_bp/model/sat_rs10_k1728_seed3_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs1_k1728_seed2_CLAMPbase	historical		sat_rs1_k1728_seed2_CLAMPbase/model/sat_rs1_k1728_seed2_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs1_k1728_seed2_CLAMPfull_bp	historical		sat_rs1_k1728_seed2_CLAMPfull_bp/model/sat_rs1_k1728_seed2_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs1_k1728_seed3_CLAMPbase	historical		sat_rs1_k1728_seed3_CLAMPbase/model/sat_rs1_k1728_seed3_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs1_k1728_seed3_CLAMPfull_bp	historical		sat_rs1_k1728_seed3_CLAMPfull_bp/model/sat_rs1_k1728_seed3_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs25_k1728_seed1_CLAMPbase	historical		sat_rs25_k1728_seed1_CLAMPbase/model/sat_rs25_k1728_seed1_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs25_k1728_seed1_CLAMPfull_bp	historical		sat_rs25_k1728_seed1_CLAMPfull_bp/model/sat_rs25_k1728_seed1_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs25_k1728_seed2_CLAMPbase	historical		sat_rs25_k1728_seed2_CLAMPbase/model/sat_rs25_k1728_seed2_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs25_k1728_seed2_CLAMPfull_bp	historical		sat_rs25_k1728_seed2_CLAMPfull_bp/model/sat_rs25_k1728_seed2_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs25_k1728_seed3_CLAMPbase	historical		sat_rs25_k1728_seed3_CLAMPbase/model/sat_rs25_k1728_seed3_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs25_k1728_seed3_CLAMPfull_bp	historical		sat_rs25_k1728_seed3_CLAMPfull_bp/model/sat_rs25_k1728_seed3_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs50_k1728_seed1_CLAMPbase	historical		sat_rs50_k1728_seed1_CLAMPbase/model/sat_rs50_k1728_seed1_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs50_k1728_seed1_CLAMPfull_bp	historical		sat_rs50_k1728_seed1_CLAMPfull_bp/model/sat_rs50_k1728_seed1_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs50_k1728_seed2_CLAMPbase	historical		sat_rs50_k1728_seed2_CLAMPbase/model/sat_rs50_k1728_seed2_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs50_k1728_seed2_CLAMPfull_bp	historical		sat_rs50_k1728_seed2_CLAMPfull_bp/model/sat_rs50_k1728_seed2_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs50_k1728_seed3_CLAMPbase	historical		sat_rs50_k1728_seed3_CLAMPbase/model/sat_rs50_k1728_seed3_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs50_k1728_seed3_CLAMPfull_bp	historical		sat_rs50_k1728_seed3_CLAMPfull_bp/model/sat_rs50_k1728_seed3_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs5_k1728_seed1_CLAMPbase	historical		sat_rs5_k1728_seed1_CLAMPbase/model/sat_rs5_k1728_seed1_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs5_k1728_seed1_CLAMPfull_bp	historical		sat_rs5_k1728_seed1_CLAMPfull_bp/model/sat_rs5_k1728_seed1_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs5_k1728_seed2_CLAMPbase	historical		sat_rs5_k1728_seed2_CLAMPbase/model/sat_rs5_k1728_seed2_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs5_k1728_seed2_CLAMPfull_bp	historical		sat_rs5_k1728_seed2_CLAMPfull_bp/model/sat_rs5_k1728_seed2_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs5_k1728_seed3_CLAMPbase	historical		sat_rs5_k1728_seed3_CLAMPbase/model/sat_rs5_k1728_seed3_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs5_k1728_seed3_CLAMPfull_bp	historical		sat_rs5_k1728_seed3_CLAMPfull_bp/model/sat_rs5_k1728_seed3_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs75_k1728_seed1_CLAMPbase	historical		sat_rs75_k1728_seed1_CLAMPbase/model/sat_rs75_k1728_seed1_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs75_k1728_seed1_CLAMPfull_bp	historical		sat_rs75_k1728_seed1_CLAMPfull_bp/model/sat_rs75_k1728_seed1_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs75_k1728_seed2_CLAMPbase	historical		sat_rs75_k1728_seed2_CLAMPbase/model/sat_rs75_k1728_seed2_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs75_k1728_seed2_CLAMPfull_bp	historical		sat_rs75_k1728_seed2_CLAMPfull_bp/model/sat_rs75_k1728_seed2_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs75_k1728_seed3_CLAMPbase	historical		sat_rs75_k1728_seed3_CLAMPbase/model/sat_rs75_k1728_seed3_CLAMPbase_z.pkl	18423	1728		all	delivered	2026-11-02
+sat_rs75_k1728_seed3_CLAMPfull_bp	historical		sat_rs75_k1728_seed3_CLAMPfull_bp/model/sat_rs75_k1728_seed3_CLAMPfull_bp_z.pkl	18423	1728		all	delivered	2026-11-02
+consensus_archs4_CLAMPfull	new	consensus	output/98_final_models/consensus_models/archs4/traits/phenoplier_Z.pkl	18423	618		phenomexcan-curated	delivered	2026-11-02
+consensus_gtex_CLAMPfull	new	consensus	output/98_final_models/consensus_models/gtex/traits/phenoplier_Z.pkl	21613	333		phenomexcan-curated	delivered	2026-11-02
+consensus_recount2_CLAMPfull	new	consensus	output/98_final_models/consensus_models/recount2/traits/phenoplier_Z.pkl	5993	156		phenomexcan-curated	delivered	2026-11-02
+cov_rs1_seed4_CLAMPbase	new	coverage_rs1	output/01_model_building/02_archs4/02_coverage_study/00_bp_coverage_study_01/study_coverage_rs1_seed_4/CLAMPbase/Z.csv	18423	122	33	phenomexcan-curated	delivered	2026-11-02
+cov_rs1_seed5_CLAMPbase	new	coverage_rs1	output/01_model_building/02_archs4/02_coverage_study/00_bp_coverage_study_01/study_coverage_rs1_seed_5/CLAMPbase/Z.csv	18423	204	1001	phenomexcan-curated	delivered	2026-11-02
+cov_rs1_seed6_CLAMPbase	new	coverage_rs1	output/01_model_building/02_archs4/02_coverage_study/00_bp_coverage_study_01/study_coverage_rs1_seed_6/CLAMPbase/Z.csv	18423	242	1002	phenomexcan-curated	delivered	2026-11-02
+cov_rs1_seed7_CLAMPbase	new	coverage_rs1	output/01_model_building/02_archs4/02_coverage_study/00_bp_coverage_study_01/study_coverage_rs1_seed_7/CLAMPbase/Z.csv	18423	116	1003	phenomexcan-curated	delivered	2026-11-02
+cov_rs1_seed8_CLAMPbase	new	coverage_rs1	output/01_model_building/02_archs4/02_coverage_study/00_bp_coverage_study_01/study_coverage_rs1_seed_8/CLAMPbase/Z.csv	18423	188	1004	phenomexcan-curated	delivered	2026-11-02
+cov_rs1_seed9_CLAMPbase	new	coverage_rs1	output/01_model_building/02_archs4/02_coverage_study/00_bp_coverage_study_01/study_coverage_rs1_seed_9/CLAMPbase/Z.csv	18423	210	1005	phenomexcan-curated	delivered	2026-11-02
+cov_rs1_seed10_CLAMPbase	new	coverage_rs1	output/01_model_building/02_archs4/02_coverage_study/00_bp_coverage_study_01/study_coverage_rs1_seed_10/CLAMPbase/Z.csv	18423	212	1006	phenomexcan-curated	delivered	2026-11-02
+cov_rs5_seed4_CLAMPbase	new	coverage_rs5	output/01_model_building/02_archs4/02_coverage_study/01_bp_coverage_study_05/study_coverage_rs5_seed_4/CLAMPbase/Z.csv	18423	710	33	phenomexcan-curated	delivered	2026-11-02
+cov_rs5_seed5_CLAMPbase	new	coverage_rs5	output/01_model_building/02_archs4/02_coverage_study/01_bp_coverage_study_05/study_coverage_rs5_seed_5/CLAMPbase/Z.csv	18423	852	1001	phenomexcan-curated	delivered	2026-11-02
+cov_rs5_seed6_CLAMPbase	new	coverage_rs5	output/01_model_building/02_archs4/02_coverage_study/01_bp_coverage_study_05/study_coverage_rs5_seed_6/CLAMPbase/Z.csv	18423	676	1002	phenomexcan-curated	delivered	2026-11-02
+cov_rs5_seed7_CLAMPbase	new	coverage_rs5	output/01_model_building/02_archs4/02_coverage_study/01_bp_coverage_study_05/study_coverage_rs5_seed_7/CLAMPbase/Z.csv	18423	910	1003	phenomexcan-curated	delivered	2026-11-02
+cov_rs5_seed8_CLAMPbase	new	coverage_rs5	output/01_model_building/02_archs4/02_coverage_study/01_bp_coverage_study_05/study_coverage_rs5_seed_8/CLAMPbase/Z.csv	18423	500	1004	phenomexcan-curated	delivered	2026-11-02
+cov_rs5_seed9_CLAMPbase	new	coverage_rs5	output/01_model_building/02_archs4/02_coverage_study/01_bp_coverage_study_05/study_coverage_rs5_seed_9/CLAMPbase/Z.csv	18423	526	1005	phenomexcan-curated	delivered	2026-11-02
+cov_rs5_seed10_CLAMPbase	new	coverage_rs5	output/01_model_building/02_archs4/02_coverage_study/01_bp_coverage_study_05/study_coverage_rs5_seed_10/CLAMPbase/Z.csv	18423	964	1006	phenomexcan-curated	delivered	2026-11-02
+cov_rs10_seed4_CLAMPbase	new	coverage_rs10	output/01_model_building/02_archs4/02_coverage_study/02_bp_coverage_study_10/study_coverage_rs10_seed_4/CLAMPbase/Z.csv	18423	1026	33	phenomexcan-curated	delivered	2026-11-02
+cov_rs10_seed5_CLAMPbase	new	coverage_rs10	output/01_model_building/02_archs4/02_coverage_study/02_bp_coverage_study_10/study_coverage_rs10_seed_5/CLAMPbase/Z.csv	18423	1036	1001	phenomexcan-curated	delivered	2026-11-02
+cov_rs10_seed6_CLAMPbase	new	coverage_rs10	output/01_model_building/02_archs4/02_coverage_study/02_bp_coverage_study_10/study_coverage_rs10_seed_6/CLAMPbase/Z.csv	18423	900	1002	phenomexcan-curated	delivered	2026-11-02
+cov_rs10_seed7_CLAMPbase	new	coverage_rs10	output/01_model_building/02_archs4/02_coverage_study/02_bp_coverage_study_10/study_coverage_rs10_seed_7/CLAMPbase/Z.csv	18423	894	1003	phenomexcan-curated	delivered	2026-11-02
+cov_rs10_seed8_CLAMPbase	new	coverage_rs10	output/01_model_building/02_archs4/02_coverage_study/02_bp_coverage_study_10/study_coverage_rs10_seed_8/CLAMPbase/Z.csv	18423	818	1004	phenomexcan-curated	delivered	2026-11-02
+cov_rs10_seed9_CLAMPbase	new	coverage_rs10	output/01_model_building/02_archs4/02_coverage_study/02_bp_coverage_study_10/study_coverage_rs10_seed_9/CLAMPbase/Z.csv	18423	838	1005	phenomexcan-curated	delivered	2026-11-02
+cov_rs10_seed10_CLAMPbase	new	coverage_rs10	output/01_model_building/02_archs4/02_coverage_study/02_bp_coverage_study_10/study_coverage_rs10_seed_10/CLAMPbase/Z.csv	18423	1136	1006	phenomexcan-curated	delivered	2026-11-02
+cov_rs25_seed4_CLAMPbase	new	coverage_rs25	output/01_model_building/02_archs4/02_coverage_study/03_bp_coverage_study_25/study_coverage_rs25_seed_4/CLAMPbase/Z.csv	18423	1356	33	phenomexcan-curated	delivered	2026-11-02
+cov_rs25_seed5_CLAMPbase	new	coverage_rs25	output/01_model_building/02_archs4/02_coverage_study/03_bp_coverage_study_25/study_coverage_rs25_seed_5/CLAMPbase/Z.csv	18423	1244	1001	phenomexcan-curated	delivered	2026-11-02
+cov_rs25_seed6_CLAMPbase	new	coverage_rs25	output/01_model_building/02_archs4/02_coverage_study/03_bp_coverage_study_25/study_coverage_rs25_seed_6/CLAMPbase/Z.csv	18423	1286	1002	phenomexcan-curated	delivered	2026-11-02
+cov_rs25_seed7_CLAMPbase	new	coverage_rs25	output/01_model_building/02_archs4/02_coverage_study/03_bp_coverage_study_25/study_coverage_rs25_seed_7/CLAMPbase/Z.csv	18423	1226	1003	phenomexcan-curated	delivered	2026-11-02
+cov_rs25_seed8_CLAMPbase	new	coverage_rs25	output/01_model_building/02_archs4/02_coverage_study/03_bp_coverage_study_25/study_coverage_rs25_seed_8/CLAMPbase/Z.csv	18423	1342	1004	phenomexcan-curated	delivered	2026-11-02
+cov_rs25_seed9_CLAMPbase	new	coverage_rs25	output/01_model_building/02_archs4/02_coverage_study/03_bp_coverage_study_25/study_coverage_rs25_seed_9/CLAMPbase/Z.csv	18423	1268	1005	phenomexcan-curated	delivered	2026-11-02
+cov_rs25_seed10_CLAMPbase	new	coverage_rs25	output/01_model_building/02_archs4/02_coverage_study/03_bp_coverage_study_25/study_coverage_rs25_seed_10/CLAMPbase/Z.csv	18423	1456	1006	phenomexcan-curated	delivered	2026-11-02
+cov_rs50_seed4_CLAMPbase	new	coverage_rs50	output/01_model_building/02_archs4/02_coverage_study/04_bp_coverage_study_50/study_coverage_rs50_seed_4/CLAMPbase/Z.csv	18423	1554	33	phenomexcan-curated	delivered	2026-11-02
+cov_rs50_seed5_CLAMPbase	new	coverage_rs50	output/01_model_building/02_archs4/02_coverage_study/04_bp_coverage_study_50/study_coverage_rs50_seed_5/CLAMPbase/Z.csv	18423	1520	1001	phenomexcan-curated	delivered	2026-11-02
+cov_rs50_seed6_CLAMPbase	new	coverage_rs50	output/01_model_building/02_archs4/02_coverage_study/04_bp_coverage_study_50/study_coverage_rs50_seed_6/CLAMPbase/Z.csv	18423	1568	1002	phenomexcan-curated	delivered	2026-11-02
+cov_rs50_seed7_CLAMPbase	new	coverage_rs50	output/01_model_building/02_archs4/02_coverage_study/04_bp_coverage_study_50/study_coverage_rs50_seed_7/CLAMPbase/Z.csv	18423	1546	1003	phenomexcan-curated	delivered	2026-11-02
+cov_rs50_seed8_CLAMPbase	new	coverage_rs50	output/01_model_building/02_archs4/02_coverage_study/04_bp_coverage_study_50/study_coverage_rs50_seed_8/CLAMPbase/Z.csv	18423	1588	1004	phenomexcan-curated	delivered	2026-11-02
+cov_rs50_seed9_CLAMPbase	new	coverage_rs50	output/01_model_building/02_archs4/02_coverage_study/04_bp_coverage_study_50/study_coverage_rs50_seed_9/CLAMPbase/Z.csv	18423	1542	1005	phenomexcan-curated	delivered	2026-11-02
+cov_rs50_seed10_CLAMPbase	new	coverage_rs50	output/01_model_building/02_archs4/02_coverage_study/04_bp_coverage_study_50/study_coverage_rs50_seed_10/CLAMPbase/Z.csv	18423	1608	1006	phenomexcan-curated	delivered	2026-11-02
+cov_rs75_seed4_CLAMPbase	new	coverage_rs75	output/01_model_building/02_archs4/02_coverage_study/05_bp_coverage_study_75/study_coverage_rs75_seed_4/CLAMPbase/Z.csv	18423	1672	33	phenomexcan-curated	delivered	2026-11-02
+cov_rs75_seed5_CLAMPbase	new	coverage_rs75	output/01_model_building/02_archs4/02_coverage_study/05_bp_coverage_study_75/study_coverage_rs75_seed_5/CLAMPbase/Z.csv	18423	1648	1001	phenomexcan-curated	delivered	2026-11-02
+cov_rs75_seed6_CLAMPbase	new	coverage_rs75	output/01_model_building/02_archs4/02_coverage_study/05_bp_coverage_study_75/study_coverage_rs75_seed_6/CLAMPbase/Z.csv	18423	1696	1002	phenomexcan-curated	delivered	2026-11-02
+cov_rs75_seed7_CLAMPbase	new	coverage_rs75	output/01_model_building/02_archs4/02_coverage_study/05_bp_coverage_study_75/study_coverage_rs75_seed_7/CLAMPbase/Z.csv	18423	1638	1003	phenomexcan-curated	delivered	2026-11-02
+cov_rs75_seed8_CLAMPbase	new	coverage_rs75	output/01_model_building/02_archs4/02_coverage_study/05_bp_coverage_study_75/study_coverage_rs75_seed_8/CLAMPbase/Z.csv	18423	1660	1004	phenomexcan-curated	delivered	2026-11-02
+cov_rs75_seed9_CLAMPbase	new	coverage_rs75	output/01_model_building/02_archs4/02_coverage_study/05_bp_coverage_study_75/study_coverage_rs75_seed_9/CLAMPbase/Z.csv	18423	1656	1005	phenomexcan-curated	delivered	2026-11-02
+cov_rs75_seed10_CLAMPbase	new	coverage_rs75	output/01_model_building/02_archs4/02_coverage_study/05_bp_coverage_study_75/study_coverage_rs75_seed_10/CLAMPbase/Z.csv	18423	1672	1006	phenomexcan-curated	delivered	2026-11-02
+archs4_rs100_seed1001_CLAMPbase	new	archs4_rs100	output/01_model_building/02_archs4/05_stability/seed1001/CLAMPbase/Z.csv	18423	1728	1001	phenomexcan-curated	delivered	2026-11-02
+archs4_rs100_seed1002_CLAMPbase	new	archs4_rs100	output/01_model_building/02_archs4/05_stability/seed1002/CLAMPbase/Z.csv	18423	1728	1002	phenomexcan-curated	delivered	2026-11-02
+archs4_rs100_seed1003_CLAMPbase	new	archs4_rs100	output/01_model_building/02_archs4/05_stability/seed1003/CLAMPbase/Z.csv	18423	1728	1003	phenomexcan-curated	delivered	2026-11-02
+archs4_rs100_seed1004_CLAMPbase	new	archs4_rs100	output/01_model_building/02_archs4/05_stability/seed1004/CLAMPbase/Z.csv	18423	1728	1004	phenomexcan-curated	delivered	2026-11-02
+archs4_rs100_seed1005_CLAMPbase	new	archs4_rs100	output/01_model_building/02_archs4/05_stability/seed1005/CLAMPbase/Z.csv	18423	1728	1005	phenomexcan-curated	delivered	2026-11-02
+archs4_rs100_seed1006_CLAMPbase	new	archs4_rs100	output/01_model_building/02_archs4/05_stability/seed1006/CLAMPbase/Z.csv	18423	1728	1006	phenomexcan-curated	delivered	2026-11-02
+archs4_rs100_seed1007_CLAMPbase	new	archs4_rs100	output/01_model_building/02_archs4/05_stability/seed1007/CLAMPbase/Z.csv	18423	1728	1007	phenomexcan-curated	delivered	2026-11-02
+gtex_rs100_seed4_CLAMPbase	new	gtex_rs100	output/01_model_building/02_archs4/02_coverage_study/comparators/gtex/rs100_seed_4/CLAMPbase/Z.csv	21613	578	1001	phenomexcan-curated	delivered	2026-11-02
+gtex_rs100_seed5_CLAMPbase	new	gtex_rs100	output/01_model_building/02_archs4/02_coverage_study/comparators/gtex/rs100_seed_5/CLAMPbase/Z.csv	21613	578	1002	phenomexcan-curated	delivered	2026-11-02
+gtex_rs100_seed6_CLAMPbase	new	gtex_rs100	output/01_model_building/02_archs4/02_coverage_study/comparators/gtex/rs100_seed_6/CLAMPbase/Z.csv	21613	578	1003	phenomexcan-curated	delivered	2026-11-02
+gtex_rs100_seed7_CLAMPbase	new	gtex_rs100	output/01_model_building/02_archs4/02_coverage_study/comparators/gtex/rs100_seed_7/CLAMPbase/Z.csv	21613	578	1004	phenomexcan-curated	delivered	2026-11-02
+gtex_rs100_seed8_CLAMPbase	new	gtex_rs100	output/01_model_building/02_archs4/02_coverage_study/comparators/gtex/rs100_seed_8/CLAMPbase/Z.csv	21613	578	1005	phenomexcan-curated	delivered	2026-11-02
+gtex_rs100_seed9_CLAMPbase	new	gtex_rs100	output/01_model_building/02_archs4/02_coverage_study/comparators/gtex/rs100_seed_9/CLAMPbase/Z.csv	21613	578	1006	phenomexcan-curated	delivered	2026-11-02
+gtex_rs100_seed10_CLAMPbase	new	gtex_rs100	output/01_model_building/02_archs4/02_coverage_study/comparators/gtex/rs100_seed_10/CLAMPbase/Z.csv	21613	578	1007	phenomexcan-curated	delivered	2026-11-02
+sat_rs1_k1728_seed10_CLAMPbase	new	saturation_rs1	output/01_model_building/02_archs4/01_saturation/study_saturation_rs1_k1728_seed_10/CLAMPbase/Z.csv	18423	1728	1006	phenomexcan-curated	delivered	2026-11-02
+sat_rs1_k1728_seed1_CLAMPbase	new	saturation_rs1	output/01_model_building/02_archs4/01_saturation/study_saturation_rs1_k1728_seed_1/CLAMPbase/Z.csv	18423	1728	123	phenomexcan-curated	delivered	2026-11-02
+sat_rs1_k1728_seed4_CLAMPbase	new	saturation_rs1	output/01_model_building/02_archs4/01_saturation/study_saturation_rs1_k1728_seed_4/CLAMPbase/Z.csv	18423	1728	33	phenomexcan-curated	delivered	2026-11-02
+sat_rs1_k1728_seed5_CLAMPbase	new	saturation_rs1	output/01_model_building/02_archs4/01_saturation/study_saturation_rs1_k1728_seed_5/CLAMPbase/Z.csv	18423	1728	1001	phenomexcan-curated	delivered	2026-11-02
+sat_rs1_k1728_seed6_CLAMPbase	new	saturation_rs1	output/01_model_building/02_archs4/01_saturation/study_saturation_rs1_k1728_seed_6/CLAMPbase/Z.csv	18423	1728	1002	phenomexcan-curated	delivered	2026-11-02
+sat_rs1_k1728_seed7_CLAMPbase	new	saturation_rs1	output/01_model_building/02_archs4/01_saturation/study_saturation_rs1_k1728_seed_7/CLAMPbase/Z.csv	18423	1728	1003	phenomexcan-curated	delivered	2026-11-02
+sat_rs1_k1728_seed8_CLAMPbase	new	saturation_rs1	output/01_model_building/02_archs4/01_saturation/study_saturation_rs1_k1728_seed_8/CLAMPbase/Z.csv	18423	1728	1004	phenomexcan-curated	delivered	2026-11-02
+sat_rs1_k1728_seed9_CLAMPbase	new	saturation_rs1	output/01_model_building/02_archs4/01_saturation/study_saturation_rs1_k1728_seed_9/CLAMPbase/Z.csv	18423	1728	1005	phenomexcan-curated	delivered	2026-11-02
+sat_rs10_k1728_seed10_CLAMPbase	new	saturation_rs10	output/01_model_building/02_archs4/01_saturation/study_saturation_rs10_k1728_seed_10/CLAMPbase/Z.csv	18423	1728	1006	phenomexcan-curated	delivered	2026-11-02
+sat_rs10_k1728_seed4_CLAMPbase	new	saturation_rs10	output/01_model_building/02_archs4/01_saturation/study_saturation_rs10_k1728_seed_4/CLAMPbase/Z.csv	18423	1728	33	phenomexcan-curated	delivered	2026-11-02
+sat_rs10_k1728_seed5_CLAMPbase	new	saturation_rs10	output/01_model_building/02_archs4/01_saturation/study_saturation_rs10_k1728_seed_5/CLAMPbase/Z.csv	18423	1728	1001	phenomexcan-curated	delivered	2026-11-02
+sat_rs10_k1728_seed6_CLAMPbase	new	saturation_rs10	output/01_model_building/02_archs4/01_saturation/study_saturation_rs10_k1728_seed_6/CLAMPbase/Z.csv	18423	1728	1002	phenomexcan-curated	delivered	2026-11-02
+sat_rs10_k1728_seed7_CLAMPbase	new	saturation_rs10	output/01_model_building/02_archs4/01_saturation/study_saturation_rs10_k1728_seed_7/CLAMPbase/Z.csv	18423	1728	1003	phenomexcan-curated	delivered	2026-11-02
+sat_rs10_k1728_seed8_CLAMPbase	new	saturation_rs10	output/01_model_building/02_archs4/01_saturation/study_saturation_rs10_k1728_seed_8/CLAMPbase/Z.csv	18423	1728	1004	phenomexcan-curated	delivered	2026-11-02
+sat_rs10_k1728_seed9_CLAMPbase	new	saturation_rs10	output/01_model_building/02_archs4/01_saturation/study_saturation_rs10_k1728_seed_9/CLAMPbase/Z.csv	18423	1728	1005	phenomexcan-curated	delivered	2026-11-02
+sat_rs25_k1728_seed10_CLAMPbase	new	saturation_rs25	output/01_model_building/02_archs4/01_saturation/study_saturation_rs25_k1728_seed_10/CLAMPbase/Z.csv	18423	1728	1006	phenomexcan-curated	delivered	2026-11-02
+sat_rs25_k1728_seed4_CLAMPbase	new	saturation_rs25	output/01_model_building/02_archs4/01_saturation/study_saturation_rs25_k1728_seed_4/CLAMPbase/Z.csv	18423	1728	33	phenomexcan-curated	delivered	2026-11-02
+sat_rs25_k1728_seed5_CLAMPbase	new	saturation_rs25	output/01_model_building/02_archs4/01_saturation/study_saturation_rs25_k1728_seed_5/CLAMPbase/Z.csv	18423	1728	1001	phenomexcan-curated	delivered	2026-11-02
+sat_rs25_k1728_seed6_CLAMPbase	new	saturation_rs25	output/01_model_building/02_archs4/01_saturation/study_saturation_rs25_k1728_seed_6/CLAMPbase/Z.csv	18423	1728	1002	phenomexcan-curated	delivered	2026-11-02
+sat_rs25_k1728_seed7_CLAMPbase	new	saturation_rs25	output/01_model_building/02_archs4/01_saturation/study_saturation_rs25_k1728_seed_7/CLAMPbase/Z.csv	18423	1728	1003	phenomexcan-curated	delivered	2026-11-02
+sat_rs25_k1728_seed8_CLAMPbase	new	saturation_rs25	output/01_model_building/02_archs4/01_saturation/study_saturation_rs25_k1728_seed_8/CLAMPbase/Z.csv	18423	1728	1004	phenomexcan-curated	delivered	2026-11-02
+sat_rs25_k1728_seed9_CLAMPbase	new	saturation_rs25	output/01_model_building/02_archs4/01_saturation/study_saturation_rs25_k1728_seed_9/CLAMPbase/Z.csv	18423	1728	1005	phenomexcan-curated	delivered	2026-11-02
+sat_rs5_k1728_seed10_CLAMPbase	new	saturation_rs5	output/01_model_building/02_archs4/01_saturation/study_saturation_rs5_k1728_seed_10/CLAMPbase/Z.csv	18423	1728	1006	phenomexcan-curated	delivered	2026-11-02
+sat_rs5_k1728_seed4_CLAMPbase	new	saturation_rs5	output/01_model_building/02_archs4/01_saturation/study_saturation_rs5_k1728_seed_4/CLAMPbase/Z.csv	18423	1728	33	phenomexcan-curated	delivered	2026-11-02
+sat_rs5_k1728_seed5_CLAMPbase	new	saturation_rs5	output/01_model_building/02_archs4/01_saturation/study_saturation_rs5_k1728_seed_5/CLAMPbase/Z.csv	18423	1728	1001	phenomexcan-curated	delivered	2026-11-02
+sat_rs5_k1728_seed6_CLAMPbase	new	saturation_rs5	output/01_model_building/02_archs4/01_saturation/study_saturation_rs5_k1728_seed_6/CLAMPbase/Z.csv	18423	1728	1002	phenomexcan-curated	delivered	2026-11-02
+sat_rs5_k1728_seed7_CLAMPbase	new	saturation_rs5	output/01_model_building/02_archs4/01_saturation/study_saturation_rs5_k1728_seed_7/CLAMPbase/Z.csv	18423	1728	1003	phenomexcan-curated	delivered	2026-11-02
+sat_rs5_k1728_seed8_CLAMPbase	new	saturation_rs5	output/01_model_building/02_archs4/01_saturation/study_saturation_rs5_k1728_seed_8/CLAMPbase/Z.csv	18423	1728	1004	phenomexcan-curated	delivered	2026-11-02
+sat_rs5_k1728_seed9_CLAMPbase	new	saturation_rs5	output/01_model_building/02_archs4/01_saturation/study_saturation_rs5_k1728_seed_9/CLAMPbase/Z.csv	18423	1728	1005	phenomexcan-curated	delivered	2026-11-02
+sat_rs50_k1728_seed10_CLAMPbase	new	saturation_rs50	output/01_model_building/02_archs4/01_saturation/study_saturation_rs50_k1728_seed_10/CLAMPbase/Z.csv	18423	1728	1006	phenomexcan-curated	delivered	2026-11-02
+sat_rs50_k1728_seed4_CLAMPbase	new	saturation_rs50	output/01_model_building/02_archs4/01_saturation/study_saturation_rs50_k1728_seed_4/CLAMPbase/Z.csv	18423	1728	33	phenomexcan-curated	delivered	2026-11-02
+sat_rs50_k1728_seed5_CLAMPbase	new	saturation_rs50	output/01_model_building/02_archs4/01_saturation/study_saturation_rs50_k1728_seed_5/CLAMPbase/Z.csv	18423	1728	1001	phenomexcan-curated	delivered	2026-11-02
+sat_rs50_k1728_seed6_CLAMPbase	new	saturation_rs50	output/01_model_building/02_archs4/01_saturation/study_saturation_rs50_k1728_seed_6/CLAMPbase/Z.csv	18423	1728	1002	phenomexcan-curated	delivered	2026-11-02
+sat_rs50_k1728_seed7_CLAMPbase	new	saturation_rs50	output/01_model_building/02_archs4/01_saturation/study_saturation_rs50_k1728_seed_7/CLAMPbase/Z.csv	18423	1728	1003	phenomexcan-curated	delivered	2026-11-02
+sat_rs50_k1728_seed8_CLAMPbase	new	saturation_rs50	output/01_model_building/02_archs4/01_saturation/study_saturation_rs50_k1728_seed_8/CLAMPbase/Z.csv	18423	1728	1004	phenomexcan-curated	delivered	2026-11-02
+sat_rs50_k1728_seed9_CLAMPbase	new	saturation_rs50	output/01_model_building/02_archs4/01_saturation/study_saturation_rs50_k1728_seed_9/CLAMPbase/Z.csv	18423	1728	1005	phenomexcan-curated	delivered	2026-11-02
+sat_rs75_k1728_seed10_CLAMPbase	new	saturation_rs75	output/01_model_building/02_archs4/01_saturation/study_saturation_rs75_k1728_seed_10/CLAMPbase/Z.csv	18423	1728	1006	phenomexcan-curated	delivered	2026-11-02
+sat_rs75_k1728_seed4_CLAMPbase	new	saturation_rs75	output/01_model_building/02_archs4/01_saturation/study_saturation_rs75_k1728_seed_4/CLAMPbase/Z.csv	18423	1728	33	phenomexcan-curated	delivered	2026-11-02
+sat_rs75_k1728_seed5_CLAMPbase	new	saturation_rs75	output/01_model_building/02_archs4/01_saturation/study_saturation_rs75_k1728_seed_5/CLAMPbase/Z.csv	18423	1728	1001	phenomexcan-curated	delivered	2026-11-02
+sat_rs75_k1728_seed6_CLAMPbase	new	saturation_rs75	output/01_model_building/02_archs4/01_saturation/study_saturation_rs75_k1728_seed_6/CLAMPbase/Z.csv	18423	1728	1002	phenomexcan-curated	delivered	2026-11-02
+sat_rs75_k1728_seed7_CLAMPbase	new	saturation_rs75	output/01_model_building/02_archs4/01_saturation/study_saturation_rs75_k1728_seed_7/CLAMPbase/Z.csv	18423	1728	1003	phenomexcan-curated	delivered	2026-11-02
+sat_rs75_k1728_seed8_CLAMPbase	new	saturation_rs75	output/01_model_building/02_archs4/01_saturation/study_saturation_rs75_k1728_seed_8/CLAMPbase/Z.csv	18423	1728	1004	phenomexcan-curated	delivered	2026-11-02
+sat_rs75_k1728_seed9_CLAMPbase	new	saturation_rs75	output/01_model_building/02_archs4/01_saturation/study_saturation_rs75_k1728_seed_9/CLAMPbase/Z.csv	18423	1728	1005	phenomexcan-curated	delivered	2026-11-02
