@@ -78,7 +78,7 @@ rule crispercas_noise_flags:
                                                              "lv_technical_classification.csv"]],
         script="scripts/archs4/crispercas/cluster_metalv.py",
     output:
-        f"{A4_METALV_NOISE}/all_flags.csv",
+        f"{A4_METALV}/noise/all_flags.csv",
     conda: "clamp-analyses"
     shell:
         "python {input.script} noise --reference-dir {A4_METALV_TN} --seeds-dir {A4_METALV_NOISE} "
@@ -112,6 +112,7 @@ rule crispercas_metalv_cluster:
         summary=f"{A4_METALV}/cluster_summary.csv",
         members=f"{A4_METALV}/cluster_members.csv",
         all_lvs=f"{A4_METALV}/all_lv_clusters.csv",
+        counts=f"{A4_METALV}/cluster_model_count_distribution.csv",
     log:
         f"{A4_METALV}/cluster.log"
     resources:
@@ -242,9 +243,28 @@ rule crispercas_metalv_select:
         "--lipid-regex '{A4_CRISPERCAS_CFG[lipid_regex]}' --out-dir {A4_METALV}/selection"
 
 
+rule crispercas_fig5_selection:
+    input:
+        summary=rules.crispercas_metalv_cluster.output.summary,
+        select=rules.crispercas_metalv_select.output.selected,
+    output:
+        candidates=f"{A4_METALV}/fig5_selection/candidates.csv",
+        selected=f"{A4_METALV}/fig5_selection/selected.csv",
+    params:
+        candidates=",".join(A4_CRISPERCAS_CFG["fig5_candidates"]),
+        selected=",".join(A4_CRISPERCAS_CFG["fig5_metalvs"]),
+    conda: "clamp-analyses"
+    shell:
+        "python -c \"import sys, pandas as pd; s = pd.read_csv(sys.argv[1]).set_index('metaLV'); "
+        "c, f = sys.argv[3].split(','), sys.argv[4].split(','); assert set(f) <= set(c) <= set(s.index), (c, f); "
+        "s.loc[c, ['n_models']].reset_index().to_csv(sys.argv[5], index=False); "
+        "s.loc[f, ['n_models']].reset_index().to_csv(sys.argv[6], index=False)\" "
+        "{input.summary} {input.select} {params.candidates} {params.selected} {output.candidates} {output.selected}"
+
+
 rule crispercas_metalv_pathways:
     input:
-        selected=rules.crispercas_metalv_select.output.selected,
+        selected=rules.crispercas_fig5_selection.output.selected,
         ora=expand(f"{A4_METALV}/ora/{{database}}", database=["bp", "canonical"]),
         bp_gmt=A4_CFG["ora"]["databases"]["bp"]["path"],
         script="scripts/archs4/crispercas/merge_pathways.R",
@@ -265,7 +285,7 @@ rule crispercas_metalv_pathways:
 rule crispercas_metalv_l1000:
     input:
         metaz=rules.crispercas_metalv_cluster.output.metaz,
-        selected=rules.crispercas_metalv_select.output.selected,
+        selected=rules.crispercas_fig5_selection.output.candidates,
         model=ancient(f"{A4_CAN_FINAL_ROOT}/archs4/{A4_CAN_MODEL_NAME}.rds"),
         lincs=ancient(f"{A4_DD_DATA}/lincs-data.pkl"),
         drugbank=ancient(A4_DD_CFG["drugbank_tsv"]),
@@ -296,7 +316,7 @@ rule crispercas_metalv_l1000:
 rule crispercas_metalv_projection:
     input:
         metaz=rules.crispercas_metalv_cluster.output.metaz,
-        selected=rules.crispercas_metalv_select.output.selected,
+        selected=rules.crispercas_fig5_selection.output.candidates,
         model=ancient(f"{A4_CAN_FINAL_ROOT}/archs4/{A4_CAN_MODEL_NAME}.rds"),
         metadata=ancient(f"{A4_PREP}/metadata_filtered.rds"),
         samples=ancient(f"{A4_METALV_TN}/sample_metadata.tsv.gz"),
@@ -319,13 +339,18 @@ rule crispercas_metalv_projection:
 rule crispercas_metalv_composition:
     input:
         b=rules.crispercas_metalv_projection.output,
-        selected=rules.crispercas_metalv_select.output.selected,
-        script="scripts/archs4/crispercas/fig5_data.py",
+        selected=rules.crispercas_fig5_selection.output.selected,
+        script="scripts/archs4/crispercas/top_sample_composition.py",
     output:
-        f"{A4_METALV}/projection/composition.csv",
+        composition=f"{A4_METALV}/projection/composition.csv",
+        enrichment=f"{A4_METALV}/projection/top_sample_enrichment.csv",
+    params:
+        top=A4_CRISPERCAS_CFG["fig5_top_samples"],
     conda: "clamp-analyses"
     shell:
-        "python {input.script} composition --b {input.b} --selected {input.selected} --out {output}"
+        "python {input.script} --b {input.b} --selected {input.selected} --top-fraction {params.top[top_fraction]} "
+        "--min-pct {params.top[min_pct]} --n-boot {params.top[n_boot]} --seed {params.top[seed]} "
+        "--enrichment-out {output.enrichment} --out {output.composition}"
 
 
 A4_FIG5_DATA = ["modules.csv", "module_genes.csv", "pathway_edges.csv", "module_trait_groups.csv",
@@ -338,12 +363,12 @@ rule crispercas_fig5_data:
         metaz=rules.crispercas_metalv_cluster.output.metaz,
         summary=rules.crispercas_metalv_cluster.output.summary,
         phenomexcan=A4_CRISPERCAS_CFG["phenomexcan_dir"],
-        selected=rules.crispercas_metalv_select.output.selected,
+        selected=rules.crispercas_fig5_selection.output.selected,
         pairs=rules.crispercas_metalv_select.output.pairs,
         gls=rules.crispercas_metalv_select.output.gls,
         members=rules.crispercas_metalv_pathways.output.members,
         top=rules.crispercas_metalv_pathways.output.top,
-        composition=rules.crispercas_metalv_composition.output,
+        composition=rules.crispercas_metalv_composition.output.composition,
         l1000=rules.crispercas_metalv_l1000.output.curated,
         script="scripts/archs4/crispercas/fig5_data.py",
     output:
@@ -355,7 +380,7 @@ rule crispercas_fig5_data:
         "--phenotypes-info {A4_CRISPERCAS_CFG[phenomexcan_dir]}/phenotypes_info.tsv "
         "--phenomexcan {A4_CRISPERCAS_CFG[phenomexcan_dir]} --composition {input.composition} --l1000 {input.l1000} "
         "--min-cases {A4_CRISPERCAS_CFG[min_cases]} --fdr {A4_CRISPERCAS_CFG[fdr]} "
-        "--top-n {A4_CRISPERCAS_CFG[top_n]} --out-dir {A4_METALV}/fig5"
+        "--top-n {A4_CRISPERCAS_CFG[top_n]} --reference-genes " + ",".join(A4_CRISPERCAS_CFG["fig5_reference_genes"]) + " --out-dir {A4_METALV}/fig5"
 
 
 rule crispercas_mgm_report:
@@ -367,7 +392,7 @@ rule crispercas_mgm_report:
         pathways=rules.crispercas_metalv_pathways.output.top,
         modules=f"{A4_METALV}/fig5/modules.csv",
         traits=f"{A4_METALV}/fig5/module_trait_groups.csv",
-        composition=rules.crispercas_metalv_composition.output[0],
+        composition=rules.crispercas_metalv_composition.output.composition,
         ranking=rules.crispercas_metalv_l1000.output.ranking,
         curated=rules.crispercas_metalv_l1000.output.curated,
         unique=rules.crispercas_metalv_l1000.output.unique,

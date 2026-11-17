@@ -292,6 +292,10 @@ archs4:
     n_reps: 10
     fdr: 0.05
     top_n: 185
+    fig5_candidates: [metaLV70, metaLV120, metaLV281, metaLV270, metaLV748, metaLV288, metaLV571, metaLV152]
+    fig5_metalvs: [metaLV120, metaLV281, metaLV70, metaLV270]
+    fig5_reference_genes: [SERPINA10, APOE, APOC1, LDLR, PCSK9, FADS2, ACSS2, HNF1B, HHEX]
+    fig5_top_samples: {top_fraction: 0.01, min_pct: 5, n_boot: 1000, seed: 20261114}
     min_cases: 1000
     pathway_max_size: 100
     pathway_jaccard: 0.4
