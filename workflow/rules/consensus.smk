@@ -358,6 +358,22 @@ rule consensus_model:
         "--out-dir {params.out} && ln -sfr {input.metaz} {output.z}"
 
 
+rule consensus_projection_model:
+    input:
+        z=f"{CON_ROOT}/{{compendium}}/Z.csv",
+        manifest=f"{CON_ROOT}/{{compendium}}/manifest.json",
+    output:
+        f"{CON_ROOT}/{{compendium}}/{CON_NAME}.rds",
+    resources:
+        mem_mb=16000,
+    wildcard_constraints:
+        compendium=CON_COMPENDIUM_PATTERN,
+    conda: "clamp-analyses"
+    shell:
+        "Rscript -e 'a <- commandArgs(TRUE); z <- as.matrix(data.table::fread(a[1]), rownames = 1); "
+        "saveRDS(list(Z = z, L2 = jsonlite::read_json(a[2])$L2), a[3])' {input.z} {input.manifest} {output}"
+
+
 CON_MGM_FILES = {
     "metaZ.csv": rules.crispercas_metalv_cluster.output.metaz,
     "cluster_summary.csv": rules.crispercas_metalv_cluster.output.summary,
@@ -565,6 +581,165 @@ rule consensus_traits:
     conda: "clamp-analyses"
     shell:
         "python {input.script} --summary {input.summary} --mapping {input.mapping} --out {output}"
+
+
+# ============================================================
+# Step 7: build CLAMPbase consensus models for the prior comparison
+# ============================================================
+
+CON_BASE_CFG = CON_CFG["base"]
+CON_BASE_ROOT = CON_BASE_CFG["root"]
+CON_BASE_NAME = CON_BASE_CFG["model_name"]
+CON_BASE_COMPENDIA = list(CON_BASE_CFG["compendia"])
+CON_BASE_PATTERN = "|".join(CON_BASE_COMPENDIA)
+
+
+def con_base_dir(c, model):
+    if model == con_ref(c) and c == "archs4":
+        return f"{CON_BASE_ARCHS4_CELL}/CLAMPbase"
+    if model == con_ref(c):
+        return os.path.dirname(A4_COV_CFG["clampbase_source"][c]["z"])
+    if c == "archs4":
+        return f"{A4_STAB_ROOT}/seed{model[1:]}/CLAMPbase"
+    return f"{CON_STAB[c]}/seed{model[1:]}/CLAMPbase"
+
+
+def con_base_noise_dir(c, model):
+    return f"{CON_BASE_ROOT}/{c}/noise/{model}"
+
+
+def con_noise_properties(c):
+    if c == "archs4":
+        return dict(gene_properties=rules.technical_noise_gene_properties.output[0],
+                    sample_metadata=rules.technical_noise_sample_qc.output.metadata)
+    return dict(gene_properties=f"{CON_ROOT}/{c}/noise/gene_properties.csv",
+                sample_metadata=f"{CON_ROOT}/{c}/noise/sample_metadata.tsv.gz")
+
+
+CON_BASE_ARCHS4_CELL = a4_cov_cell(100, int(A4_COV_CFG["clampbase_seed"]["archs4"]))
+
+
+rule consensus_base_model_noise:
+    input:
+        unpack(lambda wc: con_noise_properties(wc.compendium)),
+        z=lambda wc: ancient(f"{con_base_dir(wc.compendium, wc.model)}/Z.csv"),
+        b=lambda wc: ancient(f"{con_base_dir(wc.compendium, wc.model)}/B.csv"),
+        script=A4_TN_SCRIPT,
+    output:
+        gene=f"{CON_BASE_ROOT}/{{compendium}}/noise/{{model}}/lv_gene_properties_canonical.csv",
+        sample=f"{CON_BASE_ROOT}/{{compendium}}/noise/{{model}}/lv_sample_metadata_canonical.csv",
+    log:
+        gene=f"{CON_BASE_ROOT}/{{compendium}}/noise/{{model}}/gene_level.log",
+        sample=f"{CON_BASE_ROOT}/{{compendium}}/noise/{{model}}/sample_level.log",
+    params:
+        model=lambda wc: con_base_dir(wc.compendium, wc.model),
+        out=lambda wc, output: os.path.dirname(output.gene),
+        covariates=lambda wc: "" if wc.compendium == "archs4" else con_covariate_args(wc.compendium),
+    threads: lambda wc: int(CON_RES["noise_archs4" if wc.compendium == "archs4" else "noise"]["threads"])
+    resources:
+        mem_mb=lambda wc: int(CON_RES["noise_archs4" if wc.compendium == "archs4" else "noise"]["mem_mb"]),
+        runtime=lambda wc: int(CON_RES["noise_archs4" if wc.compendium == "archs4" else "noise"]["runtime"]),
+    wildcard_constraints:
+        compendium=CON_BASE_PATTERN,
+        model=r"S\d+",
+    conda: "clamp-analyses"
+    shell:
+        "ln -sfr {input.gene_properties} {params.out}/gene_properties.csv && "
+        "ln -sfr {input.sample_metadata} {params.out}/sample_metadata.tsv.gz && "
+        "Rscript {input.script} --stage gene_level --model-dir {params.model} --out-dir {params.out} > {log.gene} 2>&1 && "
+        "Rscript {input.script} --stage sample_level --model-dir {params.model} --out-dir {params.out} "
+        "{params.covariates} --n-cores {threads} > {log.sample} 2>&1"
+
+
+rule consensus_base_flags:
+    input:
+        noise=lambda wc: [f"{con_base_noise_dir(wc.compendium, m)}/{name}" for m in con_models(wc.compendium)
+                          for name in ["lv_gene_properties_canonical.csv", "lv_sample_metadata_canonical.csv"]],
+        script="scripts/archs4/crispercas/cluster_metalv.py",
+    output:
+        f"{CON_BASE_ROOT}/{{compendium}}/noise/all_flags.csv",
+    params:
+        models=lambda wc: " ".join(f"{m}={con_base_noise_dir(wc.compendium, m)}" for m in con_models(wc.compendium)),
+    wildcard_constraints:
+        compendium=CON_BASE_PATTERN,
+    conda: "clamp-analyses"
+    shell:
+        "python {input.script} flags --model {params.models} --threshold {CON_CFG[noise_r2]} --out {output}"
+
+
+rule consensus_base_zcache:
+    input:
+        z=lambda wc: [ancient(f"{con_base_dir(wc.compendium, m)}/Z.csv") for m in con_models(wc.compendium)],
+        script="scripts/archs4/crispercas/cluster_metalv.py",
+    output:
+        f"{CON_BASE_ROOT}/{{compendium}}/Z_all.npz",
+    params:
+        models=lambda wc: " ".join(con_models(wc.compendium)),
+    resources:
+        mem_mb=16000,
+    wildcard_constraints:
+        compendium=CON_BASE_PATTERN,
+    conda: "clamp-analyses"
+    shell:
+        "python {input.script} cache --models {params.models} --z {input.z} --out {output}"
+
+
+rule consensus_base_cluster:
+    input:
+        z=rules.consensus_base_zcache.output,
+        flags=rules.consensus_base_flags.output,
+        script="scripts/archs4/crispercas/cluster_metalv.py",
+    output:
+        metaz=f"{CON_BASE_ROOT}/{{compendium}}/metaZ.csv",
+        summary=f"{CON_BASE_ROOT}/{{compendium}}/cluster_summary.csv",
+        members=f"{CON_BASE_ROOT}/{{compendium}}/cluster_members.csv",
+        all_lvs=f"{CON_BASE_ROOT}/{{compendium}}/all_lv_clusters.csv",
+    log:
+        f"{CON_BASE_ROOT}/{{compendium}}/cluster.log"
+    params:
+        out=lambda wc, output: os.path.dirname(output.metaz),
+        reference=lambda wc: con_ref(wc.compendium),
+    resources:
+        mem_mb=16000,
+    wildcard_constraints:
+        compendium=CON_BASE_PATTERN,
+    conda: "clamp-analyses"
+    shell:
+        "python {input.script} cluster --z-cache {input.z} --flags {input.flags} "
+        "--min-cos {CON_CFG[min_cos]} --min-models {CON_CFG[min_models]} --reference {params.reference} "
+        "--out-dir {params.out} > {log} 2>&1"
+
+
+rule consensus_base_model:
+    input:
+        metaz=rules.consensus_base_cluster.output.metaz,
+        summary=rules.consensus_base_cluster.output.summary,
+        reference=lambda wc: ancient(f"{A4_CAN_FINAL_ROOT}/{wc.compendium}/{A4_CAN_MODEL_NAME}.rds"),
+        manifest=lambda wc: ancient(f"{A4_CAN_FINAL_ROOT}/{wc.compendium}/manifest.json"),
+        script="scripts/consensus/build_consensus_model.R",
+    output:
+        z=f"{CON_BASE_ROOT}/{{compendium}}/Z.csv",
+        mapping=f"{CON_BASE_ROOT}/{{compendium}}/mgm_mapping.csv",
+        manifest=f"{CON_BASE_ROOT}/{{compendium}}/manifest.json",
+    params:
+        out=lambda wc, output: os.path.dirname(output.z),
+        models=lambda wc: ",".join(con_models(wc.compendium)),
+    resources:
+        mem_mb=32000,
+    wildcard_constraints:
+        compendium=CON_BASE_PATTERN,
+    conda: "clamp-analyses"
+    shell:
+        "Rscript {input.script} --dataset {wildcards.compendium} --metaz {input.metaz} --summary {input.summary} "
+        "--reference-model {input.reference} --reference-manifest {input.manifest} --models {params.models} "
+        "--min-cos {CON_CFG[min_cos]} --min-models {CON_CFG[min_models]} --model-name {CON_BASE_NAME} "
+        "--out-dir {params.out} && ln -sfr {input.metaz} {output.z}"
+
+
+rule consensus_base_models:
+    input:
+        expand(f"{CON_BASE_ROOT}/{{compendium}}/{{name}}", compendium=CON_BASE_COMPENDIA,
+               name=["Z.csv", "manifest.json", "mgm_mapping.csv"]),
 
 
 CON_CORE = [

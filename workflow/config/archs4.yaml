@@ -277,13 +277,13 @@ archs4:
     # CRISPR-Cas9 lipid screen interpreted with metaLVs: LVs of the ten CLAMP-full
     # canonical models (S123 plus the stability seeds) clustered across seeds.
     lipid_deg: data/archs4/crispr_cas9/lipid_DEG.csv
-    compute_root: output/03_model_biology/02_archs4/04_crispercas
-    metalv_root: output/03_model_biology/02_archs4/04_crispercas/00_mgm
+    compute_root: output/03_model_biology/02_archs4/04_crispercas_ge4r015med
+    metalv_root: output/03_model_biology/02_archs4/04_crispercas_ge4r015med/00_mgm
     noise_seeds_root: output/03_model_biology/02_archs4/06_technical_noise/seeds
-    symbol_ensembl: output/03_model_biology/02_archs4/04_crispercas/00_mgm/symbol_ensembl.csv
+    symbol_ensembl: output/03_model_biology/02_archs4/04_crispercas_ge4r015med/00_mgm/symbol_ensembl.csv
     min_cos: 0.5
-    min_models: 6
-    noise_r2: 0.25
+    min_models: 4
+    noise_r2: 0.15
     n_reps: 10
     fdr: 0.05
     top_n: 185
@@ -293,7 +293,7 @@ archs4:
     lipid_regex: "LIPID|CHOLESTEROL|STEROL|FATTY|LIPOPROTEIN|TRIGLYCERIDE|EICOSANOID|PHOSPHOLIPID|BILE|PROSTAGLANDIN|LEUKOTRIENE|ARACHIDONIC|SPHINGO|PPAR|LDL|HDL"
     # PhenoPLIER GLS of all consensus ARCHS4 metaLVs (consensus_traits); the
     # selection recomputes BH over the GSEA-significant ones.
-    gls_summary: output/98_final_models/consensus_models/archs4/traits/consensus_archs4.tsv.gz
+    gls_summary: output/98_final_models/consensus_models_ge4r015med/archs4/traits/consensus_archs4.tsv.gz
     phenomexcan_dir: data/phenomexcan
     archs4_cell_lines_gmt: data/pathways/archs4_cell_lines.gmt
     archs4_cell_lines_url: "https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=ARCHS4_Cell-lines"

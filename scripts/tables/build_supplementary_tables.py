@@ -20,7 +20,7 @@ ARGS = parser.parse_args()
 PHENOMEXCAN = ARGS.phenomexcan_dir
 COVERAGE_SUMMARIES = ROOT / "output/01_model_building/02_archs4/clampbase_coverage/summaries"
 SUPP6_SOURCE = ROOT / "output/99_panels/supp6/source_data"
-CRISPR = ARCHS4 / "04_crispercas"
+CRISPR = ARCHS4 / "04_crispercas_ge4r015med"
 FDR = 0.05
 
 
