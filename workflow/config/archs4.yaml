@@ -267,8 +267,13 @@ archs4:
     report_root: output/03_model_biology/02_archs4/02_drug_diseases_canonical
     n_top_lvs: [5, 10, 25, 50]
     n_top_genes: [50, 100, 250, 500]
-    figure_n_top_genes: 100
-    figure_n_top_lvs: 10
+    methods:
+      archs4_full: {label: ARCHS4 CLAMPfull, compendium: archs4, model: full}
+      archs4_base: {label: ARCHS4 CLAMPbase, compendium: archs4, model: base}
+      gtex_full: {label: GTEx CLAMPfull, compendium: gtex, model: full}
+      gtex_base: {label: GTEx CLAMPbase, compendium: gtex, model: base}
+      recount2_full: {label: recount2 CLAMPfull, compendium: recount2, model: full}
+    comparison_methods: [archs4_full, archs4_base, gtex_full, gtex_base]
     bootstrap:
       n_boot: 10000
       seed: 42

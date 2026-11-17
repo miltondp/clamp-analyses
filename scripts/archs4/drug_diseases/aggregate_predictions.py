@@ -11,14 +11,6 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 
 N_TISSUES = 49
 
-METHOD_RENAME = {
-    "Gene-based": "gene_based",
-    "Module-based (ARCHS4)": "module_based_archs4",
-    "Module-based": "module_based_archs4",
-    "Module-based (GTEx)": "module_based_gtex",
-    "Module-based (recount2)": "module_based_recount2",
-}
-
 def parse_thresholds(raw: str) -> list[float]:
     return [-1.0 if tok == "all" else float(tok) for tok in raw.split(",")]
 
@@ -45,44 +37,25 @@ def load_predictions(
     method_thresholds: dict[str, list[float]],
 ) -> pd.DataFrame:
     expected_methods = tuple(method_thresholds)
-
-    current_prediction_files = []
-    for d in prediction_dirs.values():
-        current_prediction_files.extend(sorted(d.glob("*.h5")))
-    current_prediction_files.sort()
-    print(f"Found {len(current_prediction_files)} prediction files")
-
     predictions = []
-    skipped_files = []
-    for f in current_prediction_files:
-        metadata = pd.read_hdf(f, key="metadata")
-        method_name = METHOD_RENAME.get(metadata["method"].values[0], metadata["method"].values[0])
-        if method_name not in method_thresholds:
-            skipped_files.append((f.name, method_name))
-            continue
-
-        prediction_data = pd.read_hdf(f, key="prediction")
-        prediction_data["score"] = prediction_data["score"].rank()
-        prediction_data = pd.merge(prediction_data, gold_standard, on=["trait", "drug"], how="inner")
-        prediction_data["trait"] = prediction_data["trait"].astype("category")
-        prediction_data["drug"] = prediction_data["drug"].astype("category")
-
-        prediction_data = prediction_data.assign(method=method_name)
-        prediction_data["method"] = pd.Categorical(
-            prediction_data["method"], categories=expected_methods, ordered=True
-        )
-        prediction_data = prediction_data.assign(n_top_genes=metadata["n_top_genes"].values[0])
-
-        data_value = metadata["data"].values[0]
-        prediction_data = prediction_data.assign(data=data_value)
-        prediction_data["data"] = prediction_data["data"].astype("category")
-        prediction_data = prediction_data.assign(tissue=_get_tissue(data_value))
-
-        predictions.append(prediction_data)
-
-    print(f"Skipped files: {len(skipped_files)}")
-    if skipped_files:
-        print(skipped_files[:10])
+    for method_name, d in prediction_dirs.items():
+        for f in sorted(d.glob("*.h5")):
+            metadata = pd.read_hdf(f, key="metadata")
+            if float(metadata["n_top_genes"].values[0]) not in method_thresholds[method_name]:
+                continue
+            prediction_data = pd.read_hdf(f, key="prediction")
+            prediction_data["score"] = prediction_data["score"].rank()
+            prediction_data = pd.merge(prediction_data, gold_standard, on=["trait", "drug"], how="inner")
+            prediction_data["trait"] = prediction_data["trait"].astype("category")
+            prediction_data["drug"] = prediction_data["drug"].astype("category")
+            prediction_data = prediction_data.assign(method=method_name)
+            prediction_data["method"] = pd.Categorical(prediction_data["method"], categories=expected_methods, ordered=True)
+            prediction_data = prediction_data.assign(n_top_genes=metadata["n_top_genes"].values[0])
+            data_value = metadata["data"].values[0]
+            prediction_data = prediction_data.assign(data=data_value)
+            prediction_data["data"] = prediction_data["data"].astype("category")
+            prediction_data = prediction_data.assign(tissue=_get_tissue(data_value))
+            predictions.append(prediction_data)
 
     predictions = pd.concat(predictions, ignore_index=True)
     assert not predictions.isna().any().any()
@@ -99,11 +72,7 @@ def load_predictions(
     threshold_counts = predictions.groupby(["method", "n_top_genes"], observed=True).size().rename("n")
     for method_name, thresholds in method_thresholds.items():
         counts = threshold_counts.loc[method_name]
-        actual_thresholds = sorted(float(x) for x in counts.index)
-        expected_thresholds = sorted(thresholds)
-        assert actual_thresholds == expected_thresholds, (
-            f"{method_name}: expected thresholds {expected_thresholds}, got {actual_thresholds}"
-        )
+        assert sorted(float(x) for x in counts.index) == sorted(thresholds), method_name
         assert np.all(counts.values == N_TISSUES * n_predictions), method_name
 
     return predictions
@@ -131,25 +100,10 @@ def reduce_mean_then_max(predictions: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def build_method_thresholds(n_top_lvs: list[float], n_top_genes: list[float]) -> dict[str, list[float]]:
-    return {
-        "module_based_archs4": n_top_lvs,
-        "module_based_gtex": n_top_lvs,
-        "module_based_recount2": n_top_lvs,
-        "gene_based": n_top_genes,
-    }
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--module-archs4-dir", required=True, type=Path)
-    parser.add_argument("--module-gtex-dir", required=True, type=Path)
-    parser.add_argument("--module-recount2-dir", required=True, type=Path)
-    parser.add_argument("--gene-dir", required=True, type=Path)
+    parser.add_argument("--method", action="append", required=True, help="LABEL=DIR=lv|gene")
     parser.add_argument("--gold-standard", required=True, type=Path)
-    parser.add_argument("--ukb-efo", required=True, type=Path)
-    parser.add_argument("--efo-xrefs", required=True, type=Path)
-    parser.add_argument("--do-xrefs", required=True, type=Path)
     parser.add_argument("--n-top-lvs", required=True, help="comma-separated ints, or 'all' entries")
     parser.add_argument("--n-top-genes", required=True, help="comma-separated ints, or 'all' entries")
     parser.add_argument("--output-dir", required=True, type=Path)
@@ -157,16 +111,12 @@ def main() -> None:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    prediction_dirs = {
-        "module_based_archs4": args.module_archs4_dir / "lincs" / "predictions" / "dotprod_neg",
-        "module_based_gtex": args.module_gtex_dir / "lincs" / "predictions" / "dotprod_neg",
-        "module_based_recount2": args.module_recount2_dir / "lincs" / "predictions" / "dotprod_neg",
-        "gene_based": args.gene_dir / "lincs" / "predictions" / "dotprod_neg",
-    }
+    specs = [m.rsplit("=", 2) for m in args.method]
+    n_top = {"lv": parse_thresholds(args.n_top_lvs), "gene": parse_thresholds(args.n_top_genes)}
+    prediction_dirs = {label: Path(d) for label, d, _ in specs}
+    method_thresholds = {label: n_top[kind] for label, _, kind in specs}
     for name, d in prediction_dirs.items():
         assert d.exists(), f"{name} predictions missing: {d}"
-
-    method_thresholds = build_method_thresholds(parse_thresholds(args.n_top_lvs), parse_thresholds(args.n_top_genes))
 
     gold_standard = pd.read_pickle(args.gold_standard)
     print(f"Gold standard shape: {gold_standard.shape}")
