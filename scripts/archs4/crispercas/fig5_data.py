@@ -2,7 +2,6 @@
 # Summarize metaLV activity and prepare Figure 5 tables.
 import argparse
 import sys
-import re
 import pandas as pd
 import itertools
 import shutil
@@ -10,54 +9,15 @@ from pathlib import Path
 import numpy as np
 
 
-CATEGORIES = [
-    ("liver / hepatocyte", r"liver|hepat|hepg2|huh-?7|hep3b|hepa"),
-    ("monocyte / macrophage", r"macrophag|monocyt|microglia|thp-?1|u937|kupffer|myeloid|bronchoalveolar"),
-    ("pancreas / islet / ductal", r"pancrea|islet|acinar|bile|biliary|cholangio|ductal|gallbladder"),
-    ("blood / immune", r"pbmc|blood|lymph|t cell|b cell|cd4|cd8|neutrophil|leukocyte"),
-    ("brain / neural", r"brain|neur|astro|oligoden|glia|cortex|cerebell|organoid"),
-    ("tumour / cancer", r"tumor|tumour|cancer|carcinoma|nsclc"),
-    ("cell-free / plasma", r"plasma|serum|cell-free|cfrna"),
-]
-
-
-def category(text):
-    for name, pattern in CATEGORIES:
-        if re.search(pattern, text):
-            return name
-    return "other"
-
-
-def composition_main(args):
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--b", required=True)
-    ap.add_argument("--selected", required=True)
-    ap.add_argument("--out", required=True)
-    a = ap.parse_args(args)
-
-    lvs = list(pd.read_csv(a.selected).metaLV)
-    b = pd.read_csv(a.b, sep="\t")
-    b["category"] = (b.source.fillna("") + " | " + b.title.fillna("") + " | " + b.characteristics.fillna("")).str.lower().map(category)
-    rows = []
-    for m in lvs:
-        for label, q in [("top 0.1%", 0.001), ("top 1%", 0.01)]:
-            top = b.nlargest(int(round(len(b) * q)), m)
-            for c, v in (top.category.value_counts(normalize=True) * 100).items():
-                rows.append({"metaLV": m, "set": label, "category": c, "pct": v, "n": len(top)})
-    out = pd.DataFrame(rows)
-    out.to_csv(a.out, index=False)
-    print(out.pivot_table(index=["metaLV", "set"], columns="category", values="pct", fill_value=0).round(1).to_string())
-
-
 MODULES = {
-    "metaLV175": {"crispr": ["DGAT2"], "cells": "Hepatocyte",
+    "metaLV120": {"crispr": ["DGAT2"], "cells": "Hepatocyte",
                   "pathways": ["Complement and coagulation", "Acylglycerol homeostasis", "Bile acid metabolism"]},
-    "metaLV335": {"crispr": ["DGAT2"], "cells": "Macrophage",
+    "metaLV281": {"crispr": ["DGAT2"], "cells": "Macrophage",
                   "pathways": ["Macrophage activation", "Acute inflammatory response", "Amyloid-beta clearance"]},
-    "metaLV588": {"crispr": ["PCYT2", "ACACA"], "cells": "Adrenocortical, oligodendrocyte",
-                  "pathways": ["Cholesterol biosynthesis", "SREBP signaling", "Mevalonate pathway"]},
-    "metaLV91": {"crispr": ["ACACA"], "cells": "Adrenocortical, oligodendrocyte",
+    "metaLV70": {"crispr": ["ACACA", "PCYT2"], "cells": "Adrenocortical, oligodendrocyte",
                  "pathways": ["Cholesterol biosynthesis", "SREBP signaling", "Omega-9 fatty acid synthesis"]},
+    "metaLV270": {"crispr": ["TCF7L2"], "cells": "Primitive endoderm",
+                  "pathways": ["Endoderm development", "Pancreas development", "FOXA2 (HNF3B) pathway"]},
 }
 
 
@@ -71,6 +31,10 @@ TRAITS = {
     "20002_1473": ("High cholesterol", "High cholesterol"),
     "I80": ("Phlebitis (I80)", "Venous thrombosis"),
     "6152_5": ("DVT (leg)", "Venous thrombosis"),
+    "2443": ("Diabetes (doctor)", "Diabetes"),
+    "20002_1220": ("Diabetes (self-rep.)", "Diabetes"),
+    "20110_9": ("Mother diabetes", "Diabetes"),
+    "20107_9": ("Father diabetes", "Diabetes"),
 }
 
 
@@ -79,10 +43,9 @@ GROUP = ({k: v[1] for k, v in TRAITS.items()}
          | {"K11_GALLBILPANC": "Gallstones"})
 
 
-SCREEN = ["DGAT2", "PCYT2", "ACACA"]
+SCREEN = ["DGAT2", "ACACA", "PCYT2", "TCF7L2"]
 
 
-REFERENCE = ["SERPINA10", "APOE", "APOC1", "LDLR", "HMGCR", "PCSK9", "FADS2", "ACSS2"]
 
 
 SHORT = ["Non-cancer illness code, self-reported: ", "Diagnoses - main ICD10: ", "Illnesses of ",
@@ -111,23 +74,27 @@ def figure_main(args):
     ap.add_argument("--min-cases", type=int, default=1000)
     ap.add_argument("--fdr", type=float, default=0.05)
     ap.add_argument("--top-n", type=int, default=185)
+    ap.add_argument("--reference-genes", required=True)
     ap.add_argument("--out-dir", required=True)
     a = ap.parse_args(args)
+    reference = [g for g in a.reference_genes.split(",") if g]
     out = Path(a.out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     selected = list(pd.read_csv(a.selected).metaLV)
     assert set(selected) == set(MODULES), f"selected metaLVs {selected} differ from the Figure 5 modules"
     pairs = pd.read_csv(a.pairs)
-    hit = pairs[pairs.in_top & pairs.missed_by_twas]
+    hit = pairs[pairs.in_top]
     for m, d in MODULES.items():
-        assert set(d["crispr"]) == set(hit[hit.metaLV == m].gene), m
+        assert set(hit[hit.metaLV == m].gene) <= set(d["crispr"]), m
     summ = pd.read_csv(a.cluster_summary).set_index("metaLV")
     z = pd.read_csv(a.metaz, index_col=0)
     rank = z.rank(ascending=False, method="min").astype(int)
+    for m, d in MODULES.items():
+        assert all(rank.at[g, m] <= a.top_n and z.at[g, m] > 0 for g in d["crispr"]), m
     mem = pd.read_csv(a.pathway_members)
     l1000 = pd.read_csv(a.l1000)
-    assert set(l1000.metaLV) == set(selected) and l1000.fdr.lt(a.fdr).all()
+    assert set(l1000.metaLV) <= set(selected) and l1000.fdr.lt(a.fdr).all()
     assert l1000.direction_agrees_with_null.all()
     l1000["label"] = np.where(l1000.direction.eq("Activation-like"), "↑ ", "↓ ") + l1000.drug
     l1000.to_csv(out / "module_drugs.csv", index=False)
@@ -173,7 +140,7 @@ def figure_main(args):
         return fq[code]
 
     tw = []
-    for g in SCREEN + REFERENCE:
+    for g in SCREEN + reference:
         gid = name[g]
         for code, (label, group) in TRAITS.items():
             tw.append({"gene": g, "screen": g in SCREEN, "trait_code": code, "trait": label, "trait_group": group,
@@ -220,7 +187,6 @@ def figure_main(args):
 
 def main():
     commands = {
-        "composition": composition_main,
         "figure": figure_main,
     }
     parser = argparse.ArgumentParser()

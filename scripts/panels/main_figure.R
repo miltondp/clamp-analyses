@@ -22,6 +22,7 @@ MODEL_COLORS <- unlist(cfg$MODEL_COLORS, use.names = TRUE)
 ARCHS4_MODEL_COLORS   <- MODEL_COLORS[c("CLAMPfull", "CLAMPbase")]
 COMPENDIUM_COLORS <- unlist(cfg$COMPENDIUM_COLORS, use.names = TRUE)
 ARCHS4_DATASET_COLORS <- COMPENDIUM_COLORS[c("ARCHS4", "GTEx", "recount2")]
+DRUG_DISEASE_METHOD_COLORS <- unlist(cfg$DRUG_DISEASE_METHOD_COLORS, use.names = TRUE)
 FRACTION_COLORS <- unlist(cfg$ARCHS4_FRACTION_COLORS, use.names = TRUE)
 DATA_DIR <- here("output/03_model_biology/02_archs4")
 

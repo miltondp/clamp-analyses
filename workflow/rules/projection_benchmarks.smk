@@ -211,39 +211,32 @@ rule projection_benchmark_tables:
     shell:
         '{PBENCH_PY} {input.script:q} aggregate --root {PBENCH_ROOT:q} --settings {input.settings:q} --local-ari {input.local:q}'
 
-PBENCH_SUPP6_PROD = 'output/01_model_building/02_archs4/03_projections'
-PBENCH_SUPP6_SOURCES = [f'output/99_panels/supp6/source_data/{group}_{name}.csv'
-    for group in ('00_cytokines', '01_monocyte', '02_placenta') for name in ('comparisons', 'gene_loadings', 'manual_recovery')]
+PBENCH_SUPP7_PROD = 'output/01_model_building/02_archs4/03_projections'
+PBENCH_SUPP7_SOURCES = [f'output/99_panels/supp7/source_data/{group}_{name}.csv'
+    for group in ('00_cytokines',) for name in ('comparisons', 'gene_loadings', 'manual_recovery')]
 
 # ============================================================
-# Step 5: render Supplementary Figure 6
+# Step 5: render Supplementary Figure 7
 # ============================================================
 
 rule projection_benchmark_figure:
     input:
-        tables=rules.projection_benchmark_tables.output,
         aggregate='output/03_model_biology/02_archs4/03_projections/aggregate',
-        mechanisms=[f'{PBENCH_SUPP6_PROD}/{dataset}/mechanism_models.tsv'
-                    for dataset in ('cyt_ifna_GSE133218', 'mono_lps_GSE193336', 'placenta_EMTAB6701')],
-        placenta_ora=[f'{PBENCH_SUPP6_PROD}/placenta_EMTAB6701/ora/{model}/{database}'
-                      for model in ('local', 'ARCHS4') for database in ('canonical', 'hallmark', 'cellmarker')],
-        pathways=['data/pathways/Cell_marker_Human.xlsx', 'data/pathways/c2.cp.v2026.1.Hs.symbols.gmt',
-                  'data/pathways/h.all.v2026.1.Hs.symbols.gmt', 'data/pathways/Azimuth_2023.txt'],
-        panels='scripts/archs4/projections/benchmark_panels.R',
+        mechanisms=f'{PBENCH_SUPP7_PROD}/cyt_ifna_GSE133218/mechanism_models.tsv',
+        pathways=['data/pathways/c2.cp.v2026.1.Hs.symbols.gmt', 'data/pathways/h.all.v2026.1.Hs.symbols.gmt'],
         style='scripts/panels/style.R',
         mechanism_plots='scripts/archs4/projections/plots.R',
-        notebook='nbs/99_panels/supp6.ipynb',
+        mechanisms_curated='workflow/config/cytokine_mechanisms.csv',
+        notebook='nbs/99_panels/supp7.ipynb',
     output:
-        pdf='output/99_panels/supp6/supp6.pdf',
-        png='output/99_panels/supp6/supp6.png',
-        svg='output/99_panels/supp6/supp6.svg',
-        sources=PBENCH_SUPP6_SOURCES,
-        stats='output/99_panels/supp6/source_data/lv_stats_long.csv',
-        gtex_comparisons=f'{PBENCH_ROOT}/gtex_paired_comparisons.tsv',
-        pseudobulk_comparisons=f'{PBENCH_ROOT}/pseudobulk_paired_comparisons.tsv',
+        pdf='output/99_panels/supp7/supp7.pdf',
+        png='output/99_panels/supp7/supp7.png',
+        svg='output/99_panels/supp7/supp7.svg',
+        sources=PBENCH_SUPP7_SOURCES,
+        stats='output/99_panels/supp7/source_data/lv_stats_long.csv',
     log:
-        notebook=os.path.join(REPO_ROOT, 'nbs/99_panels/supp6.executed.ipynb'),
+        notebook=os.path.join(REPO_ROOT, 'nbs/99_panels/supp7.executed.ipynb'),
     conda: PBENCH['r_environment']
     resources: mem_mb=4000
     notebook:
-        os.path.join(REPO_ROOT, 'nbs/99_panels/supp6.ipynb')
+        os.path.join(REPO_ROOT, 'nbs/99_panels/supp7.ipynb')

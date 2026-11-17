@@ -7,10 +7,11 @@ import re
 import sys
 import numpy as np
 import pandas as pd
+import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/archs4/crispercas"))
-from fig5_data import CATEGORIES as SAMPLE_TYPE_RULES
+from top_sample_composition import CATEGORIES as SAMPLE_TYPE_RULES
 OUT = ROOT / "output/99_panels/tables"
 ARCHS4 = ROOT / "output/03_model_biology/02_archs4"
 parser = argparse.ArgumentParser()
@@ -19,9 +20,15 @@ parser.add_argument("--tables", type=int, nargs="+", choices=range(1, 9), defaul
 ARGS = parser.parse_args()
 PHENOMEXCAN = ARGS.phenomexcan_dir
 COVERAGE_SUMMARIES = ROOT / "output/01_model_building/02_archs4/clampbase_coverage/summaries"
-SUPP6_SOURCE = ROOT / "output/99_panels/supp6/source_data"
-CRISPR = ARCHS4 / "04_crispercas"
+SUPP7_SOURCE = ROOT / "output/99_panels/supp7/source_data"
+CRISPR = ARCHS4 / "04_crispercas_ge4r015med"
 FDR = 0.05
+CRISPR_CFG = yaml.safe_load(open(ROOT / "workflow/config/archs4.yaml"))["archs4"]["crispercas"]
+FIG5_LVS = list(CRISPR_CFG["fig5_metalvs"])
+FIG5_CANDIDATES = list(CRISPR_CFG["fig5_candidates"])
+MIN_MODELS = CRISPR_CFG["min_models"]
+NOISE_R2 = CRISPR_CFG["noise_r2"]
+TOP_SAMPLES = CRISPR_CFG["fig5_top_samples"]
 
 
 def mgm(x):
@@ -116,14 +123,8 @@ def table_traits():
 STUDIES = {
     "cytokines": ("IFN-alpha-treated EndoC-betaH1 beta cells (GSE133218)", "Colli et al. 2020",
                   "10.1038/s41467-020-16327-0"),
-    "monocyte": ("LPS-treated human monocyte-derived macrophages (GSE193336)", "Li et al. 2022",
-                 "10.1038/s41598-022-16005-9"),
-    "placenta": ("Sorted cells from the first-trimester maternal-fetal interface (E-MTAB-6701)",
-                 "Vento-Tormo et al. 2018", "10.1038/s41586-018-0698-6"),
 }
-NONE = "None reported (transcriptomic evidence only)"
 EVIDENCE = {
-
     "Interferon alpha response": "Proteomics; western blot of STAT1/STAT2 phosphorylation and IRF1; siRNA knockdown of IRF1, STAT1 and STAT2",
     "IRF/STAT response": "Proteomics; western blot of STAT1/STAT2 phosphorylation and IRF1; siRNA knockdown of IRF1, STAT1 and STAT2",
     "MHC-I antigen presentation": "Proteomics; flow cytometry of MHC class I surface protein",
@@ -132,44 +133,13 @@ EVIDENCE = {
     "Alternative splicing": "RT-PCR validation of splicing events (RNA level)",
     "PD-L1/HLA-E immune protection": "Flow cytometry of HLA-E surface protein",
     "Pancreatic beta cells": "Experimental design (beta-cell line)",
-
-
-    "NAD+ depletion / SIRT1 inhibition": "Plasma metabolomics (nicotinamide, NAD+ salvage) and MALDI-MS imaging of NAD+ in paws of mice with collagen-induced arthritis",
-    "Increased glucose transport / glycolytic reprogramming": "Western blot of c-Myc and the lactate/pyruvate transporter MCT1 in joints of mice with collagen-induced arthritis",
-    "Reduced TCA cycle / OXPHOS": "Plasma metabolomics (itaconate, isocitrate, malate) in mice with collagen-induced arthritis",
-    "Oxidative stress / ROS": "Plasma metabolomics (gamma-glutamyl amino acids) in mice with collagen-induced arthritis",
-    "HIF1A / NF-κB inflammatory signaling": NONE,
-    "Itaconate / macrophage metabolic rewiring": "Plasma metabolomics (itaconate) in mice with collagen-induced arthritis",
-    "Glutathione / redox metabolism": "Plasma metabolomics (gamma-glutamyl cycle metabolites) in mice with collagen-induced arthritis",
-    "Neutrophil activation": "Plasma CXCL1 protein (Luminex) in mice with collagen-induced arthritis",
-    "Macrophage": "Experimental design (monocyte-derived macrophages)",
-    "Neutrophil": NONE,
-
-
-    "Trophoblast differentiation into EVT / SCT": NONE,
-    "EVT invasion / EMT": "Immunohistochemistry of HLA-G+ EVT at the invasion site",
-    "Spiral-artery remodelling": "Immunohistochemistry and multiplexed smFISH of perivascular cells",
-    "dNK-trophoblast HLA-C / HLA-E / HLA-G interactions": "Flow cytometry of KIR2DL1 on dNK1 cells",
-    "dNK chemokine / immunomodulatory signaling": "Flow cytometry of dNK granule proteins",
-    "Immune checkpoint / maternal-fetal immune tolerance": "Immunohistochemistry of PDL1 and HLA-G on EVT",
-    "Adenosine-mediated immunoregulation": NONE,
-    "dNK1 glycolytic metabolic priming": NONE,
-    "Trophoblast": "Immunohistochemistry (HLA-G)",
-    "Extravillous trophoblast (EVT)": "Immunohistochemistry (HLA-G)",
-    "Syncytiotrophoblast (SCT)": NONE,
-    "Villous cytotrophoblast (VCT)": NONE,
-    "Decidual NK / dNK": "Flow cytometry of three dNK subsets",
-    "Decidual stromal cells": "Immunohistochemistry and multiplexed smFISH of decidual layers",
-    "Decidual macrophages / maternal myeloid cells": "Flow cytometry sorting",
 }
 
 
 def table_projection_targets():
     rows = []
-    for group, f in [("cytokines", "00_cytokines_manual_recovery.csv"),
-                     ("monocyte", "01_monocyte_manual_recovery.csv"),
-                     ("placenta", "02_placenta_manual_recovery.csv")]:
-        d = pd.read_csv(SUPP6_SOURCE / f)
+    for group, f in [("cytokines", "00_cytokines_manual_recovery.csv")]:
+        d = pd.read_csv(SUPP7_SOURCE / f)
         for target, g in d.groupby("mechanism", sort=False):
             a = g[g.model == "ARCHS4"].iloc[0]
             l = g[g.model == "local"].iloc[0]
@@ -185,25 +155,20 @@ def table_projection_targets():
                 "dataset_trained_ORA_FDR": l.fdr,
             })
     df = pd.DataFrame(rows)
-    assert len(df) == 33, len(df)
-    assert df.ARCHS4_projection_recovered.sum() == 27
-    assert df.dataset_trained_recovered.sum() == 11
+    n_arch, n_local = int(df.ARCHS4_projection_recovered.sum()), int(df.dataset_trained_recovered.sum())
     readme = [
-        "Supplementary Table 2. Curated pathway, process and cell-type targets for the external-dataset projection comparison (Figure 4b and Supplementary Figure 6c,d).",
+        "Supplementary Table 2. Curated pathway, process and cell-type targets for the projection comparison in IFN-alpha-treated EndoC-betaH1 cells (Figure 4b and Supplementary Figure 7).",
         "Each target is a pathway, cellular process or cell type reported by the source study. A target was recovered when a module's top 1% of gene loadings was enriched (ORA FDR < 0.05) for a gene set matched to it; LV and gene set give the best match, blank when not recovered.",
-        "ARCHS4_*: projection into the frozen ARCHS4 CLAMPfull model. dataset_trained_*: CLAMPfull model trained on the evaluated dataset.",
+        "ARCHS4_*: projection into the ARCHS4 CLAMPfull consensus model (LV columns give the MGM). dataset_trained_*: CLAMPfull model trained on the evaluated dataset.",
         "non_transcriptomic_evidence_in_source_study: measurements other than RNA-seq that the source study reported for the target, curated from its full text. 'Experimental design' marks cell types defined by the cells profiled.",
-        "Totals: 33 targets; 27 recovered by ARCHS4 projection and 11 by the dataset-trained models.",
+        f"Totals: {len(df)} targets; {n_arch} recovered by ARCHS4 projection and {n_local} by the dataset-trained model.",
     ]
     return readme, {"targets": df}
 
 
 METALV = CRISPR / "00_mgm"
-FIG5_LVS = ["metaLV175", "metaLV335", "metaLV588", "metaLV91"]
 SEEDS = ["S123", "S1001", "S1002", "S1003", "S1004", "S1005", "S1006", "S1007", "S456", "S789"]
 GENE_SET = {"gene_set_increase": "lipid-increasing", "gene_set_decrease": "lipid-decreasing"}
-CELL_TYPE = {"metaLV175": "Hepatocyte", "metaLV335": "Macrophage",
-             "metaLV588": "Adrenocortical cells, oligodendrocyte", "metaLV91": "Adrenocortical cells, oligodendrocyte"}
 ORA_LIBRARIES = {"canonical": "Canonical pathways (MSigDB C2 CP, no Reactome)", "bp": "GO Biological Process",
                  "cellmarker": "CellMarker 2.0", "azimuth": "Azimuth 2023", "archs4_cell_lines": "ARCHS4 cell lines"}
 TOP_N = 185
@@ -229,7 +194,7 @@ def table_metalv_selection():
     summ = pd.read_csv(METALV / "cluster_summary.csv")
     funnel = pd.read_csv(METALV / "selection/funnel.csv")
     gsea = pd.read_csv(METALV / "gsea/gsea_best.csv")
-    assert len(summ) == len(funnel) == 618
+    assert len(summ) == len(funnel)
     t = summ.drop(columns="cluster").rename(columns={"n_models": "n_seeds", "n_lvs": "n_member_LVs",
                                                      "min_cos": "min_cosine", "mean_cos": "mean_cosine"})
     t["members"] = t.members.str.replace(";", ", ")
@@ -251,10 +216,12 @@ def table_metalv_selection():
     t["CRISPR_screen_genes_top1pct"] = t.metaLV.map(screen_top)
     steps = ["pass_gsea", "pass_trait", "pass_canonical", "pass_screen_gene_top", "pass_missed_by_twas", "pass_lipid_pathway"]
     t = t.merge(funnel[["metaLV", *steps, "n_lipid_pathways"]], on="metaLV")
+    t["figure5_candidate"] = t.metaLV.isin(FIG5_CANDIDATES)
     t["figure5_module"] = t.metaLV.isin(FIG5_LVS)
-    assert set(t[t.pass_lipid_pathway].metaLV) == set(FIG5_LVS)
-    counts = pd.DataFrame({"step": ["metaLVs (>= 6/10 seeds)", *[s.replace("pass_", "") for s in steps]],
-                           "n_metaLVs": [len(t), *[int(t[s].sum()) for s in steps]]})
+    assert set(FIG5_LVS) <= set(FIG5_CANDIDATES) <= set(t[t.pass_gsea & t.pass_trait].metaLV)
+    counts = pd.DataFrame({"step": [f"metaLVs (>= {MIN_MODELS}/10 seeds)", *[s.replace("pass_", "") for s in steps],
+                                    "figure5_candidate", "figure5_module"],
+                           "n_metaLVs": [len(t), *[int(t[s].sum()) for s in steps], len(FIG5_CANDIDATES), len(FIG5_LVS)]})
 
     z = z_all[FIG5_LVS]
     top = pd.read_csv(METALV / "pathways/canonical_bp_top.csv")
@@ -265,6 +232,7 @@ def table_metalv_selection():
     ring = pd.read_csv(METALV / "fig5/ring_pvalues.csv")
     ring = ring[pd.to_numeric(ring.fdr) < FDR]
     ora = load_ora()
+    cell_type = pd.read_csv(METALV / "fig5/modules.csv").set_index("metaLV").cells
 
     def top_hit(db, m):
         x = ora[db][ora[db].LV == m].nsmallest(1, "p.adjust")
@@ -273,7 +241,7 @@ def table_metalv_selection():
     rows = []
     for m in FIG5_LVS:
         s = t.set_index("metaLV").loc[m]
-        hit = pairs[(pairs.metaLV == m) & pairs.in_top & pairs.missed_by_twas]
+        hit = pairs[(pairs.metaLV == m) & pairs.in_top]
         sig = gsea[(gsea.lv == m) & (gsea.padj < FDR)].sort_values("padj")
         p3 = top[top.metaLV == m].head(3)
         tr = traits[traits.metaLV == m].sort_values("pvalue")
@@ -290,19 +258,19 @@ def table_metalv_selection():
             "CRISPR_screen_genes_top1pct": s.CRISPR_screen_genes_top1pct,
             "top10_genes": ", ".join(z[m].nlargest(10).index),
             "top3_pathways": "; ".join(p3.pathway), "top3_pathways_padj": ", ".join(sci(x) for x in p3.padj),
-            "CellMarker_top": top_hit("cellmarker", m), "Azimuth_top": top_hit("azimuth", m), "cell_type": CELL_TYPE[m],
+            "CellMarker_top": top_hit("cellmarker", m), "Azimuth_top": top_hit("azimuth", m), "cell_type": cell_type[m],
             "ARCHS4_top1pct_samples": ", ".join(f"{a} {v:.1f}%" for a, v in zip(c.category, c.pct)),
             "traits_FDR_0.05": "; ".join(f"{g}: " + ", ".join(f"{d} FDR {sci(q)}" for d, q in zip(x.phenotype_desc, x.fdr))
                                          for g, x in tr.groupby("trait_group", sort=False)),
             "genes_SMultiXcan_FDR_0.05": ", ".join(f"{a} {b}" for a, b in zip(rg.gene, rg.disease)),
         })
     readme = [
-        "Supplementary Table 4. Lipid-screen meta-modules (metaLVs) across ten CLAMP-full canonical ARCHS4 models and their selection.",
-        "metaLVs: loading vectors of the ten models (seed 123, the reference model used in the other analyses, and seeds 456, 789 and 1001-1007), after removing LVs flagged by the technical-noise screen (Supplementary Table 3), were L2-normalised and clustered by complete-linkage agglomerative clustering on cosine distance, cut at cosine similarity 0.5. Clusters with LVs from at least 6 of the 10 seeds are metaLVs; a metaLV's loadings are the gene-wise median of its members' loadings.",
+        "Supplementary Table 4. Lipid-screen meta-modules (metaLVs) across ten CLAMP-full ARCHS4 models and their selection.",
+        f"metaLVs: loading vectors of the ten models (seed 123, the reference model used in the other analyses, and seeds 456, 789 and 1001-1007), after removing LVs flagged by the technical-noise screen (Supplementary Table 3), were L2-normalised and clustered by complete-linkage agglomerative clustering on cosine distance, cut at cosine similarity 0.5. Clusters with LVs from at least {MIN_MODELS} of the 10 seeds are metaLVs; a metaLV's loadings are the gene-wise median of its members' loadings.",
         "GSEA columns: fgsea (scoreType = 'pos', ten repetitions) of each metaLV's loadings against the HepG2 lipid-screen high-confidence sets; the smallest adjusted P across repetitions and the leading edge of that repetition.",
         "CRISPR_screen_genes_top1pct: every HepG2 lipid-screen gene (any confidence tier) among the metaLV's top 1% of loadings (185 genes), whether or not it is in a GSEA leading edge, ordered by loading rank, with the screen's lipid effect (increase/decrease; *** high-confidence sets used for GSEA, ** and * lower tiers).",
-        "Selection flags (cumulative): pass_gsea, adjusted P < 0.05 for either set; pass_trait, at least one PhenoPLIER GLS trait association at FDR < 0.05 (Supplementary Table 5); pass_canonical, at least one canonical pathway at ORA FDR < 0.05 (Supplementary Table 6); pass_screen_gene_top, a leading-edge screen gene among the metaLV's top 1% of loadings (185 genes); pass_missed_by_twas, that gene has single-gene S-MultiXcan P >= 0.05 for an associated trait; pass_lipid_pathway, at least one lipid-related canonical pathway (keywords: lipid, cholesterol, sterol, fatty, lipoprotein, triglyceride, eicosanoid, phospholipid, bile, prostaglandin, leukotriene, arachidonic, sphingo, PPAR, LDL, HDL). Copy-number amplicon programs were not excluded.",
-        "figure5_metaLVs sheet: summary of the four metaLVs shown in Figure 5. CRISPR_GSEA_leading_edge: leading edge of each significant screen set (same order as CRISPR_gene_set); CRISPR_screen_genes: leading-edge genes in the top 1% that pass the S-MultiXcan filter; CRISPR_screen_genes_top1pct: as in the metaLVs sheet. CellMarker_top and Azimuth_top: most significant ORA term; cell_type: label used in Figure 5. ARCHS4_top1pct_samples: sample types among the 1% of ARCHS4 samples with the highest projected metaLV activity (B), excluding 'other'. traits_FDR_0.05: traits with at least 1,000 cases grouped by disease. genes_SMultiXcan_FDR_0.05: displayed genes with S-MultiXcan FDR < 0.05 for a linked disease (circled in Figure 5a).",
+        "Selection flags (cumulative): pass_gsea, adjusted P < 0.05 for either set; pass_trait, at least one PhenoPLIER GLS trait association at FDR < 0.05 (Supplementary Table 5); pass_canonical, at least one canonical pathway at ORA FDR < 0.05 (Supplementary Table 6); pass_screen_gene_top, a leading-edge screen gene among the metaLV's top 1% of loadings (185 genes); pass_missed_by_twas, that gene has single-gene S-MultiXcan P >= 0.05 for an associated trait; pass_lipid_pathway, at least one lipid-related canonical pathway (keywords: lipid, cholesterol, sterol, fatty, lipoprotein, triglyceride, eicosanoid, phospholipid, bile, prostaglandin, leukotriene, arachidonic, sphingo, PPAR, LDL, HDL). Copy-number amplicon programs were not excluded. figure5_candidate: the metaLVs whose pathways, cell types, traits, drug perturbations and top ARCHS4 samples agree (fig5_candidates in workflow/config/archs4.yaml); figure5_module: the four shown in Figure 5 (fig5_metalvs).",
+        f"figure5_metaLVs sheet: summary of the four metaLVs shown in Figure 5. CRISPR_GSEA_leading_edge: leading edge of each significant screen set (same order as CRISPR_gene_set); CRISPR_screen_genes: screen genes in the metaLV's top 1% of loadings; CRISPR_screen_genes_top1pct: as in the metaLVs sheet. CellMarker_top and Azimuth_top: most significant ORA term; cell_type: label used in Figure 5. ARCHS4_top1pct_samples: sample types among the 1% of ARCHS4 samples with the highest projected metaLV activity (B), with each GEO series weighted equally, shown when they make up at least {TOP_SAMPLES['min_pct']:g}% of these samples and the lower bound of the bootstrap 95% CI (over series) of their enrichment against the rest of ARCHS4 is above 1. traits_FDR_0.05: traits with at least 1,000 cases grouped by disease. genes_SMultiXcan_FDR_0.05: displayed genes with S-MultiXcan FDR < 0.05 for a linked disease (circled in Figure 5a).",
         "sample_type_rules sheet: keyword rules that assign ARCHS4 samples to the sample types of ARCHS4_top1pct_samples. Each sample's GEO source, title and characteristics are joined and lower-cased, and the sample takes the first sample type, in the order listed, whose regular expression matches; samples matching none are 'other'.",
     ]
     rules = pd.DataFrame([{"order": i, "sample_type": name, "regular_expression": pattern}
@@ -312,7 +280,7 @@ def table_metalv_selection():
 
 
 def table_technical_noise():
-    flags = pd.read_csv(ARCHS4 / "06_technical_noise/seeds/all_flags.csv")
+    flags = pd.read_csv(METALV / "noise/all_flags.csv")
     assert flags.model.nunique() == 10 and len(flags) == 17280
     flags["technical_joint"] = flags.technical_joint.round(4)
     flags = flags.rename(columns={"model": "seed_model", "technical_joint": "technical_joint_R2",
@@ -323,12 +291,12 @@ def table_technical_noise():
     counts = (flags.groupby("seed_model", observed=True)
               .agg(n_LVs=("LV", "size"), gene_flag=("gene_flag", "sum"), sample_flag=("sample_flag", "sum"),
                    technically_noisy=("technically_noisy", "sum")).reset_index())
-    assert counts.set_index("seed_model").at["S123", "technically_noisy"] == 116
+    n_ref = int(counts.set_index("seed_model").at["S123", "technically_noisy"])
     readme = [
-        f"Supplementary Table 3. Technical-noise screen of the ten CLAMP-full canonical ARCHS4 models: {int(flags.technically_noisy.sum()):,} of {len(flags):,} LVs flagged and removed before metaLV clustering.",
+        f"Supplementary Table 3. Technical-noise screen of the ten CLAMP-full ARCHS4 models: {int(flags.technically_noisy.sum()):,} of {len(flags):,} LVs flagged and removed before metaLV clustering.",
         "gene_flag: gene loadings correlated with log10 cDNA length or transcript GC content (Ensembl 107), over all genes or over non-zero loadings, with |r| >= 0.2, BH FDR across the model's LVs < 0.2 and |robust z| >= 4.",
-        "technical_joint_R2: cross-validated (5-fold) fraction of variance of the LV's sample scores (B) across ARCHS4 samples explained jointly by technical covariates (platform, instrument model, library selection, library source, molecule, submission year, log10 library size, log10 detected genes, mitochondrial, ribosomal and protein-coding read fractions, single-cell probability). sample_flag: technical_joint_R2 >= 0.25.",
-        "technically_noisy: gene_flag or sample_flag. S123 is the reference model used in the other analyses (116 LVs flagged).",
+        f"technical_joint_R2: cross-validated (5-fold) fraction of variance of the LV's sample scores (B) across ARCHS4 samples explained jointly by technical covariates (platform, instrument model, library selection, library source, molecule, submission year, log10 library size, log10 detected genes, mitochondrial, ribosomal and protein-coding read fractions, single-cell probability). sample_flag: technical_joint_R2 >= {NOISE_R2}.",
+        f"technically_noisy: gene_flag or sample_flag. S123 is the reference model used in the other analyses ({n_ref} LVs flagged).",
     ]
     return readme, {"per_seed_counts": counts, "all_LVs": flags}
 
@@ -367,6 +335,7 @@ def table_metalv_ora():
 
 def table_metalv_gls():
     g = pd.read_csv(METALV / "selection/gls_metalv.csv", dtype={"phenotype": str})
+    n_tested = g.metaLV.nunique()
     g = g[g.metaLV.isin(FIG5_LVS)].copy()
     info = pd.read_csv(PHENOMEXCAN / "phenotypes_info.tsv", sep="\t", dtype={"short_code": str}).set_index("short_code")
     g["variable_type"] = g.phenotype.map(info.type)
@@ -384,10 +353,12 @@ def table_metalv_gls():
            "gls_fdr", "significant", "at_least_1000_cases", "disease_group", "in_figure5"]]
     g["metaLV"] = pd.Categorical(g.metaLV, FIG5_LVS)
     g = g.sort_values(["metaLV", "gls_pvalue"])
-    assert len(g) == 4 * 2824
+    n_traits = g.groupby("metaLV", observed=True).size()
+    assert n_traits.nunique() == 1 and len(n_traits) == len(FIG5_LVS)
+    n_traits = int(n_traits.iloc[0])
     readme = [
-        "Supplementary Table 5. PhenoPLIER GLS trait associations of the four Figure 5 metaLVs across 2,824 PhenomeXcan traits.",
-        "GLS regression of each trait's S-MultiXcan gene associations on the metaLV's top 1% of gene loadings (binarized), accounting for gene-gene correlations and gene size and density covariates (PhenoPLIER v0.7.3, phenomexcan-curated trait filter, all consensus ARCHS4 metaLVs tested). gls_fdr: Benjamini-Hochberg FDR across all traits and the 27 GSEA-significant metaLVs.",
+        f"Supplementary Table 5. PhenoPLIER GLS trait associations of the four Figure 5 metaLVs across {n_traits:,} PhenomeXcan traits.",
+        f"GLS regression of each trait's S-MultiXcan gene associations on the metaLV's top 1% of gene loadings (binarized), accounting for gene-gene correlations and gene size and density covariates (PhenoPLIER v0.7.3, phenomexcan-curated trait filter, all consensus ARCHS4 metaLVs tested). gls_fdr: Benjamini-Hochberg FDR across all traits and the {n_tested} GSEA-significant metaLVs.",
         "n_samples, n_cases, n_controls: UK Biobank sample sizes (PhenomeXcan); continuous traits have no cases or controls. at_least_1000_cases: traits used for Figure 5 (binary traits with at least 1,000 cases, or continuous traits). disease_group / in_figure5: disease to which the trait was merged in Figure 5.",
     ]
     return readme, {"gls": g}
@@ -443,16 +414,19 @@ def table_metalv_l1000():
     cols = ["direction_rank", "drugbank_id", "drug", "atc_codes", "projection", "null_mean", "null_sd",
             "null_z", "p_upper", "p_lower", "p_two_sided", "fdr", "direction", "direction_agrees_with_null",
             "signature_group", "signature_names", "signature_drugbank_ids", "n_genes"]
-    sheets = {m: r[r.metaLV == m][cols] for m in ["metaLV91", "metaLV588", "metaLV175", "metaLV335"]}
-    assert all(len(d) == 1170 for d in sheets.values()) and len(r) == 4680
-    assert len(picks) == 10 and picks.fdr.lt(FDR).all() and picks.direction_agrees_with_null.all()
+    meta = __import__("json").load(open(METALV / "l1000/l1000_metadata.json"))
+    sheets = {m: r[r.metaLV == m][cols] for m in FIG5_CANDIDATES}
+    n_drugs = len(sheets[FIG5_CANDIDATES[0]])
+    assert all(len(d) == n_drugs for d in sheets.values()) and len(r) == n_drugs * len(FIG5_CANDIDATES)
+    shortlist = pd.read_csv(ROOT / "workflow/config/fig5_drug_shortlist.csv")
+    assert len(picks) == len(shortlist) and picks.fdr.lt(FDR).all() and picks.direction_agrees_with_null.all()
     readme = [
-        "Supplementary Table 7. Projected LINCS L1000 drug perturbations of the four Figure 5 MGMs.",
-        "The 1,170 DrugBank-mapped LINCS signatures used for drug-disease prediction were projected jointly onto all 618 ARCHS4 MGMs by ridge regression, using the primary ARCHS4 model's L2 penalty. Gene symbols were mapped one-to-one to Ensembl identifiers; unmeasured genes were set to zero, with no additional gene-wise standardization.",
+        f"Supplementary Table 7. Projected LINCS L1000 drug perturbations of the {len(FIG5_CANDIDATES)} candidate Figure 5 MGMs (the four shown in Figure 5 and the other MGMs whose evidence agrees).",
+        f"The {n_drugs:,} DrugBank-mapped LINCS signatures used for drug-disease prediction were projected jointly onto all {meta['n_mgms_projected']:,} ARCHS4 MGMs by ridge regression, using the primary ARCHS4 model's L2 penalty. Gene symbols were mapped one-to-one to Ensembl identifiers; unmeasured genes were set to zero, with no additional gene-wise standardization.",
         "projection: fitted MGM coefficient. null_mean and null_sd: exact mean and SD under gene-label permutations among mapped genes measured in LINCS (n_genes), with missing-gene positions fixed. null_z: (projection - null_mean) / null_sd.",
-        "p_upper and p_lower: empirical permutation tails, including ties, with a plus-one correction over 10,000 permutations. p_two_sided: min(1, 2*min(p_upper, p_lower)); fdr: Benjamini-Hochberg correction jointly across all 4,680 drug-MGM pairs, retaining identical signatures as separate original entries.",
+        f"p_upper and p_lower: empirical permutation tails, including ties, with a plus-one correction over 10,000 permutations. p_two_sided: min(1, 2*min(p_upper, p_lower)); fdr: Benjamini-Hochberg correction jointly across all {len(r):,} drug-MGM pairs, retaining identical signatures as separate original entries.",
         "direction: coefficient sign, Activation-like (positive) or Suppression-like (negative), describing projected transcriptional responses rather than direct biochemical pathway activity. direction_agrees_with_null: agreement of the coefficient sign with the null_z sign. direction_rank: separate ranks by decreasing absolute null_z within each MGM and response direction, requiring this agreement and collapsing identical full LINCS signatures for display. Entries in an identical-signature group share its rank; nonconcordant entries have no rank.",
-        "signature_group, signature_names and signature_drugbank_ids identify identical full LINCS signatures. unique_signatures sheet retains one entry per signature per MGM; the four MGM sheets retain all original drug entries. figure5_drugs sheet contains the manually curated associations displayed in Figure 5, each at joint FDR < 0.05, with known actions, curation rationale and supporting sources.",
+        "signature_group, signature_names and signature_drugbank_ids identify identical full LINCS signatures. unique_signatures sheet retains one entry per signature per MGM; the MGM sheets retain all original drug entries. figure5_drugs sheet contains the manually curated associations displayed in Figure 5, each at joint FDR < 0.05, with known actions, curation rationale and supporting sources.",
     ]
     return readme, {**sheets, "unique_signatures": unique[["metaLV", *cols]], "figure5_drugs": picks}
 

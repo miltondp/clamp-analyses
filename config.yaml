@@ -82,3 +82,10 @@ DRUG_DISEASE_MODEL_COLORS:
   recount2: "#2E9B8E"
   GTEx: "#E8836B"
   Gene-based: "#888888"
+
+DRUG_DISEASE_METHOD_COLORS:
+  ARCHS4 CLAMPfull: "#0072B2"
+  ARCHS4 CLAMPbase: "#D55E00"
+  GTEx CLAMPfull: "#56B4E9"
+  GTEx CLAMPbase: "#E69F00"
+  Gene-based: "#888888"

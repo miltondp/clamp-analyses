@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from drug_disease_utils import prepare_clamp_projector, project_to_clamp
+from drug_disease_utils import prepare_clamp_projector, prepare_z_projector, project_to_clamp
 
 
 def load_clean_tissue(path: Path) -> pd.DataFrame:
@@ -25,23 +25,29 @@ def load_clean_tissue(path: Path) -> pd.DataFrame:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model-dir", required=True, type=Path)
-    parser.add_argument("--model-name", required=True)
+    parser.add_argument("--model-dir", type=Path)
+    parser.add_argument("--model-name")
+    parser.add_argument("--z", type=Path)
+    parser.add_argument("--l2", type=float)
     parser.add_argument("--spredixcan-dir", required=True, type=Path)
     parser.add_argument("--compendium", required=True)
     parser.add_argument("--output-dir", required=True, type=Path)
     args = parser.parse_args()
 
-    clamp_model_file = args.model_dir / f"{args.model_name}.rds"
-    assert clamp_model_file.exists(), clamp_model_file
 
     raw_dir = args.output_dir / "raw"
     proj_dir = args.output_dir / "proj"
     raw_dir.mkdir(parents=True, exist_ok=True)
     proj_dir.mkdir(parents=True, exist_ok=True)
 
-    CLAMP, clamp_sub, mapped_ensembl, lv_names = prepare_clamp_projector(clamp_model_file)
-
+    if args.z is not None:
+        assert args.z.exists() and args.l2 is not None, args.z
+        CLAMP, clamp_sub, mapped_ensembl, lv_names = prepare_z_projector(args.z, args.l2)
+    else:
+        clamp_model_file = args.model_dir / f"{args.model_name}.rds"
+        assert clamp_model_file.exists(), clamp_model_file
+        CLAMP, clamp_sub, mapped_ensembl, lv_names = prepare_clamp_projector(clamp_model_file)
+        
     input_file_list = sorted(args.spredixcan_dir.glob("spredixcan-mashr-zscores-*.pkl"))
     n_files = len(input_file_list)
     assert n_files == 49, f"Expected 49 tissue files, found {n_files}"

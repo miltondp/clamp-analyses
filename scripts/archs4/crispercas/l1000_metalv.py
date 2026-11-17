@@ -68,7 +68,7 @@ def main():
 
     z = pd.read_csv(a.metaz, index_col=0)
     selected = list(pd.read_csv(a.selected).metaLV)
-    assert len(selected) == 4 and len(set(selected)) == 4 and set(selected) <= set(z.columns)
+    assert len(set(selected)) == len(selected) and set(selected) <= set(z.columns)
     mp = pd.read_csv(a.symbol_ensembl).dropna()
     mp = mp[mp.SYMBOL.isin(z.index)]
     mp = mp[~mp.SYMBOL.duplicated(keep=False) & ~mp.ENSEMBL.duplicated(keep=False)].set_index("SYMBOL").ENSEMBL
@@ -115,8 +115,9 @@ def main():
     results = results.merge(unique[["metaLV", "signature_group", "direction_rank"]], on=["metaLV", "signature_group"], validate="many_to_one")
     results.to_csv(out / "l1000_fig5_ranking.csv", index=False)
     unique.to_csv(out / "l1000_unique_signatures.csv", index=False)
-    picks = pd.read_csv(a.shortlist).merge(results, on=["metaLV", "drug", "direction"], validate="one_to_one")
-    assert len(picks) == len(pd.read_csv(a.shortlist)) == 10
+    shortlist = pd.read_csv(a.shortlist)
+    picks = shortlist.merge(results, on=["metaLV", "drug", "direction"], validate="one_to_one")
+    assert len(picks) == len(shortlist)
     assert picks.fdr.lt(a.fdr).all() and picks.direction_agrees_with_null.all()
     assert not picks.duplicated(["metaLV", "signature_group"]).any()
     picks.to_csv(out / "l1000_fig5_curated.csv", index=False)

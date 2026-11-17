@@ -1,0 +1,17 @@
+mechanism,label,category,model,module,gene_set,supp7_example
+Interferon alpha response,IFN-alpha response,molecular_mechanism,ARCHS4,metaLV445,HALLMARK_INTERFERON_ALPHA_RESPONSE,True
+IRF/STAT response,IRF/STAT response,molecular_mechanism,ARCHS4,metaLV445,HALLMARK_INTERFERON_ALPHA_RESPONSE,False
+MHC-I antigen presentation,MHC-I presentation,molecular_mechanism,ARCHS4,metaLV787,KEGG_MEDICUS_REFERENCE_ANTIGEN_PROCESSING_AND_PRESENTATION_BY_MHC_CLASS_I_MOLECULES,True
+ER stress,ER stress,molecular_mechanism,ARCHS4,metaLV31,REACTOME_ATF4_ACTIVATES_GENES_IN_RESPONSE_TO_ENDOPLASMIC_RETICULUM_STRESS,False
+Protein modification/degradation,Protein mod./degradation,molecular_mechanism,ARCHS4,metaLV787,WP_PROTEASOME_DEGRADATION,True
+Alternative splicing,Alternative splicing,molecular_mechanism,ARCHS4,metaLV979,REACTOME_MRNA_SPLICING,False
+PD-L1/HLA-E immune protection,PD-L1/HLA-E protection,molecular_mechanism,ARCHS4,metaLV510,REACTOME_REGULATION_OF_PD_L1_CD274_TRANSCRIPTION,False
+Pancreatic beta cells,Beta cells,cell_type,ARCHS4,metaLV849,HALLMARK_PANCREAS_BETA_CELLS,True
+Interferon alpha response,IFN-alpha response,molecular_mechanism,local,LV23,HALLMARK_INTERFERON_ALPHA_RESPONSE,True
+IRF/STAT response,IRF/STAT response,molecular_mechanism,local,LV23,HALLMARK_INTERFERON_ALPHA_RESPONSE,False
+MHC-I antigen presentation,MHC-I presentation,molecular_mechanism,local,LV29,KEGG_MEDICUS_REFERENCE_ANTIGEN_PROCESSING_AND_PRESENTATION_BY_MHC_CLASS_I_MOLECULES,True
+ER stress,ER stress,molecular_mechanism,local,,,False
+Protein modification/degradation,Protein mod./degradation,molecular_mechanism,local,LV29,WP_PROTEASOME_DEGRADATION,True
+Alternative splicing,Alternative splicing,molecular_mechanism,local,,,False
+PD-L1/HLA-E immune protection,PD-L1/HLA-E protection,molecular_mechanism,local,LV9,REACTOME_REGULATION_OF_PD_L1_CD274_TRANSCRIPTION,False
+Pancreatic beta cells,Beta cells,cell_type,local,LV13,HALLMARK_PANCREAS_BETA_CELLS,True

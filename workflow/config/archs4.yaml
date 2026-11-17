@@ -267,8 +267,13 @@ archs4:
     report_root: output/03_model_biology/02_archs4/02_drug_diseases_canonical
     n_top_lvs: [5, 10, 25, 50]
     n_top_genes: [50, 100, 250, 500]
-    figure_n_top_genes: 100
-    figure_n_top_lvs: 10
+    methods:
+      archs4_full: {label: ARCHS4 CLAMPfull, compendium: archs4, model: full}
+      archs4_base: {label: ARCHS4 CLAMPbase, compendium: archs4, model: base}
+      gtex_full: {label: GTEx CLAMPfull, compendium: gtex, model: full}
+      gtex_base: {label: GTEx CLAMPbase, compendium: gtex, model: base}
+      recount2_full: {label: recount2 CLAMPfull, compendium: recount2, model: full}
+    comparison_methods: [archs4_full, archs4_base, gtex_full, gtex_base]
     bootstrap:
       n_boot: 10000
       seed: 42
@@ -277,23 +282,27 @@ archs4:
     # CRISPR-Cas9 lipid screen interpreted with metaLVs: LVs of the ten CLAMP-full
     # canonical models (S123 plus the stability seeds) clustered across seeds.
     lipid_deg: data/archs4/crispr_cas9/lipid_DEG.csv
-    compute_root: output/03_model_biology/02_archs4/04_crispercas
-    metalv_root: output/03_model_biology/02_archs4/04_crispercas/00_mgm
+    compute_root: output/03_model_biology/02_archs4/04_crispercas_ge4r015med
+    metalv_root: output/03_model_biology/02_archs4/04_crispercas_ge4r015med/00_mgm
     noise_seeds_root: output/03_model_biology/02_archs4/06_technical_noise/seeds
-    symbol_ensembl: output/03_model_biology/02_archs4/04_crispercas/00_mgm/symbol_ensembl.csv
+    symbol_ensembl: output/03_model_biology/02_archs4/04_crispercas_ge4r015med/00_mgm/symbol_ensembl.csv
     min_cos: 0.5
-    min_models: 6
-    noise_r2: 0.25
+    min_models: 4
+    noise_r2: 0.15
     n_reps: 10
     fdr: 0.05
     top_n: 185
+    fig5_candidates: [metaLV70, metaLV120, metaLV281, metaLV270, metaLV748, metaLV288, metaLV571, metaLV152]
+    fig5_metalvs: [metaLV120, metaLV281, metaLV70, metaLV270]
+    fig5_reference_genes: [SERPINA10, APOE, APOC1, LDLR, PCSK9, FADS2, ACSS2, HNF1B, HHEX]
+    fig5_top_samples: {top_fraction: 0.01, min_pct: 5, n_boot: 1000, seed: 20261114}
     min_cases: 1000
     pathway_max_size: 100
     pathway_jaccard: 0.4
     lipid_regex: "LIPID|CHOLESTEROL|STEROL|FATTY|LIPOPROTEIN|TRIGLYCERIDE|EICOSANOID|PHOSPHOLIPID|BILE|PROSTAGLANDIN|LEUKOTRIENE|ARACHIDONIC|SPHINGO|PPAR|LDL|HDL"
     # PhenoPLIER GLS of all consensus ARCHS4 metaLVs (consensus_traits); the
     # selection recomputes BH over the GSEA-significant ones.
-    gls_summary: output/98_final_models/consensus_models/archs4/traits/consensus_archs4.tsv.gz
+    gls_summary: output/98_final_models/consensus_models_ge4r015med/archs4/traits/consensus_archs4.tsv.gz
     phenomexcan_dir: data/phenomexcan
     archs4_cell_lines_gmt: data/pathways/archs4_cell_lines.gmt
     archs4_cell_lines_url: "https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=ARCHS4_Cell-lines"
