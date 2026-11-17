@@ -302,7 +302,7 @@ archs4:
     lipid_regex: "LIPID|CHOLESTEROL|STEROL|FATTY|LIPOPROTEIN|TRIGLYCERIDE|EICOSANOID|PHOSPHOLIPID|BILE|PROSTAGLANDIN|LEUKOTRIENE|ARACHIDONIC|SPHINGO|PPAR|LDL|HDL"
     # PhenoPLIER GLS of all consensus ARCHS4 metaLVs (consensus_traits); the
     # selection recomputes BH over the GSEA-significant ones.
-    gls_summary: output/98_final_models/consensus_models_ge4r015med/archs4/traits/consensus_archs4.tsv.gz
+    gls_summary: output/98_final_models/consensus/archs4/traits/consensus_archs4.tsv.gz
     phenomexcan_dir: data/phenomexcan
     archs4_cell_lines_gmt: data/pathways/archs4_cell_lines.gmt
     archs4_cell_lines_url: "https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=ARCHS4_Cell-lines"

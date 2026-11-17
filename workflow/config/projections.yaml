@@ -6,11 +6,11 @@ projections:
     raw_data: data/projections
 
   archs4_model:
-    root: output/98_final_models/consensus_models_ge4r015med/archs4
+    root: output/98_final_models/consensus/archs4
     rds: CLAMPfull_consensus.rds
     z: Z.csv
     summary: summary.csv
-    provenance: output/98_final_models/consensus_models_ge4r015med/archs4/manifest.json
+    provenance: output/98_final_models/consensus/archs4/manifest.json
 
   local_model:
     prior:
