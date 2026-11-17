@@ -227,7 +227,7 @@ separate upstream model files for loadings and model interpretation. The missing
   path relative to `campaign.source_root` (the checkout by default). Coverage,
   saturation, stability and comparator rules produce `CLAMPbase/Z.csv`; fitted
   model RDS files live beside those exports where the producer supplies them.
-- **Consensus models:** `output/98_final_models/consensus_models/<dataset>/`
+- **Consensus models:** `output/98_final_models/consensus/<dataset>/` (CLAMPfull) and `output/98_final_models/consensus_base/<dataset>/` (CLAMPbase)
   contains the model products. `traits/phenoplier_Z.pkl` is the workflow's
   LV-renamed GLS input, and `traits/lv_mapping.csv` maps back to metaLV names.
 - **Delivered copies of the 102 new inputs:** `<results_root>/<unit>/model/`

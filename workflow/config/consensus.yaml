@@ -1,7 +1,7 @@
 consensus:
   # Consensus models: meta gene modules clustered across the published canonical
   # CLAMPfull model and nine independent seed replicates of each compendium.
-  root: output/98_final_models/consensus_models_ge4r015med
+  root: output/98_final_models/consensus
   model_name: CLAMPfull_consensus
   seeds: [456, 789, 1001, 1002, 1003, 1004, 1005, 1006, 1007]
   min_cos: 0.5
@@ -9,7 +9,7 @@ consensus:
   noise_r2: 0.15
   ora_databases: [bp, canonical, cellmarker, azimuth, archs4_cell_lines]
   base:
-    root: output/98_final_models/consensus_models_base_ge4r015med
+    root: output/98_final_models/consensus_base
     model_name: CLAMPbase_consensus
     compendia: [archs4, gtex]
   compendia:
