@@ -59,6 +59,10 @@ def proj_datasets_of_kind(kind):
     return [d for d in PROJ_DATASETS if proj_ds(d)["kind"] == kind]
 
 
+def proj_kind_pattern(kind):
+    return "|".join(proj_datasets_of_kind(kind)) or "(?!)"
+
+
 def proj_model_input(dataset, model):
     return (f"{proj_model_dir(dataset, 'ARCHS4')}/B.csv" if model == "ARCHS4"
             else proj_model_dir(dataset, "local"))
@@ -138,7 +142,7 @@ rule prepare_geo_matrix:
     conda: "clamp-analyses"
     resources: mem_mb=16000, runtime=60
     wildcard_constraints:
-        dataset="|".join(proj_datasets_of_kind("geo_matrix")),
+        dataset=proj_kind_pattern("geo_matrix"),
     shell:
         "Rscript {input.script} --counts-file {params.counts} "
         "--annotation '{params.annotation}' --id-type {params.id_type} "
@@ -162,7 +166,7 @@ rule prepare_geo_gtf_tar:
     conda: "clamp-analyses"
     resources: mem_mb=32000, runtime=240
     wildcard_constraints:
-        dataset="|".join(proj_datasets_of_kind("geo_gtf_tar")),
+        dataset=proj_kind_pattern("geo_gtf_tar"),
     shell:
         "Rscript {input.script} --raw-dir {params.raw_dir} "
         "--annotation '{params.annotation}' --id-type {params.id_type} "
@@ -185,7 +189,7 @@ rule prepare_sc_pseudobulk:
     conda: "clamp-analyses"
     resources: mem_mb=96000, runtime=480
     wildcard_constraints:
-        dataset="|".join(proj_datasets_of_kind("ebi_sc_atlas")),
+        dataset=proj_kind_pattern("ebi_sc_atlas"),
     shell:
         "Rscript {input.script} --raw-dir {params.raw_dir} --kind {params.kind} "
         "--spec '{params.spec}' --out-dir {output.prepared} > {log} 2>&1"
@@ -459,45 +463,8 @@ rule projection_report_cytokines:
         f"{PROJ_NB}/00_cytokines.ipynb"
 
 
-rule projection_report_monocyte:
-    input:
-        agg=rules.aggregate_projections.output.agg,
-        notebook=f"{PROJ_NB}/01_monocyte.ipynb",
-    output:
-        complete=touch(f"{PROJ_BIO}/02_monocyte/notebook.complete"),
-    log:
-        notebook=f"{PROJ_NB}/01_monocyte.executed.ipynb",
-    params:
-        group_label="monocyte",
-        agg_dir=f"{PROJ_BIO}/aggregate",
-        prod_root=PROJ_PROD,
-    conda: "clamp-analyses"
-    resources: mem_mb=16000, runtime=60
-    notebook:
-        f"{PROJ_NB}/01_monocyte.ipynb"
-
-
-rule projection_report_placenta:
-    input:
-        agg=rules.aggregate_projections.output.agg,
-        notebook=f"{PROJ_NB}/02_placenta.ipynb",
-    output:
-        complete=touch(f"{PROJ_BIO}/03_placenta/notebook.complete"),
-    log:
-        notebook=f"{PROJ_NB}/02_placenta.executed.ipynb",
-    params:
-        group_label="placenta",
-        agg_dir=f"{PROJ_BIO}/aggregate",
-        prod_root=PROJ_PROD,
-    conda: "clamp-analyses"
-    resources: mem_mb=16000, runtime=60
-    notebook:
-        f"{PROJ_NB}/02_placenta.ipynb"
-
 PROJ_REPORTS = [
     f"{PROJ_BIO}/01_cytokines/notebook.complete",
-    f"{PROJ_BIO}/02_monocyte/notebook.complete",
-    f"{PROJ_BIO}/03_placenta/notebook.complete",
 ]
 
 
@@ -506,7 +473,5 @@ rule archs4_projections:
         PROJ_ALL_MECH,
         rules.aggregate_projections.output.agg,
         PROJ_REPORTS,
-        rules.projection_report_pseudobulk_recovery.output.complete,
-        rules.projection_report_gtex_ari.output.complete,
 
 include: "projection_benchmarks.smk"

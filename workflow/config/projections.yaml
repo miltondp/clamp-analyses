@@ -6,11 +6,11 @@ projections:
     raw_data: data/projections
 
   archs4_model:
-    root: output/98_final_models/clampfull/canonical/archs4
-    rds: CLAMPfull_canonical.rds
+    root: output/98_final_models/consensus_models_ge4r015med/archs4
+    rds: CLAMPfull_consensus.rds
     z: Z.csv
     summary: summary.csv
-    provenance: output/98_final_models/clampfull/canonical/archs4/manifest.json
+    provenance: output/98_final_models/consensus_models_ge4r015med/archs4/manifest.json
 
   local_model:
     prior:
@@ -102,73 +102,6 @@ projections:
            levels: [Control_2h, Control_8h, Control_24h, IFNa_2h, IFNa_8h, IFNa_24h],
            contrast: "IFNa_24h-Control_24h"}
 
-    mono_lps_GSE193336:
-      group: monocyte
-      label: "Monocyte-derived macrophages, +/- LPS"
-      accession: GSE193336
-      kind: geo_matrix
-      id_type: ensembl
-      gene_level: false
-      downloads:
-      - name: GSE193336_GEO_Processed_Data_Raw_Count_Macrophage.csv.gz
-        url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE193nnn/GSE193336/suppl/GSE193336_GEO_Processed_Data_Raw_Count_Macrophage.csv.gz
-        sha256: 2fe82f9b39abd3e4826c74b9280d20fbd3a175d0110b875a35cb84210c7bb98d
-      sample_annotation:
-        source: colnames
-        rules:
-          condition: {pattern: "_LPS$", match: LPS, nomatch: Untreated}
-          donor: {extract: "^(donor [0-9]+)_.*$"}
-      contrasts:
-        - {name: lps_vs_untreated, type: limma_coef, factor: condition,
-           reference: Untreated, block: donor, coef: conditionLPS}
-
-    placenta_EMTAB6701:
-      group: placenta
-      label: "Placenta / decidua scRNA-seq (trophoblast)"
-      accession: E-MTAB-6701
-      kind: ebi_sc_atlas
-      id_type: ensembl
-      gene_level: false
-      pseudobulk: {min_cells: 20}
-      downloads:
-      - name: E-MTAB-6701.aggregated_filtered_counts.mtx.gz
-        url: https://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/sc_experiments/E-MTAB-6701/E-MTAB-6701.aggregated_filtered_counts.mtx.gz
-        sha256: 1a4705d169178245369fe53dbe5f4ce3af1d6e632cb24669aab7b97365e34fd6
-      - name: E-MTAB-6701.aggregated_filtered_counts.mtx_cols.gz
-        url: https://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/sc_experiments/E-MTAB-6701/E-MTAB-6701.aggregated_filtered_counts.mtx_cols.gz
-        sha256: 75c19dcd58239e5ae871f24878961317e18fc43f3be8b2a4d53a82e3b5c139e3
-      - name: E-MTAB-6701.aggregated_filtered_counts.mtx_rows.gz
-        url: https://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/sc_experiments/E-MTAB-6701/E-MTAB-6701.aggregated_filtered_counts.mtx_rows.gz
-        sha256: 52d86d88a0de4d8ed6baa545d0e27c20bac2ddf3ac64d0db85c4b95728ccb670
-      - name: E-MTAB-6701.cell_metadata.tsv
-        url: https://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/sc_experiments/E-MTAB-6701/E-MTAB-6701.cell_metadata.tsv
-        sha256: 6f4860414155858d90a4143f208b8c5e09c159f964dfb9d18a7a61926f145d43
-      metadata_file: E-MTAB-6701.cell_metadata.tsv
-      metadata_columns: {id: id, donor: individual, label: "inferred_cell_type_-_authors_labels"}
-      filter: {column: organism_part, equals: placenta}
-      cell_type_map:
-        - {pattern: "extravillous trophoblast|\\(evt\\)", label: Extravillous trophoblast}
-        - {pattern: "syncytiotrophoblast|\\(sct\\)", label: Syncytiotrophoblast}
-        - {pattern: "villous cytotrophoblast|\\(vct\\)", label: Villous cytotrophoblast}
-        - {pattern: "hofbauer", label: Hofbauer cell}
-        - {pattern: "fetal fibroblast.*ffb2", label: Fetal fibroblast 2}
-        - {pattern: "fetal fibroblast", label: Fetal fibroblast 1}
-        - {pattern: "fetal endothelial", label: Fetal endothelial}
-        - {pattern: "maternal endothelial", label: Maternal endothelial}
-        - {pattern: "decidual macrophage.*dm1", label: Decidual macrophage 1}
-        - {pattern: "decidual macrophage.*dm2", label: Decidual macrophage 2}
-        - {pattern: "decidual macrophage.*dm3", label: Decidual macrophage 3}
-        - {pattern: "glandular epithelial", label: Glandular epithelial}
-        - {pattern: "granulocyte", label: Granulocyte}
-        - {pattern: "monocyte", label: Monocyte}
-      condition_from:
-        column: cell_type
-        rules:
-          condition: {pattern: "trophoblast", match: Trophoblast, nomatch: Other}
-      contrasts:
-        - {name: trophoblast_vs_other, type: limma_coef, factor: condition,
-           reference: Other, block: donor, coef: conditionTrophoblast}
-
   mechanisms:
 
     cyt_ifna_GSE133218:
@@ -211,91 +144,6 @@ projections:
         doi: "10.1038/s41467-020-16327-0"
         contrast: pooled
         terms: ["SPLIC", "DESTABILIZ", "NONSENSE_MEDIATED", "MRNA_STABILITY"]
-
-    mono_lps_GSE193336:
-      SIRT1_NAD_axis:
-        category: molecular_mechanism
-        source: "Li et al. NAD depletion inhibits the SIRT1 metabolic sensor"
-        doi: "10.1038/s41598-022-16005-9"
-        terms: ["SIRT1", "NAD_BIOSYNTHESIS", "NAD_METABOLISM", "SIRTUIN"]
-      glycolytic_reprogramming:
-        category: molecular_mechanism
-        source: "Li et al. increased glucose transport and glycolysis in inflammatory innate cells"
-        doi: "10.1038/s41598-022-16005-9"
-        terms: ["GLYCOLYSIS", "GLUCOSE_METABOLISM", "GLUCOSE_TRANSPORT", "HIF1"]
-      oxidative_phosphorylation_shift:
-        category: molecular_mechanism
-        source: "Li et al. reduced OXPHOS and perturbed mitochondrial metabolism"
-        doi: "10.1038/s41598-022-16005-9"
-        terms: ["OXIDATIVE_PHOSPHORYLATION", "RESPIRATORY_ELECTRON_TRANSPORT", "MITOCHONDRIAL"]
-      oxidative_stress_response:
-        category: molecular_mechanism
-        source: "Li et al. ROS/oxidative stress during early inflammatory activation"
-        doi: "10.1038/s41598-022-16005-9"
-        terms: ["OXIDATIVE_STRESS", "REACTIVE_OXYGEN", "KEAP1", "NFE2L2", "NRF2"]
-      innate_inflammatory_feedback:
-        category: molecular_mechanism
-        source: "Li et al. HIF1A and NF-kB feed-forward inflammatory activation after SIRT1 inhibition"
-        doi: "10.1038/s41598-022-16005-9"
-        terms: ["NF_KB", "TOLL_LIKE", "TLR4", "TNF", "INFLAMMASOME", "HIF1"]
-      macrophage_identity:
-        category: cell_type
-        source: "GSE193336 experimental cell type"
-        contrast: lps_vs_untreated
-        terms: ["MACROPHAGE", "MONOCYTE", "MYELOID"]
-
-    placenta_EMTAB6701:
-      trophoblast_identity:
-        category: cell_type
-        source: "Vento-Tormo et al. trophoblast lineages"
-        doi: "10.1038/s41586-018-0698-6"
-        contrast: trophoblast_vs_other
-        terms: ["TROPHOBLAST", "PLACENTA", "SYNCYTIOTROPHOBLAST", "CYTOTROPHOBLAST"]
-      extravillous_trophoblast:
-        category: molecular_mechanism
-        source: "Vento-Tormo et al. EVT invasion and spiral-artery remodelling"
-        doi: "10.1038/s41586-018-0698-6"
-        contrast: trophoblast_vs_other
-        terms: ["EXTRAVILLOUS", "INVASION", "EPITHELIAL_MESENCHYMAL", "EXTRACELLULAR_MATRIX", "ANGIOGENESIS"]
-      syncytiotrophoblast_endocrine_program:
-        category: molecular_mechanism
-        source: "Vento-Tormo et al. syncytiotrophoblast endocrine and exchange programme"
-        doi: "10.1038/s41586-018-0698-6"
-        contrast: trophoblast_vs_other
-        terms: ["SYNCYTIO", "PEPTIDE_HORMONE", "STEROID_HORMONE", "PLACENTAL_LACTOGEN", "HORMONE"]
-      decidual_stromal:
-        category: cell_type
-        source: "Vento-Tormo et al. decidual stromal cells"
-        doi: "10.1038/s41586-018-0698-6"
-        contrast: trophoblast_vs_other
-        terms: ["DECIDUA", "STROMAL", "EXTRACELLULAR_MATRIX"]
-      decidual_stromal_matrix_remodeling:
-        category: molecular_mechanism
-        source: "Vento-Tormo et al. decidual stromal extracellular-matrix remodelling"
-        doi: "10.1038/s41586-018-0698-6"
-        contrast: trophoblast_vs_other
-        terms: ["DECIDUA", "STROMAL", "EXTRACELLULAR_MATRIX", "COLLAGEN", "ANGIOGENESIS"]
-      maternal_immune:
-        category: cell_type
-        source: "Vento-Tormo et al. maternal immune cells"
-        doi: "10.1038/s41586-018-0698-6"
-        contrast: trophoblast_vs_other
-        terms: ["NATURAL_KILLER", "MACROPHAGE", "T_CELL_RECEPTOR", "IMMUNE"]
-      maternal_fetal_ligand_receptor_interactions:
-        category: molecular_mechanism
-        source: "Vento-Tormo et al. dNK-trophoblast HLA-C/E/G receptor-ligand interactions"
-        doi: "10.1038/s41586-018-0698-6"
-        terms: ["NATURAL_KILLER", "HLA", "CELL_CELL_INTERACTION"]
-      dNK_chemokine_immunomodulation:
-        category: molecular_mechanism
-        source: "Vento-Tormo et al. dNK subsets have distinct immunomodulatory and chemokine profiles"
-        doi: "10.1038/s41586-018-0698-6"
-        terms: ["CHEMOKINE", "CXCL", "CCL", "NATURAL_KILLER"]
-      dNK_metabolic_priming:
-        category: molecular_mechanism
-        source: "Vento-Tormo et al. dNK1 glycolytic metabolic priming"
-        doi: "10.1038/s41586-018-0698-6"
-        terms: ["GLYCOLYSIS", "GLUCOSE_METABOLISM", "GLUCOSE_TRANSPORT"]
 
 projection_benchmark:
   root: output/03_model_biology/02_archs4/03_projections/06_dimensionality_adjusted

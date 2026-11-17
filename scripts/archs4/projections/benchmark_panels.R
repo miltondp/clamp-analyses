@@ -1,4 +1,4 @@
-# Draw projection benchmark panels for Supplementary Figure 6.
+# Draw projection benchmark panels for Supplementary Figure 7.
 projection_benchmark_panels <- function(root) {
   method_colours <- c('CLAMPfull'='#3e348b','CLAMPbase'='#0072B2','PLIER'='#EE7733',
                       'ARCHS4 projection'='#923155','RNA-Seq'='#9c9f36',
