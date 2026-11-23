@@ -209,16 +209,28 @@ rule supp6_panel:
 
 rule supp7_panel:
     input:
-        rules.projection_benchmark_figure.output,
+        comparison=rules.drug_disease_method_comparison.output,
+        topk=A4_DD_TOPK,
+        helpers="scripts/panels/main_figure.R",
+        notebook=f"{PANELS_NB}/supp7.ipynb",
     output:
+        png=f"{PANELS}/supp7/supp7.png",
+        pdf=f"{PANELS}/supp7/supp7.pdf",
+        svg=f"{PANELS}/supp7/supp7.svg",
         complete=touch(f"{PANELS}/supp7/notebook.complete"),
+    log:
+        notebook=f"{PANELS_NB}/supp7.executed.ipynb",
+    conda: "clamp-analyses"
+    notebook:
+        f"{PANELS_NB}/supp7.ipynb"
 
 
 rule supp8_panel:
     input:
-        comparison=rules.drug_disease_method_comparison.output,
-        topk=A4_DD_TOPK,
-        helpers="scripts/panels/main_figure.R",
+        z=rules.crispercas_metalv_zcache.output,
+        members=rules.crispercas_metalv_cluster.output.members,
+        gsea=rules.crispercas_metalv_gsea_best.output,
+        funnel=rules.crispercas_metalv_select.output.funnel,
         notebook=f"{PANELS_NB}/supp8.ipynb",
     output:
         png=f"{PANELS}/supp8/supp8.png",
@@ -230,25 +242,6 @@ rule supp8_panel:
     conda: "clamp-analyses"
     notebook:
         f"{PANELS_NB}/supp8.ipynb"
-
-
-rule supp9_panel:
-    input:
-        z=rules.crispercas_metalv_zcache.output,
-        members=rules.crispercas_metalv_cluster.output.members,
-        gsea=rules.crispercas_metalv_gsea_best.output,
-        funnel=rules.crispercas_metalv_select.output.funnel,
-        notebook=f"{PANELS_NB}/supp9.ipynb",
-    output:
-        png=f"{PANELS}/supp9/supp9.png",
-        pdf=f"{PANELS}/supp9/supp9.pdf",
-        svg=f"{PANELS}/supp9/supp9.svg",
-        complete=touch(f"{PANELS}/supp9/notebook.complete"),
-    log:
-        notebook=f"{PANELS_NB}/supp9.executed.ipynb",
-    conda: "clamp-analyses"
-    notebook:
-        f"{PANELS_NB}/supp9.ipynb"
 
 
 # ============================================================
@@ -275,16 +268,9 @@ rule fig3_panel:
         f"{PANELS_NB}/fig3.ipynb"
 
 
-# Figure 4 is supplied in the repository; source artwork regeneration is optional.
 rule fig4_panel:
     input:
-        projections=rules.aggregate_projections.output.agg,
-        archs4_b=f"{PROJ_PROD}/cyt_ifna_GSE133218/models/ARCHS4/B.csv",
-        local_model=f"{PROJ_PROD}/cyt_ifna_GSE133218/models/local",
-        prepared=f"{PROJ_PROD}/cyt_ifna_GSE133218/prepared",
         comparison=rules.drug_disease_method_comparison.output,
-        mechanisms="workflow/config/cytokine_mechanisms.csv",
-        scheme="scripts/panels/assets/projection_scheme.svg",
         helpers="scripts/panels/main_figure.R",
         notebook=f"{PANELS_NB}/fig4.ipynb",
     output:
@@ -340,8 +326,6 @@ rule supplementary_tables_non_l1000:
     input:
         metalv=rules.crispercas_fig5_data.output,
         coverage_traits=PHENOPLIER_COV_BASE,
-        projection_sources=rules.projection_benchmark_figure.output.sources,
-        mechanisms="workflow/config/cytokine_mechanisms.csv",
         phenomexcan=[f"{A4_CRISPERCAS_CFG['phenomexcan_dir']}/{name}" for name in
                     ["phenotypes_info.tsv", "gene_assoc/smultixcan-mashr-pvalues.pkl",
                      "gene_assoc/smultixcan-mashr-zscores.pkl", "genes_metadata/genes_mapping_name_to_id.pkl"]],
@@ -352,10 +336,10 @@ rule supplementary_tables_non_l1000:
         lipid_deg=A4_CRISPERCAS_CFG["lipid_deg"],
         script="scripts/tables/build_supplementary_tables.py",
     output:
-        expand(f"{PANELS}/tables/supplementary_table_{{n}}.xlsx", n=[1, 2, 3, 4, 5, 6, 8]),
+        expand(f"{PANELS}/tables/supplementary_table_{{n}}.xlsx", n=[1, 2, 3, 4, 5, 7]),
     conda: "clamp-analyses"
     shell:
-        "python {input.script:q} --phenomexcan-dir {A4_CRISPERCAS_CFG[phenomexcan_dir]:q} --tables 1 2 3 4 5 6 8"
+        "python {input.script:q} --phenomexcan-dir {A4_CRISPERCAS_CFG[phenomexcan_dir]:q} --tables 1 2 3 4 5 7"
 
 
 rule crispercas_l1000_table:
@@ -367,10 +351,10 @@ rule crispercas_l1000_table:
         shortlist="workflow/config/fig5_drug_shortlist.csv",
         script="scripts/tables/build_supplementary_tables.py",
     output:
-        f"{PANELS}/tables/supplementary_table_7.xlsx",
+        f"{PANELS}/tables/supplementary_table_6.xlsx",
     conda: "clamp-analyses"
     shell:
-        "python {input.script:q} --tables 7"
+        "python {input.script:q} --tables 6"
 
 
 rule supplementary_tables:
@@ -379,7 +363,7 @@ rule supplementary_tables:
         rules.crispercas_l1000_table.output,
 
 
-PUBLISHED_FIGURES = ["fig1", "fig2", "fig3", "fig4", "fig5"] + [f"supp{i}" for i in range(1, 10)]
+PUBLISHED_FIGURES = ["fig1", "fig2", "fig3", "fig4", "fig5"] + [f"supp{i}" for i in range(1, 9)]
 
 
 # ============================================================
@@ -389,11 +373,11 @@ PUBLISHED_FIGURES = ["fig1", "fig2", "fig3", "fig4", "fig5"] + [f"supp{i}" for i
 rule publish_figures:
     input:
         figures=expand(f"{PANELS}/{{name}}/{{name}}.{{ext}}", name=PUBLISHED_FIGURES, ext=["pdf", "png", "svg"]),
-        tables=expand(f"{PANELS}/tables/supplementary_table_{{n}}.xlsx", n=range(1, 9)),
+        tables=expand(f"{PANELS}/tables/supplementary_table_{{n}}.xlsx", n=range(1, 8)),
         fig5_sources=expand(f"{A4_METALV}/fig5/{{f}}", f=["modules.csv", "module_drugs.csv"]),
     output:
         figures=expand("figures/{name}/{name}.{ext}", name=PUBLISHED_FIGURES, ext=["pdf", "png", "svg"]),
-        tables=expand("figures/tables/supplementary_table_{n}.xlsx", n=range(1, 9)),
+        tables=expand("figures/tables/supplementary_table_{n}.xlsx", n=range(1, 8)),
         fig5_sources=expand("figures/fig5/source_data/{f}", f=["modules.csv", "module_drugs.csv"]),
     run:
         import shutil

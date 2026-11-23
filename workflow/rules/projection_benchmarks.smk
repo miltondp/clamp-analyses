@@ -211,32 +211,3 @@ rule projection_benchmark_tables:
     shell:
         '{PBENCH_PY} {input.script:q} aggregate --root {PBENCH_ROOT:q} --settings {input.settings:q} --local-ari {input.local:q}'
 
-PBENCH_SUPP7_PROD = 'output/01_model_building/02_archs4/03_projections'
-PBENCH_SUPP7_SOURCES = [f'output/99_panels/supp7/source_data/{group}_{name}.csv'
-    for group in ('00_cytokines',) for name in ('comparisons', 'gene_loadings', 'manual_recovery')]
-
-# ============================================================
-# Step 5: render Supplementary Figure 7
-# ============================================================
-
-rule projection_benchmark_figure:
-    input:
-        aggregate='output/03_model_biology/02_archs4/03_projections/aggregate',
-        mechanisms=f'{PBENCH_SUPP7_PROD}/cyt_ifna_GSE133218/mechanism_models.tsv',
-        pathways=['data/pathways/c2.cp.v2026.1.Hs.symbols.gmt', 'data/pathways/h.all.v2026.1.Hs.symbols.gmt'],
-        style='scripts/panels/style.R',
-        mechanism_plots='scripts/archs4/projections/plots.R',
-        mechanisms_curated='workflow/config/cytokine_mechanisms.csv',
-        notebook='nbs/99_panels/supp7.ipynb',
-    output:
-        pdf='output/99_panels/supp7/supp7.pdf',
-        png='output/99_panels/supp7/supp7.png',
-        svg='output/99_panels/supp7/supp7.svg',
-        sources=PBENCH_SUPP7_SOURCES,
-        stats='output/99_panels/supp7/source_data/lv_stats_long.csv',
-    log:
-        notebook=os.path.join(REPO_ROOT, 'nbs/99_panels/supp7.executed.ipynb'),
-    conda: PBENCH['r_environment']
-    resources: mem_mb=4000
-    notebook:
-        os.path.join(REPO_ROOT, 'nbs/99_panels/supp7.ipynb')

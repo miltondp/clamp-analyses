@@ -93,7 +93,7 @@ rule archs4_biology:
         rules.archs4_drug_diseases.input,
         rules.biology_archs4_crispercas.input,
         rules.expression_scale_report.output.complete,
-        expand(f"{PANELS}/{{name}}/{{name}}.{{ext}}", name=["fig3", "fig4", "fig5", "supp5", "supp6", "supp7", "supp8", "supp9"], ext=["pdf", "png", "svg"]),
+        expand(f"{PANELS}/{{name}}/{{name}}.{{ext}}", name=["fig3", "fig4", "fig5", "supp5", "supp6", "supp7", "supp8"], ext=["pdf", "png", "svg"]),
         rules.supplementary_tables.output,
 
 rule all:
