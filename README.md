@@ -280,7 +280,6 @@ to CPU execution.
 `output/01_model_building/` contains models; `02_model_performance/` benchmarks;
 `03_model_biology/` biological analyses; `98_final_models/` final and consensus
 bundles; and `99_panels/` figures/tables. Publication copies go to `figures/`.
-Figure 4 uses the supplied artwork.
 
 Logs accompany outputs; scheduler logs are under `.snakemake/`. Repeating the
 same command resumes work and reuses completed outputs.
