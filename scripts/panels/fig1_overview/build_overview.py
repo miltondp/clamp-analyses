@@ -258,12 +258,23 @@ for i, x in enumerate([0, 2.4, 5, 7.4, 11, 13.4]):
 steps(105.5, ylab, ["Cluster across runs"])
 c.arrow((116.2, yc0), (122.6, yc0), sw=0.3)
 x0 = 124.85
-for k in range(4):
-    zmat(x0 + k * 2.6, yc0 - 6, 2.1, 12, 1, 6, seed=k + 1)
+# Members of one cluster share the consensus pattern with small run-to-run deviations.
+MGM_PATTERN = [5, 1, 4, 0, 3, 1]
+MEMBER_DEV = [{1: 1}, {}, {4: -1}, {2: 1}]
+
+
+def zcol(x, y, w, h, vals):
+    for r, v in enumerate(vals):
+        c.rect(x, y + h * r / len(vals), w, h / len(vals), fill=TSEQ[v], stroke="none")
+    c.matrix(x, y, w, h, fill="none", stroke=TEAL, ncols=1, nrows=len(vals))
+
+
+for k, dev in enumerate(MEMBER_DEV):
+    zcol(x0 + k * 2.6, yc0 - 6, 2.1, 12, [max(0, min(5, v + dev.get(r, 0))) for r, v in enumerate(MGM_PATTERN)])
 c.text(x0 + 5, yc0 - 7.2, "Members", size=SMALL)
 c.arrow((x0 + 10.9, yc0), (x0 + 16.5, yc0), sw=0.3)
 c.text(x0 + 13.7, yc0 - 1.0, "median", size=SMALL)
-zmat(x0 + 17.7, yc0 - 6, 2.4, 12, 1, 6, seed=5)
+zcol(x0 + 17.7, yc0 - 6, 2.4, 12, MGM_PATTERN)
 c.text(x0 + 18.9, yc0 - 7.2, "Z_{MGM}", size=SMALL, italic=True)
 steps(134.5, ylab, ["Consensus loadings"])
 c.arrow((147.2, yc0), (154.4, yc0), sw=0.3)
