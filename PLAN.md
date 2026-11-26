@@ -15,8 +15,8 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 
 ### Phase 0: Setup and data staging (local)
 - [x] 0.1 Create the missing envs (`snakemake`, `gpu-kmeans`), register the kernel, and run `scripts/check_setup.py` (it also runs both `--check` pin scripts).
-- [x] 0.2 Symlink `data/clamp_archs4` to the `ai-comp-exp` fits, and verify the md5s against `MD5SUM.txt`.
-- [x] 0.3 ~~Rsync the noise outputs and the legacy `00_mgm` outputs from pivlab01.~~ They aren't there. Instead, fetched the old 6-rep consensus folder to `data/legacy_archs4/consensus_6reps/`. Its `noise_flags.csv` is the flag source (see Key facts).
+- [x] 0.2 Symlink `data/clamp_archs4` to the `ai-comp-exp` fits (md5 check skipped at the user's request; see Log).
+- [x] 0.3 ~~Rsync the noise outputs and the legacy `00_mgm` outputs from pivlab01.~~ They aren't there. Instead, staged the old 4-rep and 6-rep consensus folders, the canonical S123 Z/summary and `gene_properties.csv` under `data/legacy_archs4/`. The 6-rep `noise_flags.csv` is the flag source (see Key facts).
 - [ ] 0.4 Export Z.csv, summary.csv and manifest.json from the 10 `.rds` files (`cev_export_run`). Check that the S123 export equals `data/legacy_archs4/canonical_S123/{Z,summary}.csv` byte for byte.
 - [ ] 0.5 Build the GO BP gmt for ORA if it is missing (`generate_archs4_go_bp_gmt`).
 
@@ -128,7 +128,6 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
   - **Don't use** `tmp_clampbase_noise/archs4_noise/`, `archs4_flags_r2_0.15.csv` or `archs4_zcache.npz`. They're the **CLAMPbase** screen: technical_joint correlates with CLAMPfull at r = 0.05, and gene_flag agrees on only 93% of LVs.
   - Not reachable: `clamp-analyses/output/98_final_models/consensus_models/` (owner-only `drwx------`). The CLAMPfull ARCHS4 `06_technical_noise/` and `04_crispercas*/00_mgm/` (incl. `Z_all.npz`) weren't found on either server. Marc's original checkout was at `/home/msubirana/Documents/pivlab/clamp-analyses` on an unknown machine.
   - Access: dbmila needs a password, so open a shared connection first (`ssh -fN -o ControlMaster=yes -o ControlPath=~/.ssh/cm-dbmila -o ControlPersist=8h dbmila`), then use `-o ControlPath=~/.ssh/cm-dbmila`. pivlab01 is the sakaiza server.
-- **Assertion trap** (moot while flags come from the legacy file). `cluster_metalv.py noise_main` asserts that the S123 flags at `--threshold` equal `lv_technical_classification.csv`, but that file was built with `R2_CUT <- 0.25` (`run_analysis.R:40`). At 0.15 the assertion can fail. Use the `flags` subcommand (`--model NAME=dir`), which has no assertion.
 - **Do not edit `cluster_metalv.py`.** Nine rules list it as an input without `ancient()` (`archs4_crispercas.smk:79,95,109`; `consensus.smk:272,291,309,658,673,691`), so any edit reruns the existing consensus chain (ORA, GLS, LINCS) for every compendium. `rerun-triggers: mtime` doesn't help, because an edit changes the file's mtime. Call its subcommands, or load it via importlib like `tests/test_crispr_l1000.py` does. Possible follow-up: wrap those 9 inputs in `ancient()` (precedent: `archs4_crispercas.smk:50`), then factor `cluster_main` into importable functions.
 - **`technical_noise_z` takes `Z.csv` without `ancient()`.** Never write a Z.csv into `output/98_final_models/clampfull/canonical/archs4/`: that triggers a rerun which needs the raw h5.
 - **Model completeness gating** (`archs4_canonical.smk:12-34`).
@@ -149,7 +148,6 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
 - **Local data and outputs.**
   - The ARCHS4 h5 exists at `../clamp-technical-artifacts/base/input/human_gene_v2.5.h5`. It isn't needed for this plan.
   - Local `output/` uses an old layout and holds none of the consensus or noise outputs.
-- **Absolute symlinks.** `crispercas_seed_noise` writes `gene_properties.csv` and `sample_metadata.tsv.gz` in `seeds/seed*/` as absolute links, which will dangle after the rsync. The new area reads only the `lv_*_canonical.csv` files.
 - **Hard-coded run counts.** `cluster_metalv.py:127` prints "/10 models" (text only). In new code, express replication as `min_frac` of the runs in the compendium or run subset (min_models = ceil(min_frac × n_runs)), and keep an absolute `min_models` only for the two frozen reproduction sets. This covers split-half (5 runs), LORO (9) and GTEx (20) with one rule. Likewise, set the k grid relative to the median number of LVs per run.
 - **PhenoPLIER code to port** (`/home/miltondp/projects/phenoplier/phenoplier/libs/clustering/`):
   - What to port: `ensembles/utils.py` (`generate_ensemble`, `get_ensemble_distance_matrix`, `run_method_and_compute_agreement`), `ensembles/eac.py`, `ensembles/spectral.py` + `methods.DeltaSpectralClustering`, `ensembles/measures.py` (`aari`), and `utils.compare_arrays` (NaN-aware and weighted).
@@ -213,21 +211,8 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
 
 ### Phase 0 details
 
-1. Create only the missing envs:
-   ```bash
-   conda create -n snakemake  --file envs/snakemake.lock  --override-channels -c conda-forge -y
-   conda create -n gpu-kmeans --file envs/gpu-kmeans.lock --override-channels -c conda-forge -y
-   conda run -n gpu-kmeans python -m ipykernel install --sys-prefix --name python3
-   conda activate snakemake && python scripts/check_setup.py   # also runs both pin --check scripts
-   ```
-2. Link the fits. `data/` is gitignored, which keeps the personal path out of tracked config:
-   ```bash
-   ln -s /home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4 data/clamp_archs4
-   ```
-3. **Done differently (2026-11-26):** `rsync -a --exclude B.csv pivlab01:/home/marc/Documents/pivlab/clamp-analyses/output/98_final_models/consensus_models/archs4/ data/legacy_archs4/consensus_6reps/` (231 MB). The list below was the original plan; none of those paths exist on pivlab01:
-   - `output/03_model_biology/02_archs4/06_technical_noise/`, including `gene_properties.csv`, `lv_gene_properties_canonical.csv`, `lv_sample_metadata_canonical.csv`, `lv_technical_classification.csv`, and `seeds/seed*/lv_{gene_properties,sample_metadata}_canonical.csv`.
-   - `output/03_model_biology/02_archs4/04_crispercas_ge4r015med/00_mgm/`: `Z_all.npz`, `noise/all_flags.csv`, `cluster_summary.csv`, `cluster_members.csv`, `all_lv_clusters.csv`, `metaZ.csv`.
-   - If they still exist, the old 6-rep outputs: `output/03_model_biology/02_archs4/04_crispercas/00_mgm/` and/or `output/98_final_models/consensus_models/archs4/`. They hold the true member lists for Z_6reps.
+Steps 0.1–0.3 are done; the Log and Key facts record how (`data/clamp_archs4` is a symlink because `data/` is gitignored, which keeps the personal path out of tracked config).
+
 4. Export with `cev_export_run` (R, `clamp-analyses`, about 32 GB RAM, two at a time). It writes `runs/S{seed}/{Z.csv, summary.csv, manifest.json}`. `manifest.json` uses the `fit_clampfull.R:217-226` keys (`samples` = ncol(B), `latent_variables`, `genes`) plus L2 and md5, so `cev_ora` can pass `--model-manifest` exactly like the existing metaLV ORA rules. No B.csv. Check first how the rds files were made: if they came from `write_clamp_model` (`scripts/archs4/common.R:122-145`) and not from `fit_clampfull.R`, summary.csv is written with row names and a re-export won't match byte for byte.
 5. Build the GO BP gmt with the existing rule `generate_archs4_go_bp_gmt`.
 
@@ -239,7 +224,7 @@ scripts/consensus_eval/
   export_run.R         --rds --model --out-dir  → Z.csv, summary.csv, manifest.json
   cev.py               library (numpy/scipy/pandas/sklearn; py3.11 + 3.13; no cuml at top level)
   run.py               CLI subcommands: linkage, hier, eac, build, evaluate, compare, null,
-                       synthetic, coherence, leakage, aggregate   (flags come from cluster_metalv.py)
+                       synthetic, coherence, leakage, aggregate   (flags come from cev_flags)
   kmeans_ensemble.py   cuML KMeans ensemble (gpu-kmeans env), optional PCA / gene bagging; reuse the
                        seed scheme base_seed + k*1000 + rep and provenance() from
                        scripts/archs4/projections/benchmark.py:21-31,169-186
@@ -252,13 +237,13 @@ nbs/03_model_biology/02_archs4/06_consensus_eval/
 
 Edits to existing files:
 
-- `workflow/Snakefile`: add `configfile: "workflow/config/consensus_eval.yaml"` and `include: "rules/consensus_eval.smk"` **after** `consensus.smk`, because the new rules reuse the `con_*` helpers from `consensus.smk` (`con_models`, `con_noise_dir`, `con_noise_files`, `con_model_dir`) and globals from `archs4_crispercas.smk` (`A4_METALV`, `A4_METALV_TN`, `A4_METALV_ORA`, `a4_metalv_ora_args`, `A4_CRISPERCAS_CFG`). Add a public `rule consensus_evaluation` at the bottom.
+- `workflow/Snakefile`: add `configfile: "workflow/config/consensus_eval.yaml"` and `include: "rules/consensus_eval.smk"` **after** `consensus.smk`, because the new rules reuse the `con_*` helpers from `consensus.smk` (`con_models`, `con_model_dir`, and `con_noise_dir` for GTEx only) and globals from `archs4_crispercas.smk` (`A4_METALV_MODELS`, `A4_METALV_ORA`, `a4_metalv_ora_args`, `A4_CRISPERCAS_CFG`). For ARCHS4, `con_noise_dir` / `A4_METALV_TN` point at the noise dirs that were never found, so don't use them. Add a public `rule consensus_evaluation` at the bottom.
 - Don't add it to `all` or `archs4_biology` yet; doing so would make `all` depend on the external `.rds` files.
 
 What to reuse:
 
-- **`cluster_metalv.py`**: call its `cache` and `flags` subcommands (`consensus_flags`, `consensus.smk:269-285`, is the template). Don't edit it, and don't use `noise` (see Key facts).
-- **Config globals and helpers** instead of new literals: model order `A4_METALV_MODELS`, noise dirs `con_noise_dir("archs4", m)`, `A4_METALV_TN`, `A4_METALV`, top genes `A4_CRISPERCAS_CFG["top_n"]` (185), ORA `--top-pct {A4_CFG[ora][top_pct]}`, ORA databases `A4_METALV_ORA`.
+- **`cluster_metalv.py`**: call its `cache` subcommand, and feed `cev_flags` output to `cluster --flags`. Don't edit it (see Key facts). Flags come from re-thresholding the legacy file, not from its `flags` or `noise` subcommands.
+- **Config globals and helpers** instead of new literals: model order `A4_METALV_MODELS`, top genes `A4_CRISPERCAS_CFG["top_n"]` (185), ORA `--top-pct {A4_CFG[ora][top_pct]}`, ORA databases `A4_METALV_ORA`.
 - **`scripts/archs4/coverage/run_ora.R`**: pass `--model-manifest`, and get the database arguments from `a4_metalv_ora_args(db)`. Use `--lv-subset` for ORA deduplication and size-matched subsets instead of writing subset Z files. Aggregate the results the way `consensus_ora_aggregate` (`consensus.smk:480`) does.
 - **`run_analysis.R --stage gene_level`**: use it for leakage, with `gene_properties.csv` symlinked. Its output already has r, `_FDR` and `_robust_z` columns for every test, so the variant without the robust-z rule is a column filter (|r| ≥ 0.2 and FDR < 0.2, the `TH` values at `run_analysis.R:39`), not a separate Python implementation.
 - **PhenoPLIER clustering code**: port it into `cev.py` with the fixes listed in Key facts.
