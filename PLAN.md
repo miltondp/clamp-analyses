@@ -11,20 +11,20 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 
 ## Status
 
-**Blocked on:** the rsync from pivlab01 (Phase 0, step 3). Setup can continue without it, but Phase 1 cannot.
+**Blocked on:** nothing. Every legacy input is now staged in `data/legacy_archs4/` (see Key facts). The CLAMPfull per-run noise dirs were never found, but none of the steps need them any more.
 
 ### Phase 0: Setup and data staging (local)
-- [ ] 0.1 Create the missing envs (`snakemake`, `gpu-kmeans`), register the kernel, and run `scripts/check_setup.py` (it also runs both `--check` pin scripts).
-- [ ] 0.2 Symlink `data/clamp_archs4` to the `ai-comp-exp` fits, and verify the md5s against `MD5SUM.txt`.
-- [ ] 0.3 Rsync the noise outputs and the legacy `00_mgm` outputs from pivlab01 (paths below).
-- [ ] 0.4 Export Z.csv, summary.csv and manifest.json from the 10 `.rds` files (`cev_export_run`).
+- [x] 0.1 Create the missing envs (`snakemake`, `gpu-kmeans`), register the kernel, and run `scripts/check_setup.py` (it also runs both `--check` pin scripts).
+- [x] 0.2 Symlink `data/clamp_archs4` to the `ai-comp-exp` fits, and verify the md5s against `MD5SUM.txt`.
+- [x] 0.3 ~~Rsync the noise outputs and the legacy `00_mgm` outputs from pivlab01.~~ They aren't there. Instead, fetched the old 6-rep consensus folder to `data/legacy_archs4/consensus_6reps/`. Its `noise_flags.csv` is the flag source (see Key facts).
+- [ ] 0.4 Export Z.csv, summary.csv and manifest.json from the 10 `.rds` files (`cev_export_run`). Check that the S123 export equals `data/legacy_archs4/canonical_S123/{Z,summary}.csv` byte for byte.
 - [ ] 0.5 Build the GO BP gmt for ORA if it is missing (`generate_archs4_go_bp_gmt`).
 
 ### Phase 1: Reproduce the existing consensus sets (stop if this fails)
 - [ ] 1.1 Scaffold the new area: config, `.smk`, Snakefile include and target, staging rules.
-- [ ] 1.2 Check that the exported `Z_all.npz` equals the legacy `Z_all.npz` (`cev_zcache_check`).
-- [ ] 1.3 Check that `cl_c050_m4_r015` equals `Z_4reps.csv` exactly.
-- [ ] 1.4 Check that `cl_c050_m6_r025` equals `Z_6reps.csv`. If not, try the old 6-rep members or flag variants.
+- [ ] 1.2 Check that the exported `Z_all.npz` has the same (model, LV) keys as the legacy `noise_flags.csv`, plus 18,423 genes with no NaNs (`cev_zcache_check`). There's no legacy `Z_all.npz` to compare against.
+- [ ] 1.3 Check that `cl_c050_m4_r015` equals `Z_4reps.csv` exactly, and that its members equal `data/legacy_archs4/consensus_4reps/mgm_mapping.csv`.
+- [ ] 1.4 Check that `cl_c050_m6_r025` equals `Z_6reps.csv`, and that its members equal `data/legacy_archs4/consensus_6reps/mgm_mapping.csv`. If they differ, the member lists show where.
 - [ ] 1.5 Notebook `00_reproduction`.
 
 ### Phase 2: Evaluation framework, applied to the existing sets
@@ -57,7 +57,17 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 
 - 2026-11-26: Explored the repo, the PhenoPLIER ensemble code and the ai-comp-exp data, then wrote this plan. Nothing executed yet.
 - 2026-11-26: Simplify pass on the plan: derive models/paths/top_n/ORA settings from existing config; one `{subset}` wildcard replaces the split-half/LORO rule variants; cached linkages, uint8 co-association, deduplicated ORA, `Z.npy` storage, `min_frac` replication, manifest.json export, GTEx via the existing consensus.smk chain.
+- 2026-11-26: Step 0.1, partly done. Created `snakemake` (8.30.0, SLURM plugin 2.8.0) and `gpu-kmeans` (cuml 25.12, cupy 13.6, CUDA 12.9) from the locks and registered the gpu-kmeans `python3` kernel. A cuML KMeans smoke test on the 4090 passed. `check_setup.py` passes snakemake, R notebook packages, GPU packages and workflow parsing, but fails three `clamp-analyses` checks (CLAMP revision, comparison packages, pip imports); see Key facts. Waiting on a decision about the `clamp-analyses` env.
+- 2026-11-26: Step 0.1 done. Per the user's choice, removed and recreated `clamp-analyses` from `envs/clamp-analyses.lock`, then ran setup.sh's remaining clamp-analyses steps. `check_setup.py` now exits 0 with all checks PASS.
+- 2026-11-26: Step 0.2 done. Linked `data/clamp_archs4` to the ai-comp-exp fits (10 rds files plus `consensus/Z_{4,6}reps.csv`). md5 verification was skipped at the user's request. `MD5SUM.txt` lists all 10 rds files. Note: `seed123.rds` dates from 2026-09-17, while the other nine are from 2026-11-23.
+- 2026-11-26: Step 0.3 probe (read-only, via ssh to pivlab01). The planned source paths don't exist. `/home/marc/Documents/pivlab/clamp-analyses/output/03_model_biology/` holds only `01_gtex`. There's no `02_archs4` (so no `06_technical_noise` and no `04_crispercas*/00_mgm`), and the folder isn't a git checkout. The `pivlab` group gets traverse-only ACLs, so directories can be stat'ed but not listed. The old 6-rep manifest's `reference_model` points at `/home/msubirana/Documents/pivlab/clamp-analyses/...`, which doesn't exist on pivlab01 and is probably on another machine. What *is* on pivlab01 is `output/98_final_models/consensus_models/archs4/`, the old 6-rep consensus model:
+  - `Z.csv` has the same md5 as the local `Z_6reps.csv` (`4865841…`).
+  - `mgm_mapping.csv` and `cluster_summary.csv` hold the true 6-rep member lists (618 metaLVs).
+  - `noise_flags.csv` has columns `model, LV, gene_flag, technical_joint, sample_flag, any_flag` for all 17,280 LVs (1,728 × 10). Checked: `sample_flag == (technical_joint >= 0.25)` and `any_flag == gene_flag | sample_flag` for every row, with no NAs. So flags at any `noise_r2` can be derived from this file: at 0.25, 873 gene, 550 sample and 1,324 any; at 0.15, 1,495 sample and 2,117 any (15,163 kept).
+  - Also there: `ora/{archs4_cell_lines,azimuth,bp,canonical,cellmarker}/`, `traits/`, `manifest.json`, `lincs-projection.*`, `phenoplier_*`, and `B.csv` (7.5 GB, not needed).
 
+- 2026-11-26: Step 0.3 closed, as the user chose: fetched the 6-rep folder without `B.csv` to `data/legacy_archs4/consensus_6reps/` (231 MB, 53 files; `Z.csv` md5 checked). The flag source is now the legacy `noise_flags.csv`. Revised 1.2 and 1.4, the `cev_flags` and `cev_zcache_check` rules, and the config sketch to match.
+- 2026-11-26: Searched pico (dbmila) at the user's suggestion and found the 4-rep consensus folder (`Z.csv` = `Z_4reps.csv`, true members), the canonical S123 Z/summary and the gene-level `gene_properties.csv`. Staged all three under `data/legacy_archs4/` (see Key facts). Added member checks to 1.3, an export byte-check to 0.4, and config keys. Leakage is no longer blocked.
 ---
 
 ## Context
@@ -97,7 +107,7 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
 
 ### Decisions made (2026-11-25)
 
-- Noise flags are rsynced from pivlab01, not recomputed. Recomputing would need ARCHS4 preprocessing at about 200 GB RAM.
+- Noise flags are not recomputed: that would need ARCHS4 preprocessing at about 200 GB RAM. (Revised 2026-11-26: the per-run noise dirs aren't on pivlab01, so flags come from the legacy `noise_flags.csv`; see Key facts.)
 - Everything runs locally, including any extra GTEx fits.
 - The work goes in a new Snakemake area, `consensus_eval` (rule prefix `cev_`), following the CLAUDE.md conventions from the start.
 
@@ -109,7 +119,16 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
   - Its column names match the first 618 of Z_4reps, but its values differ: 87 of 618 columns have no Z_4reps match at cos ≥ 0.99, and 36 have none at ≥ 0.9.
   - The cause is commit `3085ab6`, which changed the config from `min_models` 6 / `noise_r2` 0.25 to 4 / 0.15.
   - Reproducing Z_6reps therefore needs flags at 0.25 and `min_models` 6.
-- **Assertion trap.** `cluster_metalv.py noise_main` asserts that the S123 flags at `--threshold` equal `lv_technical_classification.csv`, but that file was built with `R2_CUT <- 0.25` (`run_analysis.R:40`). At 0.15 the assertion can fail. Use the `flags` subcommand (`--model NAME=dir`), which has no assertion.
+- **Flag source (2026-11-26).** `data/legacy_archs4/consensus_6reps/noise_flags.csv` (fetched from pivlab01, from the old 6-rep consensus model) has exactly `cluster_metalv.py`'s `COLS` (`model, LV, gene_flag, technical_joint, sample_flag, any_flag`) for all 17,280 LVs. It was written at threshold 0.25. `technical_joint` is the 5-fold CV R² with no NAs, so flags at any r2 are `sample_flag = technical_joint >= r2` and `any_flag = gene_flag | sample_flag`, which is exactly `flags()` in `cluster_metalv.py:36-45`. `cev_flags` re-thresholds this file instead of calling `cluster_metalv.py flags`. The result plugs straight into `cluster_metalv.py cluster --flags`. Counts: 2,117 flagged at r2 0.15 (15,163 kept) and 1,324 at 0.25. `gene_flag` (873) is fixed, because it comes from `TH` in `run_analysis.R`.
+- **Other legacy files in `data/legacy_archs4/consensus_6reps/`:** `Z.csv` (= `Z_6reps.csv`), `mgm_mapping.csv` / `cluster_summary.csv` (true 6-rep member lists), `manifest.json`, `ora/{bp,canonical,cellmarker,azimuth,archs4_cell_lines}/`, `traits/`, `lincs-projection.*`, `phenoplier_*`. Fetched from pico (`dbmila`, `/pividori_lab/marc_projects/`) on 2026-11-26:
+  - `data/legacy_archs4/consensus_4reps/` comes from `clamp-analyses/output/98_final_models/consensus/archs4/`, minus `B.csv` (12.9 GB). `Z.csv` md5 = `Z_4reps.csv` (`44ce257…`). `mgm_mapping.csv` has the true 4-rep members (1,058 metaLVs, 6,591 members). Also present: `cluster_summary.csv`, `manifest.json` (min_models 4), `CLAMPfull_consensus.rds`, `ora/` (7 dbs, incl. reactome and gtex_tissues), `traits/`, `lincs-projection.*`, `projection.json`, `samples.tsv`, `annotations.csv.gz`.
+  - `data/legacy_archs4/canonical_S123/{Z,summary}.csv, manifest.json` come from `clamp-analyses/output/98_final_models/clampfull/canonical/archs4/`. They're the reference for the byte-level export check in 0.4.
+  - `data/legacy_archs4/noise_inputs/gene_properties.csv` comes from `tmp_clampbase_noise/inputs/`. It's gene-level (cDNA length, GC% per gene, 18,423 genes, mapped from the ARCHS4 h5), so it doesn't depend on the model and is fine for leakage (2.3).
+  - Checked: no 4-rep member is flagged under the derived r2 = 0.15 flags, and no 6-rep member at 0.25.
+  - **Don't use** `tmp_clampbase_noise/archs4_noise/`, `archs4_flags_r2_0.15.csv` or `archs4_zcache.npz`. They're the **CLAMPbase** screen: technical_joint correlates with CLAMPfull at r = 0.05, and gene_flag agrees on only 93% of LVs.
+  - Not reachable: `clamp-analyses/output/98_final_models/consensus_models/` (owner-only `drwx------`). The CLAMPfull ARCHS4 `06_technical_noise/` and `04_crispercas*/00_mgm/` (incl. `Z_all.npz`) weren't found on either server. Marc's original checkout was at `/home/msubirana/Documents/pivlab/clamp-analyses` on an unknown machine.
+  - Access: dbmila needs a password, so open a shared connection first (`ssh -fN -o ControlMaster=yes -o ControlPath=~/.ssh/cm-dbmila -o ControlPersist=8h dbmila`), then use `-o ControlPath=~/.ssh/cm-dbmila`. pivlab01 is the sakaiza server.
+- **Assertion trap** (moot while flags come from the legacy file). `cluster_metalv.py noise_main` asserts that the S123 flags at `--threshold` equal `lv_technical_classification.csv`, but that file was built with `R2_CUT <- 0.25` (`run_analysis.R:40`). At 0.15 the assertion can fail. Use the `flags` subcommand (`--model NAME=dir`), which has no assertion.
 - **Do not edit `cluster_metalv.py`.** Nine rules list it as an input without `ancient()` (`archs4_crispercas.smk:79,95,109`; `consensus.smk:272,291,309,658,673,691`), so any edit reruns the existing consensus chain (ORA, GLS, LINCS) for every compendium. `rerun-triggers: mtime` doesn't help, because an edit changes the file's mtime. Call its subcommands, or load it via importlib like `tests/test_crispr_l1000.py` does. Possible follow-up: wrap those 9 inputs in `ancient()` (precedent: `archs4_crispercas.smk:50`), then factor `cluster_main` into importable functions.
 - **`technical_noise_z` takes `Z.csv` without `ancient()`.** Never write a Z.csv into `output/98_final_models/clampfull/canonical/archs4/`: that triggers a rerun which needs the raw h5.
 - **Model completeness gating** (`archs4_canonical.smk:12-34`).
@@ -122,7 +141,9 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
 - **Local profile limits.** `large_fit_slot=0` blocks only `fit_canonical_clampfull` (archs4). ARCHS4 stability fits request `mem_mb=400000`, more than the local 96000, so they can't be scheduled locally (good). GTEx seed fits request 48 GB and *can* run, so dry-run first.
 - **Environment state (2026-11-25).**
   - Conda is miniforge3 at `/home/miltondp/software/miniforge3`. `setup.sh` uses whatever conda is on PATH.
-  - `clamp-analyses` and `phenoplier-cli-neo` exist; `snakemake` and `gpu-kmeans` are missing.
+  - As of 2026-11-26 all three repo envs are built from their locks and `scripts/check_setup.py` passes every check. `clamp-analyses` was rebuilt from scratch (old env had CLAMP `818e13b`, no pip deps or comparison packages), then had setup.sh's pip, kernel, `install_analysis_packages.R` and `install_clamp.R` steps run (CLAMP now at the pinned `748559a`). `phenoplier-cli-neo` is untouched.
+  - The user-level `ir-clamp` kernel (`~/.local/share/jupyter/kernels/ir-clamp`) points into the `clamp-analyses` prefix, so it now runs the rebuilt env.
+  - Note: `conda create --file <explicit lock> --download-only` ignores `--download-only` and installs the env anyway.
   - Don't rerun `setup.sh`: it would reinstall pip, R packages and CLAMP into the existing `clamp-analyses`.
   - Hardware: 32 cores, 125 GB RAM, RTX 4090 with 24 GB.
 - **Local data and outputs.**
@@ -203,7 +224,7 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
    ```bash
    ln -s /home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4 data/clamp_archs4
    ```
-3. Rsync from pivlab01 with `rsync -a`, which keeps mtimes. The source repo is `/home/marc/Documents/pivlab/clamp-analyses/`; copy into the same relative paths:
+3. **Done differently (2026-11-26):** `rsync -a --exclude B.csv pivlab01:/home/marc/Documents/pivlab/clamp-analyses/output/98_final_models/consensus_models/archs4/ data/legacy_archs4/consensus_6reps/` (231 MB). The list below was the original plan; none of those paths exist on pivlab01:
    - `output/03_model_biology/02_archs4/06_technical_noise/`, including `gene_properties.csv`, `lv_gene_properties_canonical.csv`, `lv_sample_metadata_canonical.csv`, `lv_technical_classification.csv`, and `seeds/seed*/lv_{gene_properties,sample_metadata}_canonical.csv`.
    - `output/03_model_biology/02_archs4/04_crispercas_ge4r015med/00_mgm/`: `Z_all.npz`, `noise/all_flags.csv`, `cluster_summary.csv`, `cluster_members.csv`, `all_lv_clusters.csv`, `metaZ.csv`.
    - If they still exist, the old 6-rep outputs: `output/03_model_biology/02_archs4/04_crispercas/00_mgm/` and/or `output/98_final_models/consensus_models/archs4/`. They hold the true member lists for Z_6reps.
@@ -266,9 +287,8 @@ What to reuse:
 
 Only what is genuinely new goes here. The rules derive the rest:
 - model order: `A4_METALV_MODELS`
-- noise dirs: `con_noise_dir("archs4", m)`
-- gene properties: `{A4_METALV_TN}/gene_properties.csv`
-- legacy Z cache: `{A4_METALV}/Z_all.npz`
+- noise flags: `consensus_eval.compendia.archs4.legacy_flags` (legacy file; `con_noise_dir` isn't available locally)
+- gene properties: `consensus_eval.compendia.archs4.gene_properties` (legacy file; used only for leakage)
 - top genes: `crispercas.top_n`; ORA top % and databases: `archs4.ora.top_pct` and `A4_METALV_ORA`.
 
 This keeps the plan from adding a third hand-synced copy of the seeds and paths.
@@ -281,6 +301,11 @@ consensus_eval:
     archs4:
       rds: data/clamp_archs4/CLAMPfull_canonical_seed{seed}.rds
       md5: data/clamp_archs4/MD5SUM.txt
+      legacy_flags: data/legacy_archs4/consensus_6reps/noise_flags.csv
+      legacy_members_6reps: data/legacy_archs4/consensus_6reps/mgm_mapping.csv
+      legacy_members_4reps: data/legacy_archs4/consensus_4reps/mgm_mapping.csv
+      gene_properties: data/legacy_archs4/noise_inputs/gene_properties.csv
+      canonical_s123: data/legacy_archs4/canonical_S123   # export check
   reproduce:   # frozen legacy sets: absolute min_models, checked against the external Z
     cl_c050_m4_r015: {linkage: complete, min_cos: 0.5, min_models: 4, noise_r2: 0.15,
                       external: data/clamp_archs4/consensus/Z_4reps.csv}
@@ -315,8 +340,8 @@ Set names come from the grid values, for example `hier_complete_c050_f04_r015_me
 ```
 cev_export_run (R)            ancient(rds) -> runs/{model}/Z.csv, summary.csv, manifest.json
 cev_zcache                    runs/*/Z.csv -> Z_all.npz            (cluster_metalv.py cache, A4_METALV_MODELS order)
-cev_zcache_check              Z_all.npz vs ancient(legacy_zcache) -> checks/zcache.ok
-cev_flags                     ancient(con_noise_files) -> noise/flags_r{r2}.csv  (cluster_metalv.py flags)
+cev_zcache_check              Z_all.npz keys vs ancient(legacy noise_flags.csv) -> checks/zcache.ok
+cev_flags                     ancient(legacy noise_flags.csv) -> noise/flags_r{r2}.csv  (re-threshold technical_joint)
 cev_linkage                   Z_all + flags -> linkage/r{r2}/{linkage}/{subset}.npy  (one dendrogram, shared by all cuts)
 cev_hier_set                  linkage + Z_all -> sets/{set}/{subset}/{Z.npy, lvs.csv, members.csv, meta.json}
 cev_reproduction              reproduce sets vs ancient(external Z) -> report/reproduction.csv
