@@ -34,7 +34,7 @@ Dry-run before any real run: missing upstream outputs can trigger days-long fits
 - `snakemake`: the orchestrator.
 - PhenoPLIER rules use `envs/phenoplier-cli-neo.yaml`, which Snakemake builds itself (see `scripts/phenoplier/README.md`).
 
-CLAMP is pinned in `scripts/install_clamp.R`, and the comparison-method R packages are pinned in `scripts/install_analysis_packages.R`. Both accept `--check` (run in `clamp-analyses`). Don't install or upgrade them any other way; change the pin in the script.
+CLAMP is pinned in `scripts/install_clamp.R`, and the comparison-method R packages are pinned in `scripts/install_analysis_packages.R`. Both accept `--check` (run in `clamp-analyses`); `check_setup.py` runs both. Don't install or upgrade them any other way; change the pin in the script.
 
 ## Code layout and data flow
 
