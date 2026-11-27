@@ -41,6 +41,10 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
   - Write a headline table.
   - Details are in Implementation, "Step 2.2b".
 - [x] 2.2c Hierarchical clustering on top-gene overlap (`topj_*` sets): distance = 1 − Jaccard of each LV's top-185 positive genes, instead of cosine on raw loadings. Same grid machinery and the same evaluation. Grid `min_jac` [0.05, 0.1, 0.15, 0.2, 0.3] × both linkages × `min_frac` [0.3–0.6] (40 sets). Also added `recall_multi_c0.9` to the headline. Results are in the Log and Key facts.
+- [ ] 2.2d **(do first, before 2.4)** Stop code edits from invalidating results. Today `script=CEV_SCRIPT` / `lib=CEV_LIB` are plain inputs of every `cev_*` rule, so with `rerun-triggers: mtime` any edit to `run.py` or `cev.py` reruns the whole area (166 jobs after the 2026-11-27 /simplify; it was cleared with `--touch`). 2.4 will edit both files and add about 2k jobs, so this matters more from here on.
+  - Fix: wrap those inputs in `ancient()`. The repo already does this (`archs4_stability.smk:47`, `base_script=ancient(...)`). Leave `CEV_METALV_SCRIPT` and `export_run.R` alone: their outputs are frozen reproductions, and they change rarely.
+  - Cost: a real logic change no longer reruns on its own. Rerun deliberately with `--forcerun <rule>`; downstream jobs follow because their inputs become newer. This matches the repo policy (CLAUDE.md, "Profiles use `rerun-triggers: mtime` on purpose").
+  - Check: after the edit, `touch scripts/consensus_eval/{run,cev}.py`, and the dry run must say "Nothing to be done". `--forcerun cev_evaluate` must list only `cev_evaluate` and the jobs downstream of it, with no linkage or set builds.
 - [ ] 2.4 **(next; runs before 2.3)** Robustness: split-half and LORO for the hierarchical sets (both `hier_*` and `topj_*`), plus both nulls. Why first, and what to settle before running: Implementation, "Step 2.4". Numbering is kept, so older references to "2.4" still mean split-half.
 - [ ] 2.3 Biological metrics: ORA, member pathway coherence, technical leakage. Run it on the candidates that 2.4 leaves, not the whole grid.
 - [ ] 2.5 Semi-synthetic benchmark.
