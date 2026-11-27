@@ -178,7 +178,7 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
       | Z_4reps | 1,058 | 0.36 (0.30) | 0.49 (0.67) | 0.89 |
       | Z_6reps | 618 | 0.50 (0.49) | 0.62 (0.79) | 0.84 |
 
-  - Decisions (user, 2026-11-27): the 2.3 shortlist is in Status. **Phase 5 (GTEx) is deferred:** 5-vs-5 ranks methods with gaps of about 10 SD, so it is needed only later, as a generalization check. Keep the 133 GB of subset sets until Phase 3 is done.
+  - Decisions (user, 2026-11-27): the 2.3 shortlist is in Status. **Phase 5 (GTEx) is deferred:** 5-vs-5 ranks methods with gaps of about 10 SD, so it is needed only later, as a generalization check. Keep the subset sets (86 GB after /simplify) until Phase 3 is done.
 ---
 
 ## Context
@@ -638,7 +638,7 @@ Split-half and LORO procedure:
   - One cosine-distance-plus-linkage build takes about 12 s at n = 15k (8 s distance, 3 s linkage, measured alone), which is why linkages are cached per (r2, dist, linkage, subset). With 5 linkages running at once (2.2c run) cosine took about 67 s and top-gene Jaccard 30 s (average) / 44 s (complete), including `top_genes`; the jac linkage stays within the 16 GB linkage request.
   - k-means on 18k dimensions takes about 1 s per iteration at k = 3000 on CPU, so use cuML on the GPU; PCA-256 is about 70× cheaper.
   - AMI with thousands of clusters is slow, so use ARI as the main criterion.
-  - Split-half / LORO (2.4): 155 subset linkages + 155 batched subset builds + 73 compares took about 18 min locally (4.8 GB peak). The subset sets take 133 GB, because halves keep clusters at 2–3 of 5 runs. Only the compare outputs are needed downstream, so the subset `Z.npy` files can be deleted (Snakemake would rebuild them if asked).
+  - Split-half / LORO (2.4): 155 subset linkages + 155 batched subset builds + 73 compares took about 18 min locally (4.8 GB peak). The subset sets take 86 GB (133 GB before the /simplify pass: in halves, f03/f04 and f05/f06 resolve to the same min_models, so the twin set now symlinks the first one's `Z.npy`), because halves keep clusters at 2–3 of 5 runs. Only the compare outputs are needed downstream, so the subset `Z.npy` files can be deleted (Snakemake would rebuild them if asked).
 - **Rescaling.** `mean_l2`, `medoid` and `rank1` change the loading scale. ORA uses ranks only, but projection uses L2 from the reference, so rescale to the median member norm.
 - **Size.** Set sizes differ (618 vs 1,058 vs the ensemble sets), and ORA % and coverage depend on size. Report size-matched results: top-N by n_models, plus random subsets (via `run_ora.R --lv-subset` / lookups into the shared ORA results).
 - **GTEx notebooks.** Decide before Phase 5 whether GTEx gets sibling notebooks under `nbs/03_model_biology/01_gtex/` or executed-notebook names that include `{compendium}`.
