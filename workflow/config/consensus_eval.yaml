@@ -3,6 +3,7 @@
 # archs4.yaml / consensus.yaml; only what is new lives here.
 consensus_eval:
   root: output/03_model_biology/02_archs4/07_consensus_eval   # {root}/{compendium}/...
+  notebooks: nbs/03_model_biology/02_archs4/06_consensus_eval
   compendia:
     archs4:
       rds: data/clamp_archs4/CLAMPfull_canonical_seed{seed}.rds

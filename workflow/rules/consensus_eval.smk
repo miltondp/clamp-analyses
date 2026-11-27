@@ -10,6 +10,7 @@ CEV_RES = CEV_CFG["resources"]
 CEV_A4_CFG = CEV_CFG["compendia"]["archs4"]
 CEV_A4 = f"{CEV_CFG['root']}/archs4"
 CEV_A4_RUNS = f"{CEV_A4}/runs"
+CEV_NB = os.path.join(REPO_ROOT, CEV_CFG["notebooks"])
 CEV_A4_REF = con_ref("archs4")
 CEV_A4_REF_DIR = CEV_A4_CFG["reference_dir"].format(model=CEV_A4_REF)
 CEV_REPRO = CEV_CFG["reproduce"]
@@ -124,6 +125,7 @@ rule cev_reproduce_set:
         summary=f"{CEV_A4}/reproduce/{{set}}/cluster_summary.csv",
         members=f"{CEV_A4}/reproduce/{{set}}/cluster_members.csv",
         all_lvs=f"{CEV_A4}/reproduce/{{set}}/all_lv_clusters.csv",
+        counts=f"{CEV_A4}/reproduce/{{set}}/cluster_model_count_distribution.csv",
     log:
         f"{CEV_A4}/reproduce/{{set}}/cluster.log",
     params:
@@ -165,6 +167,27 @@ rule cev_reproduction:
         "--out {output} > {log} 2>&1"
 
 
+rule cev_report_00:
+    """Temporary internal check, removed in PLAN 4.3 (legacy cache/noise dirs were never found)."""
+    input:
+        reports=expand(rules.cev_reproduction.output, set=CEV_REPRO),
+        counts=expand(rules.cev_reproduce_set.output.counts, set=CEV_REPRO),
+        notebook=f"{CEV_NB}/00_reproduction.ipynb",
+    output:
+        complete=touch(f"{CEV_A4}/report/00_reproduction.complete"),
+    log:
+        notebook=f"{CEV_NB}/00_reproduction.executed.ipynb",
+    params:
+        sets=list(CEV_REPRO),
+        min_models=[CEV_REPRO[s]["min_models"] for s in CEV_REPRO],
+    resources:
+        mem_mb=4000,
+        runtime=30,
+    conda: "clamp-analyses"
+    notebook:
+        f"{CEV_NB}/00_reproduction.ipynb"
+
+
 # ============================================================
 # Aggregate
 # ============================================================
@@ -175,3 +198,4 @@ rule consensus_eval_archs4:
         rules.cev_export_check.output,
         rules.cev_zcache_check.output,
         expand(rules.cev_reproduction.output, set=CEV_REPRO),
+        rules.cev_report_00.output,   # temporary, removed in PLAN 4.3
