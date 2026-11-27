@@ -16,7 +16,17 @@ perturbseq:
   regulons: {q: 0.05, min_size: 10, max_size: 1000, jaccard: 0.5}
   response: {min_de: 20}
   # Same ORA settings as the ARCHS4 meta-LV ORA (archs4.yaml: archs4.ora).
-  ora: {top_pct: 0.01, pvalue_cutoff: 0.05, qvalue_cutoff: 0.2, fdr: 0.05}
+  ora:
+    top_pct: 0.01
+    pvalue_cutoff: 0.05
+    qvalue_cutoff: 0.2
+    fdr: 0.05
+    database: k562gw_regulons
+    database_label: K562 genome-wide CRISPRi regulons (Ota 2025)
+    # run_ora.R: one clusterProfiler::enricher call per LV (MOFA-FLEX has 662 LVs).
+    resources: {mem_mb: 8000, runtime: 120}
+    # ora_null.py: n_perm permutations x 2 tails, vectorized over LVs.
+    null_resources: {mem_mb: 8000, runtime: 60}
 
 # Optional: root of an already-extracted copy of the Ota et al. release (the folder that holds
 # data/Perturbseq/...). Verified files are symlinked instead of downloading the 7.7 GB ZIP.
