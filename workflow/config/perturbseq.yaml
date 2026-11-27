@@ -2,7 +2,6 @@ perturbseq:
   # Perturb-seq regulator->target benchmark of the OneK1K (PBMC_1k1k) LVs; see PLAN.md.
   # Source: Ota et al. 2025 reprocessing of the Replogle 2022 K562 genome-wide CRISPRi screen.
   inputs_manifest: workflow/config/perturbseq_inputs.json
-  data_root: data/perturbseq/ota2025
   output_root: output/03_model_biology/00_pseudobulk/07_perturbseq
   dataset: PBMC_1k1k
   models: [CLAMPfull, CLAMPbase, PLIER, PCA, NMF, ICA, flashier, MOFA_FLEX_PRIOR, GSS, CoGAPS]
