@@ -11,6 +11,7 @@ configfile: "workflow/config/recount2.yaml"
 configfile: "workflow/config/projections.yaml"
 configfile: "workflow/config/phenoplier.yaml"
 configfile: "workflow/config/consensus.yaml"
+configfile: "workflow/config/consensus_eval.yaml"
 
 REPO_ROOT = os.path.dirname(workflow.basedir)
 # CuPy otherwise writes to ~/.cupy, which can exceed server home quotas.
@@ -42,6 +43,7 @@ include: "rules/archs4_technical_noise.smk"
 include: "rules/archs4_drug_diseases.smk"
 include: "rules/archs4_crispercas.smk"
 include: "rules/consensus.smk"
+include: "rules/consensus_eval.smk"
 include: "rules/projections.smk"
 include: "rules/panels.smk"
 
@@ -102,3 +104,8 @@ rule all:
         rules.benchmark.input,
         rules.archs4_biology.input,
         rules.publish_figures.output,
+
+# Consensus-LV evaluation (PLAN.md). Not part of `all`: it depends on external .rds fits.
+rule consensus_evaluation:
+    input:
+        rules.consensus_eval_archs4.input,

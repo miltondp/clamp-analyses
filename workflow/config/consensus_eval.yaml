@@ -1,0 +1,13 @@
+# Evaluation of consensus LVs (metaLVs) and ensemble clustering. See PLAN.md and
+# scripts/consensus_eval/. Model order, top genes and ORA settings come from
+# archs4.yaml / consensus.yaml; only what is new lives here.
+consensus_eval:
+  root: output/03_model_biology/02_archs4/07_consensus_eval   # {root}/{compendium}/...
+  notebooks: nbs/03_model_biology/02_archs4/06_consensus_eval
+  compendia:
+    archs4:
+      rds: data/clamp_archs4/CLAMPfull_canonical_seed{seed}.rds
+      md5: data/clamp_archs4/MD5SUM.txt
+      canonical_s123: data/legacy_archs4/canonical_S123   # reference for the export byte check
+  resources:
+    export: {mem_mb: 16000, runtime: 30}   # readRDS peaks at ~12 GB
