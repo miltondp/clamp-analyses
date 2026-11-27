@@ -84,8 +84,8 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
   overlap, and add HGNC alias rescue only if fewer than about 85% of genes match.
 - **Regulons:**
   - BH-adjust within each perturbation column; targets have q < 0.05.
-  - Drop the perturbed gene itself, then keep regulons of size 10–500 after intersecting with the
-    universe.
+  - Drop the perturbed gene itself, then keep regulons of size 10–1000 after intersecting with the
+    universe. The cap was raised from 500 in Step 4 so that GATA1 (550) and MYB (735) stay in.
   - Collapse near-duplicates (Jaccard > 0.5, which catches the ribosomal and essential knockdowns)
     into representatives, and keep the cluster map.
 - **Metric 1, regulon ORA:** write the regulons as a GMT and run `run_ora.R` unchanged.
@@ -135,12 +135,13 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
   - Rule `ota2025_k562gw` lives in `workflow/rules/perturbseq.smk`. Parameters for Steps 4–7 are
     in `workflow/config/perturbseq.yaml`. The Snakefile includes both.
   - For development, run with `--config perturbseq_source_root=<lv-qtl-exploration>/data/ota2025/extracted`.
-- [ ] **Step 4: regulons.**
+- [x] **Step 4: regulons.**
   - Write `scripts/perturbseq/build_regulons.py` (port the BH and loader logic from `nf1.py`) plus
     unit tests in `scripts/perturbseq/tests/`, using a tiny synthetic matrix.
   - Add rule `perturbseq_regulons`, writing to
-    `output/03_model_biology/00_pseudobulk/07_perturbseq/regulons/` (GMT, parquet logFC subset,
-    cluster map, ID-overlap report).
+    `output/03_model_biology/00_pseudobulk/07_perturbseq/regulons/{main,donor_bulk}/` (GMT,
+    `logfc.tsv.gz` subset, cluster map, sizes, `report.json`). It is tsv.gz rather than parquet
+    because `clamp-analyses` has no pyarrow.
   - Review the regulon size distribution and the ID overlap with the user.
 - [ ] **Step 5: regulon ORA.**
   - Write `scripts/perturbseq/signed_z.py` and add rules `perturbseq_signed_z` and
@@ -211,3 +212,36 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     `--check` passes, and a re-run dry-run reports nothing to do.
   - `reference_inputs` dry-runs as before, with no Ota job. All 41 tests pass.
   - Next: Step 4.
+- 2026-11-26: **Step 4 done.**
+  - `scripts/perturbseq/build_regulons.py` (10 unit tests in `scripts/perturbseq/tests/`) and rule
+    `perturbseq_regulons`, with wildcard `{strategy}` ∈ {main, donor_bulk}. The strategies are in
+    `perturbseq.yaml`. Each job takes about 1 min.
+  - BH runs over all 8,248 measured targets in each column, before the universe restriction. There
+    are no NaN p-values. 8 targets are unmapped and 2 rows share a symbol; those are dropped.
+  - Universe, with no alias rescue needed:
+    - main: 7,486 genes (90.9% of mapped targets, 55.5% of the 13,488 Z genes). All 10 Z files have
+      the same genes; the rule checks this.
+    - donor_bulk: 7,763 genes (94.2% of mapped targets).
+  - Knockdown efficacy: 7,573 perturbations measure their own transcript, and 75.9% of those have it
+    DE. The median own log2FC is −0.16.
+  - DE counts across the whole screen are very skewed: median 2, 90th percentile 208, 99th
+    percentile 1,297, max 2,949 (MED19).
+  - **The size cap went from 500 to 1000 (agreed with the user).** With 500, GATA1 (550 in the
+    universe), MYB (735) and 413 other knockdowns were dropped.
+  - main, with the 1000 cap:
+    - 2,699 regulons in [10, 1000]. 3,575 are below 10 and 147 are above 1000 (MED, ribosome and
+      translation knockdowns).
+    - Regulon size: median 82, IQR 27–242.
+  - The Jaccard > 0.5 collapse barely does anything: 2,699 → 2,685 representatives, 7 clusters with
+    more than one member. The largest are NOL7 (5) and TSR1 (4), both ribosome biogenesis. Big
+    essential knockdowns are not near-duplicates of each other.
+  - donor_bulk: 2,787 regulons → 2,767 representatives.
+  - Sanity regulators, main:
+    - Kept: GATA1 (550), TAL1 (212), LMO2 (295), LDB1 (448), ZFPM1 (18), SPI1 (35), MYC (50),
+      RUNX1 (12).
+    - Too small: KLF1 (6), NFE2 (0), TP53 (1).
+  - Response matrix for Step 6: 2,353 perturbations with ≥ 20 DE genes in the universe (2,417 for
+    donor bulk).
+  - **Note for Step 6:** `logfc.tsv.gz` keeps each perturbation's own row. Decide there whether to
+    mask it before computing correlations.
+  - Next: Step 5.
