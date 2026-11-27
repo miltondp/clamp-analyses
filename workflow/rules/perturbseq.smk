@@ -25,13 +25,18 @@ rule ota2025_k562gw:
         "python scripts/inputs/perturbseq_inputs.py --manifest {params.manifest:q} {params.source} > {log:q} 2>&1"
 
 
-PS_OUT = PS_CFG["output_root"]
 PS_STRATEGIES = PS_CFG["strategies"]
+# Each strategy reads the Z.csv files written by its fitting area (pseudobulk.smk, donor_bulk.smk).
+PS_Z_ROOTS = {
+    "main": config["paths"]["production"],
+    "donor_bulk": config["donor_bulk"]["paths"]["production"],
+}
+PS_REGULONS = os.path.join(PS_CFG["output_root"], "regulons", "{strategy}")
 
 
 def ps_z_files(wildcards):
-    strategy = PS_STRATEGIES[wildcards.strategy]
-    return [os.path.join(strategy["z_dir"], model, "Z.csv") for model in strategy["models"]]
+    root = os.path.join(PS_Z_ROOTS[wildcards.strategy], PS_CFG["dataset"], "models")
+    return [os.path.join(root, model, "Z.csv") for model in PS_STRATEGIES[wildcards.strategy]["models"]]
 
 
 rule perturbseq_regulons:
@@ -41,13 +46,13 @@ rule perturbseq_regulons:
         ids=rules.ota2025_k562gw.output.ids,
         z=ps_z_files,
     output:
-        gmt=os.path.join(PS_OUT, "regulons", "{strategy}", "regulons.gmt"),
-        clusters=os.path.join(PS_OUT, "regulons", "{strategy}", "clusters.csv"),
-        sizes=os.path.join(PS_OUT, "regulons", "{strategy}", "sizes.csv"),
-        logfc=os.path.join(PS_OUT, "regulons", "{strategy}", "logfc.tsv.gz"),
-        report=os.path.join(PS_OUT, "regulons", "{strategy}", "report.json"),
+        gmt=os.path.join(PS_REGULONS, "regulons.gmt"),
+        clusters=os.path.join(PS_REGULONS, "clusters.csv"),
+        sizes=os.path.join(PS_REGULONS, "sizes.csv"),
+        logfc=os.path.join(PS_REGULONS, "logfc.tsv.gz"),
+        report=os.path.join(PS_REGULONS, "report.json"),
     log:
-        os.path.join(PS_OUT, "regulons", "{strategy}", "build_regulons.log"),
+        os.path.join(PS_REGULONS, "build_regulons.log"),
     wildcard_constraints:
         strategy="|".join(PS_STRATEGIES),
     params:

@@ -4,14 +4,12 @@ perturbseq:
   inputs_manifest: workflow/config/perturbseq_inputs.json
   output_root: output/03_model_biology/00_pseudobulk/07_perturbseq
   dataset: PBMC_1k1k
-  models: [CLAMPfull, CLAMPbase, PLIER, PCA, NMF, ICA, flashier, MOFA_FLEX_PRIOR, GSS, CoGAPS]
   # Each pseudobulk strategy has its own gene universe, so regulons are built per strategy.
+  # Z.csv roots come from paths.production (main) and donor_bulk.paths.production (perturbseq.smk).
   strategies:
     main:
-      z_dir: output/01_model_building/00_pseudobulk/PBMC_1k1k/models
       models: [CLAMPfull, CLAMPbase, PLIER, PCA, NMF, ICA, flashier, MOFA_FLEX_PRIOR, GSS, CoGAPS]
     donor_bulk:
-      z_dir: output/01_model_building/00_pseudobulk/donor_bulk/PBMC_1k1k/models
       models: [CLAMPfull]
   seed: 123
   n_perm: 100

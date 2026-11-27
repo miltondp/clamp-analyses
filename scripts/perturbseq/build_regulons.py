@@ -61,7 +61,7 @@ def target_symbols(ensembl, id_map):
     """Symbol per Ensembl row, NaN where unmapped or where the symbol is shared by several rows."""
     symbols = id_map.reindex(ensembl)
     ambiguous = symbols.duplicated(keep=False) & symbols.notna()
-    return pd.Series(np.where(ambiguous, np.nan, symbols.values), index=ensembl, dtype=object), {
+    return symbols.mask(ambiguous), {
         "unmapped": int(symbols.isna().sum()),
         "ambiguous_rows": int(ambiguous.sum()),
     }
@@ -69,23 +69,36 @@ def target_symbols(ensembl, id_map):
 
 def read_universe(z_paths):
     """The gene set every Z file shares; fails if the files disagree."""
-    gene_sets = []
-    for path in z_paths:
-        genes = pd.read_csv(path, usecols=[0]).iloc[:, 0].astype(str)
-        gene_sets.append(set(genes))
-    first = gene_sets[0]
-    for path, genes in zip(z_paths[1:], gene_sets[1:]):
-        if genes != first:
+    def genes(path):
+        return set(pd.read_csv(path, usecols=[0]).iloc[:, 0].astype(str))
+
+    first = genes(z_paths[0])
+    for path in z_paths[1:]:
+        if genes(path) != first:
             raise ValueError(f"{path} has a different gene set from {z_paths[0]}")
     return first
+
+
+def self_cells(frame):
+    """(row, column) positions of each perturbation's own target, for those the screen measured."""
+    rows = frame.index.get_indexer(frame.columns)
+    cols = np.flatnonzero(rows >= 0)
+    return rows[cols], cols
+
+
+def self_values(frame):
+    """Each perturbation's value at its own target row; NaN where that target was not measured."""
+    matrix = frame.to_numpy()
+    values = np.full(frame.shape[1], np.nan, dtype=matrix.dtype)
+    rows, cols = self_cells(frame)
+    values[cols] = matrix[rows, cols]
+    return values
 
 
 def drop_self(de):
     """Clear each perturbation's own target row (the knockdown itself is not a regulon member)."""
     values = de.to_numpy(copy=True)
-    rows = de.index.get_indexer(de.columns)
-    cols = np.flatnonzero(rows >= 0)
-    values[rows[cols], cols] = False
+    values[self_cells(de)] = False
     return pd.DataFrame(values, index=de.index, columns=de.columns)
 
 
@@ -102,30 +115,32 @@ def collapse(sets, threshold):
     inter = m.T @ m
     jaccard = inter / (size[:, None] + size[None, :] - inter)
     order = sorted(range(len(names)), key=lambda i: (-size[i], names[i]))
-    reps, rep_of, jac_of = [], {}, {}
+    reps, rep_of, jac_of = [], [], []
     for i in order:
         if reps:
             scores = jaccard[i, reps]
             best = int(np.argmax(scores))
             if scores[best] > threshold:
-                rep_of[i], jac_of[i] = reps[best], float(scores[best])
+                rep_of.append(names[reps[best]])
+                jac_of.append(round(float(scores[best]), 4))
                 continue
         reps.append(i)
-        rep_of[i], jac_of[i] = i, 1.0
+        rep_of.append(names[i])
+        jac_of.append(1.0)
     return pd.DataFrame({
         "perturbation": names[order],
-        "representative": [names[rep_of[i]] for i in order],
+        "representative": rep_of,
         "size": size[order].astype(int),
-        "jaccard_to_rep": [round(jac_of[i], 4) for i in order],
+        "jaccard_to_rep": jac_of,
     })
 
 
-def write_gmt(path, sets, clusters):
-    cluster_size = clusters.groupby("representative").size()
+def write_gmt(path, sets, cluster_size):
+    """One line per representative, in `cluster_size` order; the description holds its cluster size."""
     with open(path, "w") as handle:
-        for rep in clusters.loc[clusters.perturbation == clusters.representative, "perturbation"]:
+        for rep, n in cluster_size.items():
             genes = sets.index[sets[rep].values]
-            handle.write("\t".join([rep, f"cluster_size={cluster_size[rep]}", *genes]) + "\n")
+            handle.write("\t".join([rep, f"cluster_size={n}", *genes]) + "\n")
 
 
 def quantiles(values):
@@ -162,37 +177,39 @@ def build(args):
     log(f"Universe: {len(universe)} genes ({len(universe) / len(measured):.1%} of mapped screen targets)")
 
     de_all = drop_self(q < args.q)
-    own = q.index.get_indexer(q.columns)
-    own_q = np.where(own >= 0, q.values[np.maximum(own, 0), np.arange(q.shape[1])], np.nan)
-    own_logfc = np.where(own >= 0, logfc.values[np.maximum(own, 0), np.arange(q.shape[1])], np.nan)
     de = de_all.loc[universe]
 
     sizes = pd.DataFrame({
         "perturbation": q.columns,
         "n_de_screen": de_all.sum().values,
         "n_de_universe": de.sum().values,
-        "self_measured": own >= 0,
-        "self_de": own_q < args.q,
-        "self_logfc": own_logfc,
+        "self_measured": q.columns.isin(q.index),
+        "self_de": self_values(q) < args.q,
+        "self_logfc": self_values(logfc),
     })
     in_range = sizes.n_de_universe.between(args.min_size, args.max_size)
-    sizes["regulon"] = in_range.values
+    sizes["regulon"] = in_range
     sizes.to_csv(out / "sizes.csv", index=False)
 
     regulons = de.loc[:, in_range.values]
     clusters = collapse(regulons, args.jaccard)
     clusters.to_csv(out / "clusters.csv", index=False)
-    write_gmt(out / "regulons.gmt", regulons, clusters)
-    n_reps = int((clusters.perturbation == clusters.representative).sum())
+    # Representatives in clusters.csv order (largest regulon first).
+    reps = clusters.perturbation[clusters.perturbation == clusters.representative]
+    cluster_size = clusters.groupby("representative").size()[reps]
+    write_gmt(out / "regulons.gmt", regulons, cluster_size)
+    n_reps = len(cluster_size)
     log(f"Regulons: {int(in_range.sum())} in [{args.min_size}, {args.max_size}] -> {n_reps} representatives")
 
     response = sizes.perturbation[sizes.n_de_universe >= args.min_de]
-    logfc.loc[universe, response.values].to_csv(out / "logfc.tsv.gz", sep="\t", float_format="%.5g")
+    # gzip level 1: level 9 (the default) took ~40 s of a ~60 s job for ~20% less disk.
+    logfc.loc[universe, response.values].to_csv(
+        out / "logfc.tsv.gz", sep="\t", float_format="%.5g", compression={"method": "gzip", "compresslevel": 1})
     log(f"Response matrix: {len(universe)} genes x {len(response)} perturbations")
 
-    cluster_size = clusters.groupby("representative").size().sort_values(ascending=False)
+    largest = cluster_size[cluster_size > 1].sort_values(ascending=False, kind="stable").head(15)
     report = {
-        "params": {k: v for k, v in vars(args).items() if k not in {"out_dir"}},
+        "params": {k: v for k, v in vars(args).items() if k != "out_dir"},
         "screen": {
             "targets": int(pvalues.shape[0]),
             "perturbations": int(pvalues.shape[1]),
@@ -217,12 +234,11 @@ def build(args):
             "representatives": n_reps,
             "size_quantiles": quantiles(sizes.n_de_universe[in_range]),
             "multi_member_clusters": int((cluster_size > 1).sum()),
-            "largest_clusters": {str(k): int(v) for k, v in cluster_size[cluster_size > 1].head(15).items()},
+            "largest_clusters": {str(k): int(v) for k, v in largest.items()},
         },
-        "response": {"min_de": args.min_de, "perturbations": int(len(response))},
+        "response": {"perturbations": int(len(response))},
     }
     (out / "report.json").write_text(json.dumps(report, indent=2) + "\n")
-    return report
 
 
 def parse_args(argv=None):
@@ -231,11 +247,12 @@ def parse_args(argv=None):
     parser.add_argument("--pvalues", required=True)
     parser.add_argument("--id-map", required=True, help="Ensembl<TAB>symbol, no header")
     parser.add_argument("--z", required=True, nargs="+", help="Z.csv files defining the gene universe")
-    parser.add_argument("--q", type=float, default=0.05)
-    parser.add_argument("--min-size", type=int, default=10)
-    parser.add_argument("--max-size", type=int, default=500)
-    parser.add_argument("--jaccard", type=float, default=0.5)
-    parser.add_argument("--min-de", type=int, default=20)
+    # No defaults: the values live in workflow/config/perturbseq.yaml.
+    parser.add_argument("--q", type=float, required=True)
+    parser.add_argument("--min-size", type=int, required=True)
+    parser.add_argument("--max-size", type=int, required=True)
+    parser.add_argument("--jaccard", type=float, required=True)
+    parser.add_argument("--min-de", type=int, required=True)
     parser.add_argument("--out-dir", required=True)
     return parser.parse_args(argv)
 

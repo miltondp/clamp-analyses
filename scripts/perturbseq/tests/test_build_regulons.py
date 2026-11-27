@@ -117,7 +117,7 @@ class BuildTests(unittest.TestCase):
             "--logfc", str(self.root / "lfc.tsv"), "--pvalues", str(self.root / "p.tsv"),
             "--id-map", str(self.root / "ids.tsv"),
             "--z", str(self.root / "z1.csv"), str(self.root / "z2.csv"),
-            "--min-size", "10", "--max-size", "500", "--jaccard", "0.5", "--min-de", "15",
+            "--q", "0.05", "--min-size", "10", "--max-size", "500", "--jaccard", "0.5", "--min-de", "15",
             "--out-dir", str(out), *extra,
         ])
         return out
