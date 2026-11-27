@@ -8,6 +8,10 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 2. Read **Key facts** before touching rules, configs or `cluster_metalv.py`.
 3. Run `snakemake --profile workflow/profiles/local --dry-run <target>` before any real run. The dry run must list only `cev_*` jobs: no CLAMP fits, no `technical_noise_*`, no `crispercas_*`.
 4. When a step is done, tick its box and add a dated line to the **Log**.
+5. Working style:
+   - Present a plan for the step before implementing it. Closely tied steps can be grouped, with a checkpoint between them.
+   - After a run, report the results and review them with the user. Before relying on a metric, check that it is informative (correlations across sets, nulls).
+   - Commit only when the user asks.
 
 ## Status
 
