@@ -25,7 +25,7 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 - [x] 1.2 Check that the exported `Z_all.npz` has the same (model, LV) keys as the legacy `noise_flags.csv`, plus 18,423 genes with no NaNs (`cev_zcache_check`). There's no legacy `Z_all.npz` to compare against.
 - [x] 1.3 Check that `cl_c050_m4_r015` equals `Z_4reps.csv` exactly, and that its members equal `data/legacy_archs4/consensus_4reps/mgm_mapping.csv`.
 - [x] 1.4 Check that `cl_c050_m6_r025` equals `Z_6reps.csv`, and that its members equal `data/legacy_archs4/consensus_6reps/mgm_mapping.csv`. If they differ, the member lists show where.
-- [ ] 1.5 Notebook `00_reproduction`.
+- [ ] 1.5 Notebook `00_reproduction`, kept short: an internal check, needed only because the legacy `Z_all.npz` and noise dirs were never found. Show the two `report/reproduction/*.csv` tables and one plot of clusters by number of runs spanned (`reproduce/{set}/cluster_model_count_distribution.csv`). Nothing in Phase 2 depends on it. It gets removed in 4.3.
 
 ### Phase 2: Evaluation framework, applied to the existing sets
 - [ ] 2.1 `cev.py` metrics and unit tests (toy data).
@@ -46,6 +46,7 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 ### Phase 4: Comparison and recommendation
 - [ ] 4.1 Notebook `04_summary`: trade-off curves, size-matched comparisons, recommended set.
 - [ ] 4.2 (Later) Connect the chosen set to the `consensus.smk` downstream steps (projection, LINCS, GLS).
+- [ ] 4.3 Cleanup once everything else is done: remove the `00_reproduction` notebook (and its `.executed.ipynb`) and its `cev_report_00` rule, and drop it from the aggregate. Before that, move any number later notebooks cite (flag counts, set sizes) into `02_computational` or `04_summary`. Keep the `cev_reproduction` / `cev_zcache_check` rules: they are cheap, and they guard the inputs of every set.
 
 ### Phase 5: GTEx extension (if 5-vs-5 split-half on ARCHS4 is too noisy)
 - [ ] 5.1 Stage the GTEx inputs: TPM gct, FBM, canonical S124 and the existing 10 runs.
@@ -235,7 +236,7 @@ scripts/consensus_eval/
 workflow/config/consensus_eval.yaml
 workflow/rules/consensus_eval.smk
 nbs/03_model_biology/02_archs4/06_consensus_eval/
-  00_reproduction.ipynb  01_ensemble.ipynb  02_computational.ipynb  03_biological.ipynb  04_summary.ipynb
+  00_reproduction.ipynb (temporary, removed in 4.3)  01_ensemble.ipynb  02_computational.ipynb  03_biological.ipynb  04_summary.ipynb
 ```
 
 Edits to existing files:
