@@ -31,7 +31,7 @@ L1000 and CRISPR-screen analyses (`archs4_crispercas.smk`, `archs4_drug_diseases
 ### Perturb-seq source
 Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
 - **Release:** Ota et al., Nature 2025, doi:10.1038/s41586-025-09866-3. Zenodo record 17174974 v3,
-  file `m_ota_causal_geneRegulation_paper_v3.zip` (7.2 GB, md5
+  file `m_ota_causal_geneRegulation_paper_v3.zip` (7.7 GB, md5
   `148ecd79c5601783ae0db7726f0c356a`). Unzipped, it is about 13 GB under `extracted/`. A local
   data dictionary is in `data/ota2025/CLAUDE.md`.
 - **What it contains:** a reprocessing of the Replogle 2022 CRISPRi **cell-line** screens. K562 is
@@ -122,14 +122,19 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     instead checked with a scratch R script that reuses `score_per_ct()` from
     `scripts/pseudobulk/common.R`.
   - Done: every Z.csv exists and all 10 methods reproduce the recorded OneK1K mean r (see Log).
-- [ ] **Step 3: Perturb-seq input.**
-  - Compute the sha256 of the local zip and add an asset to `workflow/config/reference_inputs.json`.
-  - Add rule `ota2025_k562gw` in a new `workflow/rules/perturbseq.smk`. It extracts only the logFC,
-    P and gencode members into `data/perturbseq/ota2025/`.
-  - Also create `workflow/config/perturbseq.yaml` and add the include and config load to
-    `workflow/Snakefile`.
-  - For development, symlink the existing extracted files into `data/perturbseq/ota2025/` to avoid
-    re-downloading 7.2 GB.
+- [x] **Step 3: Perturb-seq input.**
+  - The asset went into a **new per-area manifest, `workflow/config/perturbseq_inputs.json`**,
+    not `reference_inputs.json`. That manifest's fetcher only handles small single files, and its
+    `reference_inputs` target lists every asset, so it would have pulled the 7.7 GB zip.
+  - Script `scripts/inputs/perturbseq_inputs.py`, tested in `tests/test_perturbseq_inputs.py`:
+    - Downloads the zip, checking md5 and bytes (it reuses `obtain_archive()`).
+    - Extracts only the manifest's members and verifies each one's sha256.
+    - `--source-root` symlinks an already-extracted copy after verifying it; `--check` only
+      verifies.
+    - Existing files are never replaced.
+  - Rule `ota2025_k562gw` lives in `workflow/rules/perturbseq.smk`. Parameters for Steps 4–7 are
+    in `workflow/config/perturbseq.yaml`. The Snakefile includes both.
+  - For development, run with `--config perturbseq_source_root=<lv-qtl-exploration>/data/ota2025/extracted`.
 - [ ] **Step 4: regulons.**
   - Write `scripts/perturbseq/build_regulons.py` (port the BH and loader logic from `nf1.py`) plus
     unit tests in `scripts/perturbseq/tests/`, using a tiny synthetic matrix.
@@ -195,3 +200,14 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
 
   - Every method is within 0.003 of its recorded value.
   - Next: Step 3.
+- 2026-11-26: **Step 3 done.**
+  - The local zip matches Zenodo: 7,730,808,463 B, md5 `148ecd79…`, licence CC-BY-4.0. Its
+    sha256 is `eff4ce5c…b739db`.
+  - Member sha256 values are recorded in `perturbseq_inputs.json`.
+  - I staged the inputs by linking the verified files from `lv-qtl-exploration` with
+    `--source-root`. The 7.7 GB download and extraction path was **not** run end-to-end; only the
+    synthetic-zip unit tests cover it.
+  - `data/perturbseq/ota2025/K562GW/limma_logFC_sum.txt` is 9,866 perturbations × 8,248 genes.
+    `--check` passes, and a re-run dry-run reports nothing to do.
+  - `reference_inputs` dry-runs as before, with no Ota job. All 41 tests pass.
+  - Next: Step 4.
