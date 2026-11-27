@@ -62,7 +62,7 @@ class OraTests(unittest.TestCase):
         ora = toy_ora()
         z = np.abs(loadings("ABC", "EFG"))
         self.assertEqual(ora.test(-z)["tested_lvs"], 0)
-        self.assertFalse(ora.hits(-z).any())
+        self.assertFalse(ora.test(-z)["hits"].any())
 
     def test_permutations_are_seeded(self):
         rng = np.random.default_rng(0)
@@ -76,7 +76,7 @@ class OraTests(unittest.TestCase):
 
     def test_summary_statistics(self):
         null = pd.DataFrame({"perm": [0, 1, 2, 3], **{s: [50.0, 10.0, 20.0, 60.0] for s in on.STATISTICS}})
-        summary = on.summarize(null, 3).set_index("statistic").loc["lv_pct_any"]
+        summary = on.summarize(null).set_index("statistic").loc["lv_pct_any"]
         self.assertEqual(summary.observed, 50.0)
         self.assertAlmostEqual(summary.null_mean, 30.0)
         self.assertAlmostEqual(summary.observed_minus_null, 20.0)
@@ -119,7 +119,7 @@ class MatchesRunOraTests(unittest.TestCase):
                     "--min-size", "10", "--max-size", "1000", "--pvalue-cutoff", "0.05",
                     "--qvalue-cutoff", "0.2", "--fdr", "0.05",
                 ], check=True, capture_output=True)
-            args = ["--z-pos", str(paths["pos"]), "--z-neg", str(paths["neg"]), "--gmt", str(gmt),
+            args = ["--z", str(paths["pos"]), "--gmt", str(gmt),
                     "--ora-pos", str(tmp / "ora_pos"), "--ora-neg", str(tmp / "ora_neg"),
                     "--strategy", "toy", "--model", "toy", "--top-pct", "0.05", "--min-size", "10",
                     "--max-size", "1000", "--fdr", "0.05", "--n-perm", "5", "--seed", "1"]

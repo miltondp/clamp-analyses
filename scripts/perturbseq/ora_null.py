@@ -33,24 +33,11 @@ from scipy import sparse
 from scipy.stats import hypergeom
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_regulons import bh_columns  # noqa: E402
+from build_regulons import bh_columns, log, read_gmt  # noqa: E402
+from signed_z import read_z  # noqa: E402
 
 TAILS = ("pos", "neg")
 STATISTICS = ("lv_pct_pos", "lv_pct_neg", "lv_pct_any", "regulon_pct_pos", "regulon_pct_any")
-
-
-def log(message):
-    print(message, file=sys.stderr, flush=True)
-
-
-def read_gmt(path):
-    """term -> genes, with run_ora.R::read_gmt's parsing (name, description, genes...)."""
-    terms = {}
-    for line in Path(path).read_text().splitlines():
-        record = line.split("\t")
-        if len(record) >= 3:
-            terms.setdefault(record[0], []).extend(record[2:])
-    return terms
 
 
 class Ora:
@@ -80,11 +67,18 @@ class Ora:
         self.annotated = np.asarray(self.membership.sum(axis=1)).ravel() > 0
         self.N = int(self.annotated.sum())
         self.M = np.asarray(self.membership.sum(axis=0)).ravel().astype(int)
-        # P(X >= k) for every (regulon size, n, k) a query can produce: one table, then lookups.
         self.sizes, self.size_idx = np.unique(self.M, return_inverse=True)
-        q = self.query_target
-        n, k = np.meshgrid(np.arange(q + 1), np.arange(q + 1), indexing="ij")
-        self.sf = hypergeom.sf(k[None] - 1, self.N, self.sizes[:, None, None], n[None])
+        self._sf = {}
+
+    def sf(self, n):
+        """P(X >= k) per (distinct regulon size, k = 0..query_target) for n annotated query genes.
+
+        Cached per n: n stays within a few genes of query_target, so only a few tables are built.
+        """
+        if n not in self._sf:
+            k = np.arange(self.query_target + 1)
+            self._sf[n] = hypergeom.sf(k - 1, self.N, self.sizes[:, None], n)
+        return self._sf[n]
 
     def query(self, values):
         """Sparse LVs x genes indicator of each LV's top positive loadings."""
@@ -96,23 +90,22 @@ class Ora:
             (np.ones(int(keep.sum()), np.int32), (lv[keep], order[keep])), shape=values.shape[::-1])
 
     def test(self, values):
-        """p and BH p.adjust (NaN where untested) for a genes x LVs loading matrix."""
+        """p, BH p.adjust (NaN where untested) and hits (p.adjust < fdr) for a genes x LVs matrix."""
         query = self.query(values)
         k = (query @ self.membership).toarray()
         n = np.asarray(query @ self.annotated.astype(np.int32)).ravel()
-        tested = k >= 1
         p = np.full(k.shape, np.nan)
-        lv, term = np.nonzero(tested)
-        p[lv, term] = self.sf[self.size_idx[term], n[lv], k[lv, term]]
+        lv, term = np.nonzero(k >= 1)
+        for n_value in np.unique(n[lv]):
+            at = n[lv] == n_value
+            p[lv[at], term[at]] = self.sf(n_value)[self.size_idx[term[at]], k[lv[at], term[at]]]
+        p_adjust = bh_columns(p.T).T
         return {
             "p": p,
-            "p_adjust": bh_columns(p.T).T,
+            "p_adjust": p_adjust,
+            "hits": p_adjust < self.fdr,
             "tested_lvs": int((np.asarray(query.sum(axis=1)).ravel() > 0).sum()),
         }
-
-    def hits(self, values):
-        with np.errstate(invalid="ignore"):
-            return self.test(values)["p_adjust"] < self.fdr
 
 
 def tail_values(z):
@@ -132,10 +125,22 @@ def statistics(hits):
     }
 
 
-def validate(ora, z, tail, results, ora_dir):
-    """Fail unless this implementation reproduces run_ora.R's output for one tail."""
+def read_run_ora(ora_dir):
+    """run_ora.R's summary row and enrichment table for one output directory.
+
+    With no result rows, run_ora.R's fwrite(compress = "gzip") leaves a truncated header-only gzip,
+    so the enrichment table is read only when summary.csv reports result rows.
+    """
     ora_dir = Path(ora_dir)
     summary = pd.read_csv(ora_dir / "summary.csv").iloc[0]
+    if int(summary["result_rows"]) == 0:
+        return summary, pd.DataFrame({"LV": [], "ID": [], "pvalue": [], "p.adjust": []})
+    return summary, pd.read_csv(ora_dir / "enrichment.csv.gz")
+
+
+def validate(ora, z, tail, results, ora_dir):
+    """Fail unless this implementation reproduces run_ora.R's output for one tail."""
+    summary, r = read_run_ora(ora_dir)
     expected = {
         "universe_size": len(ora.genes),
         "effective_annotated_universe_size": ora.N,
@@ -148,11 +153,6 @@ def validate(ora, z, tail, results, ora_dir):
         if int(summary[key]) != value:
             raise AssertionError(f"{ora_dir}: {key} is {summary[key]} in run_ora.R, {value} here")
 
-    # With no result rows, run_ora.R's fwrite(compress = "gzip") leaves a truncated header-only gzip.
-    if int(summary["result_rows"]) == 0:
-        r = pd.DataFrame({"LV": [], "ID": [], "pvalue": [], "p.adjust": []})
-    else:
-        r = pd.read_csv(ora_dir / "enrichment.csv.gz")
     lv_index = pd.Index(z.columns).get_indexer(r["LV"].astype(str))
     term_index = pd.Index(ora.terms).get_indexer(r["ID"].astype(str))
     if (lv_index < 0).any() or (term_index < 0).any():
@@ -163,8 +163,7 @@ def validate(ora, z, tail, results, ora_dir):
                                err_msg=f"{ora_dir}: p.adjust differs from run_ora.R")
     hit = (r["p.adjust"] < ora.fdr).to_numpy()
     r_hits = set(zip(lv_index[hit], term_index[hit]))
-    with np.errstate(invalid="ignore"):
-        ours = set(zip(*np.nonzero(results["p_adjust"] < ora.fdr)))
+    ours = set(zip(*np.nonzero(results["hits"])))
     if r_hits != ours:
         raise AssertionError(
             f"{ora_dir}: {len(ours - r_hits)} hits only here, {len(r_hits - ours)} only in run_ora.R")
@@ -174,21 +173,19 @@ def validate(ora, z, tail, results, ora_dir):
 
 
 def lv_hits(z, ora, observed):
-    rows = []
+    frames = []
     for tail in TAILS:
-        padj = observed[tail]["p_adjust"]
-        with np.errstate(invalid="ignore"):
-            hit = padj < ora.fdr
+        padj, hit = observed[tail]["p_adjust"], observed[tail]["hits"]
         best = np.where(np.isnan(padj), np.inf, padj).argmin(axis=1)
-        for i, lv in enumerate(z.columns):
-            rows.append({
-                "LV": lv,
-                "tail": tail,
-                "n_regulons": int(hit[i].sum()),
-                "best_regulon": ora.terms[best[i]] if hit[i].any() else "",
-                "best_p_adjust": float(padj[i, best[i]]) if hit[i].any() else np.nan,
-            })
-    return pd.DataFrame(rows)
+        found = hit.any(axis=1)
+        frames.append(pd.DataFrame({
+            "LV": z.columns,
+            "tail": tail,
+            "n_regulons": hit.sum(axis=1),
+            "best_regulon": np.where(found, ora.terms[best], ""),
+            "best_p_adjust": np.where(found, padj[np.arange(len(best)), best], np.nan),
+        }))
+    return pd.concat(frames, ignore_index=True)
 
 
 def permutation_rows(ora, values, n_perm, seed):
@@ -197,35 +194,33 @@ def permutation_rows(ora, values, n_perm, seed):
     rows = []
     for perm in range(1, n_perm + 1):
         shuffled = values[rng.permutation(values.shape[0])]
-        rows.append({"perm": perm, **statistics({t: ora.hits(v) for t, v in tail_values(shuffled).items()})})
+        hits = {t: ora.test(v)["hits"] for t, v in tail_values(shuffled).items()}
+        rows.append({"perm": perm, **statistics(hits)})
     return rows
 
 
-def summarize(null, n_perm):
+def summarize(null, meta=None):
+    """One row per statistic: observed (perm 0) against the permutations, led by the `meta` columns."""
     observed = null.loc[null.perm == 0].iloc[0]
     perms = null.loc[null.perm > 0]
     rows = []
     for stat in STATISTICS:
         values = perms[stat].to_numpy()
         rows.append({
+            **(meta or {}),
             "statistic": stat,
             "observed": observed[stat],
             "null_mean": values.mean(),
             "null_sd": values.std(ddof=1) if len(values) > 1 else np.nan,
             "null_p95": np.quantile(values, 0.95),
             "observed_minus_null": observed[stat] - values.mean(),
-            "perm_p": (1 + (values >= observed[stat]).sum()) / (1 + n_perm),
+            "perm_p": (1 + (values >= observed[stat]).sum()) / (1 + len(values)),
         })
     return pd.DataFrame(rows)
 
 
 def run(args):
-    z = pd.read_csv(args.z_pos, index_col=0, float_precision="round_trip")
-    z.index = z.index.astype(str)
-    z_neg = pd.read_csv(args.z_neg, index_col=0, float_precision="round_trip")
-    if not (z_neg.index.astype(str).equals(z.index) and z_neg.columns.equals(z.columns)
-            and np.array_equal(z_neg.to_numpy(), -z.to_numpy(), equal_nan=True)):
-        raise ValueError("--z-neg is not -1 x --z-pos")
+    z = read_z(args.z)
     ora = Ora(z.index, read_gmt(args.gmt), args.top_pct, args.min_size, args.max_size, args.fdr)
     log(f"{z.shape[1]} LVs, {len(ora.genes)} genes ({ora.N} annotated), {len(ora.terms)} regulons, "
         f"query {ora.query_target}")
@@ -234,32 +229,27 @@ def run(args):
     observed = {tail: ora.test(v) for tail, v in tail_values(values).items()}
     for tail, ora_dir in zip(TAILS, (args.ora_pos, args.ora_neg)):
         validate(ora, z, tail, observed[tail], ora_dir)
-    with np.errstate(invalid="ignore"):
-        rows = [{"perm": 0, **statistics({t: r["p_adjust"] < ora.fdr for t, r in observed.items()})}]
-
+    rows = [{"perm": 0, **statistics({t: r["hits"] for t, r in observed.items()})}]
     null = pd.DataFrame(rows + permutation_rows(ora, values, args.n_perm, args.seed))
 
     out = Path(args.out_dir)
     out.mkdir(parents=True, exist_ok=True)
     null.to_csv(out / "null.csv.gz", index=False)
     lv_hits(z, ora, observed).to_csv(out / "lv_hits.csv", index=False)
-    summary = summarize(null, args.n_perm)
-    for key, value in reversed(list({
+    summary = summarize(null, {
         "strategy": args.strategy, "model": args.model, "latent_variables": z.shape[1],
         "eligible_regulons": len(ora.terms), "n_perm": args.n_perm, "seed": args.seed,
-    }.items())):
-        summary.insert(0, key, value)
+    })
     summary.to_csv(out / "summary.csv", index=False)
     log(summary[["statistic", "observed", "null_mean", "null_p95", "perm_p"]].to_string(index=False))
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--z-pos", required=True)
-    parser.add_argument("--z-neg", required=True)
+    parser.add_argument("--z", required=True, help="Z restricted to the regulon universe (signed_z.py's pos.csv)")
     parser.add_argument("--gmt", required=True)
-    parser.add_argument("--ora-pos", required=True, help="run_ora.R output directory for --z-pos")
-    parser.add_argument("--ora-neg", required=True, help="run_ora.R output directory for --z-neg")
+    parser.add_argument("--ora-pos", required=True, help="run_ora.R output directory for Z")
+    parser.add_argument("--ora-neg", required=True, help="run_ora.R output directory for -Z")
     parser.add_argument("--strategy", required=True)
     parser.add_argument("--model", required=True)
     # No defaults: the values live in workflow/config/perturbseq.yaml.

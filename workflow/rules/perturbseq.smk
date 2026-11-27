@@ -34,9 +34,13 @@ PS_Z_ROOTS = {
 PS_REGULONS = os.path.join(PS_CFG["output_root"], "regulons", "{strategy}")
 
 
+def ps_model_dir(strategy, model):
+    return os.path.join(PS_Z_ROOTS[strategy], PS_CFG["dataset"], "models", model)
+
+
 def ps_z_files(wildcards):
-    root = os.path.join(PS_Z_ROOTS[wildcards.strategy], PS_CFG["dataset"], "models")
-    return [os.path.join(root, model, "Z.csv") for model in PS_STRATEGIES[wildcards.strategy]["models"]]
+    return [os.path.join(ps_model_dir(wildcards.strategy, model), "Z.csv")
+            for model in PS_STRATEGIES[wildcards.strategy]["models"]]
 
 
 rule perturbseq_regulons:
@@ -76,29 +80,23 @@ PS_ORA = os.path.join(PS_CFG["output_root"], "ora", "{strategy}", "{model}")
 PS_SIGNED = os.path.join(PS_CFG["output_root"], "signed_z", "{strategy}", "{model}")
 PS_TAILS = ["pos", "neg"]
 # projections.smk constrains {model} globally; these rules override it with the Perturb-seq models.
-PS_MODEL_PATTERN = "|".join(sorted({m for cfg in PS_STRATEGIES.values() for m in cfg["models"]}))
-
-
-def ps_model_dir(wildcards):
-    return os.path.join(PS_Z_ROOTS[wildcards.strategy], PS_CFG["dataset"], "models", wildcards.model)
-
-
-def ps_strategy_models():
-    return [(s, m) for s, cfg in PS_STRATEGIES.items() for m in cfg["models"]]
+PS_WC = dict(
+    strategy="|".join(PS_STRATEGIES),
+    model="|".join(sorted({m for cfg in PS_STRATEGIES.values() for m in cfg["models"]})),
+)
 
 
 rule perturbseq_signed_z:
     input:
-        z=lambda wc: os.path.join(ps_model_dir(wc), "Z.csv"),
-        b=lambda wc: os.path.join(ps_model_dir(wc), "B.csv"),
+        z=lambda wc: os.path.join(ps_model_dir(wc.strategy, wc.model), "Z.csv"),
+        b=lambda wc: os.path.join(ps_model_dir(wc.strategy, wc.model), "B.csv"),
         universe=rules.perturbseq_regulons.output.logfc,
     output:
         pos=os.path.join(PS_SIGNED, "pos.csv"),
         neg=os.path.join(PS_SIGNED, "neg.csv"),
         manifest=os.path.join(PS_SIGNED, "manifest.json"),
     wildcard_constraints:
-        strategy="|".join(PS_STRATEGIES),
-        model=PS_MODEL_PATTERN,
+        **PS_WC,
     resources:
         mem_mb=4000,
         runtime=10,
@@ -122,8 +120,7 @@ rule perturbseq_ora:
         ora=PS_CFG["ora"],
         reg=PS_CFG["regulons"],
     wildcard_constraints:
-        strategy="|".join(PS_STRATEGIES),
-        model=PS_MODEL_PATTERN,
+        **PS_WC,
         tail="|".join(PS_TAILS),
     resources:
         mem_mb=int(PS_CFG["ora"]["resources"]["mem_mb"]),
@@ -142,8 +139,7 @@ rule perturbseq_ora:
 
 rule perturbseq_ora_null:
     input:
-        pos=os.path.join(PS_SIGNED, "pos.csv"),
-        neg=os.path.join(PS_SIGNED, "neg.csv"),
+        z=rules.perturbseq_signed_z.output.pos,
         ora_pos=os.path.join(PS_ORA, "pos"),
         ora_neg=os.path.join(PS_ORA, "neg"),
         gmt=rules.perturbseq_regulons.output.gmt,
@@ -158,14 +154,13 @@ rule perturbseq_ora_null:
         ora=PS_CFG["ora"],
         reg=PS_CFG["regulons"],
     wildcard_constraints:
-        strategy="|".join(PS_STRATEGIES),
-        model=PS_MODEL_PATTERN,
+        **PS_WC,
     resources:
         mem_mb=int(PS_CFG["ora"]["null_resources"]["mem_mb"]),
         runtime=int(PS_CFG["ora"]["null_resources"]["runtime"]),
     conda: "clamp-analyses"
     shell:
-        "python scripts/perturbseq/ora_null.py --z-pos {input.pos:q} --z-neg {input.neg:q} --gmt {input.gmt:q} "
+        "python scripts/perturbseq/ora_null.py --z {input.z:q} --gmt {input.gmt:q} "
         "--ora-pos {input.ora_pos:q} --ora-neg {input.ora_neg:q} "
         "--strategy {wildcards.strategy} --model {wildcards.model} "
         "--top-pct {params.ora[top_pct]} --min-size {params.reg[min_size]} --max-size {params.reg[max_size]} "
@@ -175,7 +170,8 @@ rule perturbseq_ora_null:
 
 rule perturbseq_ora_summary:
     input:
-        [os.path.join(PS_CFG["output_root"], "ora", s, m, "summary.csv") for s, m in ps_strategy_models()],
+        [expand(rules.perturbseq_ora_null.output.summary, strategy=s, model=cfg["models"])
+         for s, cfg in PS_STRATEGIES.items()],
     output:
         os.path.join(PS_CFG["output_root"], "ora_summary.csv"),
     conda: "clamp-analyses"
