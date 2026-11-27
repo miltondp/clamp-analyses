@@ -28,8 +28,15 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 - [x] 1.5 Notebook `00_reproduction`, kept short: an internal check, needed only because the legacy `Z_all.npz` and noise dirs were never found. Show the two `report/reproduction/*.csv` tables and one plot of clusters by number of runs spanned (`reproduce/{set}/cluster_model_count_distribution.csv`). Nothing in Phase 2 depends on it. It gets removed in 4.3.
 
 ### Phase 2: Evaluation framework, applied to the existing sets
-- [ ] 2.1 `cev.py` metrics and unit tests (toy data).
-- [ ] 2.2 Computational metrics on Z_4reps, Z_6reps and the hierarchical grid (`cev_evaluate`).
+- [x] 2.1 `cev.py` metrics and unit tests (toy data).
+- [x] 2.2 Computational metrics on Z_4reps, Z_6reps and the hierarchical grid (`cev_evaluate`).
+- [ ] 2.2b Revise the computational metrics after the 2026-11-26 review (see Key facts, "Metric review"):
+  - A new "reproducible LV" definition: reciprocal best hit, cos ≥ 0.5, and top-gene Jaccard above the gene-permutation null, in ≥ `ceil(0.4 × n_runs) − 1` other runs.
+  - `overlap_to_consensus` replaces `jac_to_consensus`.
+  - Drop `iq` and `silhouette`.
+  - Write a headline table.
+  - Details are in Implementation, "Step 2.2b".
+- [ ] 2.2c **(prioritized)** Hierarchical clustering on top-gene overlap: distance = 1 − Jaccard of each LV's top-185 positive genes, instead of cosine on raw loadings. Same grid machinery and the same evaluation. Details are in Implementation, "Step 2.2c".
 - [ ] 2.3 Biological metrics: ORA, member pathway coherence, technical leakage.
 - [ ] 2.4 Robustness: split-half and LORO for the hierarchical sets, plus both nulls.
 - [ ] 2.5 Semi-synthetic benchmark.
@@ -73,6 +80,12 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 - 2026-11-26: Step 0.5 done. `data/pathways/go_bp.Hs.symbols.gmt` was missing, so ran `generate_archs4_go_bp_gmt` (the dry run listed only that job; it took about 25 s). It has 15,413 GO BP terms, and its sha256 matches the rule's pin (`33e559d…`).
 - 2026-11-26: Steps 1.1–1.4 done. As the user chose, the two reproduction sets are built by the **unchanged** `cluster_metalv.py` (`cache` + `cluster`), so Phase 1 tests only our inputs; cev.py's builder is checked against these outputs in 2.1. Added `run.py` (`flags`, `zcache-check`, `reproduction`), the `reproduce:` config block (each entry carries its `external` Z and legacy `members` file) and rules `cev_zcache`, `cev_zcache_check`, `cev_flags`, `cev_reproduce_set` (→ `{root}/archs4/reproduce/{set}/`) and `cev_reproduction` (→ `report/reproduction/{set}.{csv,log}`). The dry run listed only those 9 jobs; the whole run took about 2.5 min. Results: the cache has 17,280 LVs × 18,423 genes, with keys equal to the legacy flags. Flags: 2,117 at r2 0.15 (15,163 kept) and 1,324 at 0.25 (15,956 kept). `cl_c050_m4_r015` gives 7,860 clusters and keeps 1,058; `cl_c050_m6_r025` gives 8,025 and keeps 618. **Both `metaZ.csv` files are byte-identical to `Z_4reps.csv` / `Z_6reps.csv`** (max|ΔZ| = 0), and every metaLV's member set, `n_models` and `n_lvs` equal the legacy `mgm_mapping.csv`. This confirms the `A4_METALV_MODELS` order and the re-thresholded legacy flags.
 - 2026-11-26: Step 1.5 done. Added `nbs/03_model_biology/02_archs4/06_consensus_eval/00_reproduction.ipynb` (R) and its `.executed.ipynb`, run by rule `cev_report_00` (→ `report/00_reproduction.complete`, wired into `consensus_eval_archs4`). Re-added the `notebooks:` config key, and declared `cluster_model_count_distribution.csv` as a `cev_reproduce_set` output. The notebook shows both reproduction tables (all pass) and a bar plot of clusters by runs spanned, with totals of 7,860 / 1,058 and 8,025 / 618. Step 4.3 removes the notebook, its `.executed.ipynb`, `cev_report_00` and its aggregate line. Machine note: a stale fontconfig cache made R/Cairo plots render "sans" with `EBGaramond-Initials`; `fc-cache -f` at user and system level fixed it.
+- 2026-11-26: Steps 2.1 + 2.2 done (grouped). Added `scripts/consensus_eval/cev.py` with only what 2.2 uses: pool loading, the copied cosine distance, hier linkage/partition, `resolve_min_models` (rounds first: 0.3 × 10 → 3), `replicated` / `build_set` (`median` only), and metrics (`top_genes` as `run_ora.R`: top 185 *positive* loadings, since about 90% of loadings are 0 and some LVs have < 185 positive genes; `cluster_metrics`, `iq_silhouette`, `redundancy`, `pool_best_hits`, `reproducible`, `coverage`, `summarize`). Added `tests/test_cev.py` (8 tests, all pass). One of them shows the builder equals `cluster_metalv.cluster_main` on toy data at three settings, loaded via importlib, not edited. Added `run.py` subcommands `linkage`, `hier-set`, `set-check`, `pool-hits`, `evaluate` and `aggregate`, the config `grids.hier` / `eval` / resources, and rules `cev_linkage` (3 jobs), `cev_hier_set` (34 sets = 2 reproduce + 32 grid), `cev_set_check`, `cev_pool_hits`, `cev_evaluate` and `cev_aggregate` (→ `report/metrics_all.csv`), all wired into `consensus_eval_archs4`. The whole target took 3 min 14 s, peaking at 4.5 GB; `sets/` is 2.2 GB. **Both `cev_set_check`s pass with float32 Z bit-identical** to `reproduce/{set}/metaZ.csv` and the same names and members. A float64 absolute tolerance of 1e-6 failed at 7.6e-6 on loadings up to about 350 (relative 6e-8), so `set-check` now requires exact float32 equality. `hier_complete_c050_f04_r015_median` has the same metrics as `cl_c050_m4_r015`. The evaluation pool is fixed at r2 0.15 for every set (15,163 LVs, 8,727 reproducible at cos ≥ 0.5 in ≥ 4 runs). Sanity: within a linkage, raising min_cos raises cohesion and lowers coverage, and raising min_frac shrinks the set and lowers coverage. Purity *falls* slightly with min_frac (complete c040: 0.979 → 0.969), because sets spanning more runs pick up more same-run duplicates. Z_6reps vs Z_4reps: 618 vs 1,058 LVs, median mean_cos 0.797 vs 0.759, silhouette 0.71 vs 0.64, coverage at 0.5 0.37 vs 0.54, recall at 0.5 0.63 vs 0.90. Average linkage is much less redundant than complete (frac of LVs with another at cos ≥ 0.5: 0.04–0.18 vs 0.13–0.29), but its members are less tight (median min_cos 0.36–0.72). Note: every rule lists `run.py` as an input, so editing it reruns the whole cev chain, about 3 min, cheap for now. Deferred from the `cev.py` list below: `coassoc`/`eac`/`agreement`/`trim` and the other combine functions (Phase 3), `hungarian_match`/`run_subsets`/nulls (2.4), `synthetic` (2.5). `assign_members` was dropped because every set has members.
+- 2026-11-26: Reviewed the 2.2 metrics with the user, using read-only scratch scripts (not kept; 2.2b re-implements their logic). Findings are in Key facts, "Metric review" and "Single-gene-dominated LVs". Decisions:
+  - Headline = size (`n_lvs`), fidelity (`overlap_to_consensus`), separation (`frac_redundant_c0.5`) and `recall_c0.9`, with split-half (2.4) as the main score on top.
+  - Drop `iq` and `silhouette`.
+  - Adopt the new reproducible-LV definition (7,981 LVs vs 8,727).
+  - Added step 2.2b (metric revision) and step 2.2c (clustering on top-gene overlap, which the user wants prioritized, before 2.3).
 ---
 
 ## Context
@@ -154,6 +167,38 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
   - The ARCHS4 h5 exists at `../clamp-technical-artifacts/base/input/human_gene_v2.5.h5`. It isn't needed for this plan.
   - Local `output/` uses an old layout and holds none of the consensus or noise outputs.
 - **Hard-coded run counts.** `cluster_metalv.py:127` prints "/10 models" (text only). In new code, express replication as `min_frac` of the runs in the compendium or run subset (min_models = ceil(min_frac × n_runs)), and keep an absolute `min_models` only for the two frozen reproduction sets. This covers split-half (5 runs), LORO (9) and GTEx (20) with one rule. Likewise, set the k grid relative to the median number of LVs per run.
+- **Metric review (2026-11-26, the 34 sets of step 2.2).** Spearman ρ across sets shows the 2.2 metrics collapse into three independent axes:
+  - **Cohesion:** `mean_cos`, `min_cos`, `cos_to_consensus`, `jac_members`, `jac_to_consensus`, `iq` and `silhouette` correlate at 0.97–1.00.
+  - **Size:** `coverage_c*` and `recall_c0.5` correlate at 0.99 with `n_lvs`.
+  - **Redundancy:** `frac_redundant_c0.5` has ρ 0.06 with cohesion and 0.55 with size.
+  - `recall_c0.9` (ρ 0.88 with size) is the only coverage measure that also asks whether the consensus looks like the run LVs.
+  - Separation candidates tried:
+    - Member-level ones collapse into cohesion or size: silhouette and Iq (ρ ≥ 0.98 with cohesion), assignment margin (own consensus − best other; ρ 0.93 with cohesion, −0.90 with size), misassigned members (0–1.3% in every set, no spread), and the pool-LV best-minus-second margin (ρ −0.99 with size).
+    - Between-consensus separation does carry information: `frac_redundant_c0.5`, and the share of covered pool LVs matching ≥ 2 consensus LVs (ρ 0.96 with `frac_redundant_c0.5`, so the same thing). It separates complete from average linkage (13–29% vs 2–18%).
+  - Cohesion metrics are partly circular for cosine-built sets: complete linkage guarantees `min_cos` ≥ the cutoff.
+  - Purity barely varies: 8% of Z_4reps clusters have a duplicate run.
+- **Null calibration and reproducible LVs (r2 0.15 pool, 15,163 LVs).** The null shuffles gene order within every LV of one run, which keeps each LV's loading distribution and sparsity; it was run on 3 run pairs, seed 0.
+  - Null best-hit cosine: median 0.103, p99 0.545, p99.9 0.841, max 0.93. So cos 0.5 is about the 1%-by-chance level for one run pair, and requiring 3 other runs makes chance matches negligible.
+  - Observed best-hit cosine: median 0.454.
+  - Top-gene Jaccard (top 185) null best hit: p99.9 = max = 0.031, against an observed best-hit median of 0.114 (p25 0.076, p75 0.221). Much better calibrated than cosine.
+  - Only 57% of best hits are reciprocal: 71% at cos ≥ 0.3, 88% at ≥ 0.5, 98% at ≥ 0.7.
+  - Replication score (cos of the 3rd-best other-run hit) is spread evenly with no break: p10 0.29, p50 0.56, p90 0.90.
+  - Reproducible counts with m = 4 runs including its own:
+
+    | Definition | LVs |
+    |---|---|
+    | best hit cos ≥ 0.5 (2.2) | 8,727 |
+    | + reciprocal | 8,071 |
+    | + Jaccard > null p99.9 (**adopted**) | 7,981 |
+    | reciprocal + Jaccard > null, no cos cutoff | 11,212 (too lenient: 0.031 ≈ 11 shared genes) |
+
+  - Among reciprocal cos ≥ 0.5 hits, only 1.4% have Jaccard within the null, so the Jaccard guard costs little here. It may matter more for 5-run halves or GTEx.
+- **Single-gene-dominated LVs.** 28% of pool LVs carry > 50% of their squared norm on one gene (median share 0.24, p90 0.79). CLAMP loadings are non-negative and about 90% zeros.
+  - Cosine between such LVs is driven by that gene: the null best hits at cos ≥ 0.5 come from LVs with a median top-gene share of 0.73.
+  - 39% of the reproducible LVs (3,387 of 8,727) are single-gene dominated.
+  - So the legacy method (cosine on raw loadings) partly clusters by top gene. This motivates 2.2c, and it is why the fidelity metric uses top-gene overlap rather than cosine.
+- **Builder exactness.** Set Z is float32. Compare it to CSVs in float32 (exact equality), not with an absolute float64 tolerance: loadings reach about 350, so the float32→float64 rounding is about 1e-5.
+- **Every cev rule lists `run.py` (and most list `cev.py`) as an input**, so an edit reruns the whole cev chain. That's about 3 min today. Recheck this before the Phase 3 GPU ensembles: wrap those inputs in `ancient()` for the expensive rules if needed.
 - **PhenoPLIER code to port** (`/home/miltondp/projects/phenoplier/phenoplier/libs/clustering/`):
   - What to port: `ensembles/utils.py` (`generate_ensemble`, `get_ensemble_distance_matrix`, `run_method_and_compute_agreement`), `ensembles/eac.py`, `ensembles/spectral.py` + `methods.DeltaSpectralClustering`, `ensembles/measures.py` (`aari`), and `utils.compare_arrays` (NaN-aware and weighted).
   - Dependencies are only numpy, pandas, sklearn and tqdm.
@@ -182,13 +227,16 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
 3. **Nulls calibrate the thresholds.**
    - Shuffling gene labels within each LV, per run, calibrates `min_cos`.
    - Shuffling run labels while keeping clusters calibrates `min_models`: how many clusters span ≥ m runs by chance.
-4. **Computational metrics, per set.**
-   - Cohesion: within-cluster cosine (mean and min), top-`top_n` (185) Jaccard between members and between each member and the consensus.
-   - Icasso Iq: mean similarity within a cluster minus mean similarity to other clusters.
-   - Cosine silhouette.
-   - Run purity: n_models / n_lvs. Ideally a cluster has one LV per run.
-   - Redundancy: the largest off-diagonal cosine and top-gene Jaccard between consensus LVs.
-   - Coverage and recall: the share of each run's non-technical LVs represented at cos ≥ t, and the share of "reproducible" LVs captured (best hit at cos ≥ t in ≥ m other runs).
+4. **Computational metrics, per set** (revised after the 2026-11-26 review; see Key facts):
+   - **Headline**, one metric per independent axis:
+     - size: `n_lvs`;
+     - fidelity: `overlap_to_consensus`, the share of a member's top-185 genes that are in the consensus's top-185, median over members;
+     - separation: `frac_redundant_c0.5`, the share of consensus LVs with another consensus LV at cos ≥ 0.5;
+     - `recall_c0.9`, the share of reproducible LVs with a consensus LV at cos ≥ 0.9.
+   - **Diagnostics** (in `per_cluster.csv` / `metrics.csv`, not headlined): member cosine (mean, min), `cos_to_consensus`, member top-gene Jaccard, purity (n_models / n_lvs), max cos / Jaccard to another consensus LV, and coverage of each run at cos ≥ t.
+   - **Dropped:** Icasso Iq and silhouette (identical to cohesion here).
+   - **Reproducible LV:** has a *reciprocal* best hit with cos ≥ 0.5 and top-gene Jaccard above the gene-permutation null's p99.9, in ≥ `ceil(min_frac × n_runs) − 1` other runs (min_frac 0.4). With 10 runs that is 3 other runs; in 5-run halves it is 1.
+   - Always compare sets at matched size, because coverage and recall rise with `n_lvs`.
 5. **Biological metrics, per set.**
    - ORA with bp, canonical, cellmarker and azimuth: % of LVs with ≥ 1 term, % of pathways recovered, specificity (terms per LV) and redundancy (terms hit by several LVs).
    - Member pathway coherence: Jaccard of each member's significant pathways, from the per-run `summary.csv` (AUC > 0.7, FDR < 0.05).
@@ -206,6 +254,7 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
    - Choosing k by ARI against the ensemble leans toward the middle of the k grid. Always show the agreement-vs-k curves and confirm the choice with split-half and synthetic ARI.
    - The expected k is about #LVs / #runs, roughly 1,500 plus singletons, so the grid is about 250–3,000.
 9. **Later alternatives:**
+   - (Promoted to step 2.2c.) Cluster on top-gene overlap instead of cosine on raw loadings. Possible follow-ups: rank-weighted overlap (e.g. RBO) or cosine on transformed loadings (sqrt / rank).
    - Spectral clustering as the consensus function (what PhenoPLIER chose).
    - A graph of reciprocal best hits across runs, partitioned with Leiden.
    - A constraint of at most one LV per run in each consensus LV.
@@ -254,7 +303,7 @@ What to reuse:
 - **PhenoPLIER clustering code**: port it into `cev.py` with the fixes listed in Key facts.
 - **Hungarian matching**: `scipy.optimize.linear_sum_assignment`. The repo has no matcher besides the greedy one in `benchmark.py:49-62`.
 
-`cev.py` contents:
+`cev.py` contents (2.1 implemented loading/distance, hier, `replicated`, `median` and the metrics except `hungarian_match`; the rest lands with the step that first uses it):
 
 - **Loading and distance:**
   - `load_lvs(npz, flags)` returns `LVTable(X, Xn, models, lvs, genes)`.
@@ -269,9 +318,40 @@ What to reuse:
   - `replicated(labels, models, m)`.
   - `trim(labels, Xn, min_member_cos)`.
   - Combination functions: `median`, `run_median`, `mean_l2`, `medoid`, `rank1`.
-- **Metrics:** `top_genes(Z, n)` (n from `crispercas.top_n`), `cluster_metrics`, `iq`, `silhouette`, `redundancy`, `coverage`, `reproducible_lvs`, `hungarian_match(Za, Zb)`, and `assign_members(Z, Xn, t)` for sets where only Z is available.
+- **Metrics:** `top_genes(Z, n)` (n from `crispercas.top_n`), `cluster_metrics`, `redundancy`, `pool_best_hits`, `reproducible`, `coverage`, `summarize`, and `hungarian_match(Za, Zb)` (2.4). `iq_silhouette` is removed in 2.2b, and `assign_members` was dropped.
 - **Robustness:** `run_subsets(models, n_splits, seed)` (full, half{i}{a,b}, loro_{model}), `compare_sets` (Hungarian match for split-half, per-LV recovery for LORO), `gene_perm_null`, `label_perm_null`, `synthetic(...)`. Subset sets are built by the normal set rules, not inside these functions.
 - **Storage:** sets store `Z.npy` (float32) plus `lvs.csv`. Write a CSV only where R needs it (`run_ora.R`, `run_analysis.R`).
+
+### Step 2.2b: metric revision
+
+- **`cev.pool_best_hits`** also returns the best-hit index for each (LV, other run), so reciprocity can be checked: LV a's best hit b in run B has a as its best hit in run A. It also returns the top-gene Jaccard of each best-hit pair.
+- **`cev.jaccard_null(B, runs, pairs, seed)`** shuffles the gene order within every top-gene row of run b and takes the best-hit Jaccard of each run-a LV, over `null_pairs` run pairs chosen by `null_seed`. It returns the `jac_null_q` quantile.
+- **Outputs:** `cev_pool_hits` writes `hits`, `arg`, `jac`, `runs` and pool keys to `best_hits.npz`, plus `null.json` (threshold, quantiles, pairs, seed).
+- **`cev.reproducible(...)`** = ≥ m − 1 other runs where the hit is reciprocal, cos ≥ `cos`, and Jaccard > the null threshold. m = `ceil(min_frac × n_runs)`.
+- **Per-cluster metrics:**
+  - Add `overlap_to_consensus`: |top(member) ∩ top(consensus)| / |top(member)|, the mean over members per consensus LV. Members with fewer than 185 positive genes use their own size.
+  - Drop `jac_to_consensus`, `iq` and `silhouette`, and remove `iq_silhouette` and its test.
+  - Keep `cos_to_consensus` as a diagnostic: it becomes the non-circular check for the 2.2c sets.
+- **Headline table:** `cev_aggregate` also writes `report/headline.csv`, with the set parameters plus the `eval.headline` columns.
+- **Tests:** reciprocity on a hand-built case where a broad LV is the non-reciprocal best hit of two specific ones; the Jaccard null on a toy (shuffled rows give a small threshold); and `overlap_to_consensus` on hand-made sets.
+- **Run:** `cev_pool_hits`, `cev_evaluate` and `cev_aggregate`; the rest of the chain also reruns because `run.py` changed (about 3 min).
+- **Check:** `n_reproducible` ≈ 7,981. The exploration used null seed 0 (Jaccard null p99.9 0.031); the configured `null_seed` may move the count slightly. Record the new headline table in the Log.
+
+### Step 2.2c: hierarchical clustering on top-gene overlap (prioritized)
+
+- **Distance:** 1 − Jaccard of the top-185 positive-gene sets (`cev.top_genes`, the `run_ora.R` selection).
+  - `cev.condensed_jaccard_distance(B)` uses the same 256-row blocks as the cosine version: intersections come from a float32 boolean matmul, and union = |a| + |b| − intersection.
+  - Memory and time should be about the same as cosine (measured about 12 s per build at n = 15k; not yet measured for Jaccard).
+- **Linkage cache:** linkages gain a distance dimension, `linkage/r{r2}/{dist}_{linkage}/{subset}.npz` with `dist` ∈ {cos, jac}. Migrate the existing cosine paths, accepting the cheap rerun.
+- **Grid:** `grids.topj`, with names like `topj_{linkage}_j{min_jac*100:03d}_f{min_frac*10:02d}_r{r2*100:03d}_{combine}` and `cev_set_args` extended.
+  - Consensus = median of raw loadings, as before.
+  - Choose `min_jac` *first*, from data: the distribution of reciprocal best-hit Jaccard among cos ≥ 0.5 hits (observed best-hit median 0.114, p75 0.221; null max 0.031). Also pick cuts whose set sizes bracket the cosine grid's (about 300–1,700 LVs). A starting guess is [0.1, 0.15, 0.2, 0.3].
+- **Evaluation:** same rules, no new metrics. Circularity flips here: overlap metrics become partly circular for these sets, and cosine metrics (`cos_to_consensus`, member cosine) become the independent check. Read the 2.2c sets against the cosine sets at matched `n_lvs`.
+- **Questions to answer:**
+  - Do the topj sets reduce single-gene-dominated consensus LVs? Report the share with top-gene share > 0.5.
+  - Do they lower `frac_redundant_c0.5` at equal size?
+  - Do they change `recall_c0.9`?
+  - Split-half (2.4) and biology (2.3) then apply to them like every other set.
 
 ### Config: `workflow/config/consensus_eval.yaml` (sketch)
 
@@ -304,7 +384,7 @@ consensus_eval:
   grids:       # the .smk expands each grid into set names and the {set} wildcard constraint
     hier:     {linkage: [complete, average], min_cos: [0.4, 0.5, 0.6, 0.7],
                min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
-    ensemble: {ensemble: [km_full, km_pca256], k: [auto], min_frac: [0.4], noise_r2: [0.15],
+    ensemble: {ensemble: [km_full, km_pca256], k: [auto], min_frac: [0.4], noise_r2: [0.15],   # not in the yaml yet
                min_member_cos: [0.3], combine: [median, run_median, mean_l2, medoid, rank1]}
   ensembles:   # pure k-means; hierarchical cuts are merged in cev_eac from the CPU linkages
     km_full:   {pca: null, k: [250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2500, 3000],
@@ -313,7 +393,10 @@ consensus_eval:
                 seeds: 5, base_seed: 20261125, max_iter: 300, feature_fraction: 1.0}
   hier_cuts: {linkage: [complete, average], min_cos: [0.3, 0.4, 0.5, 0.6, 0.7]}   # added to ensembles in eac
   consensus: {method: eac_average, k: [600, 800, 1000, ..., 3000], select: ari_median}
-  eval: {cos_thresholds: [0.5, 0.7, 0.9], match_cos: 0.9, reproducible_cos: 0.5,
+  # 2.2c adds e.g. topj: {linkage: [complete, average], min_jac: [tbd], min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
+  eval: {pool_r2: 0.15, cos_thresholds: [0.5, 0.7, 0.9], match_cos: 0.9,
+         reproducible: {cos: 0.5, min_frac: 0.4, reciprocal: true, jac_null_q: 0.999, null_pairs: 3, null_seed: 3},
+         headline: [n_lvs, median_overlap_to_consensus, frac_redundant_c0.5, recall_c0.9],
          split_half: {n_splits: 10, seed: 1}, loro: true, null: {n_perm: 3, seed: 2},
          synthetic: {n_modules: 600, p_present: [0.5, 0.9], member_cos: [0.6, 0.95],
                      p_split: 0.1, p_merge: 0.05, n_spurious: 400, seeds: [1, 2, 3]}}
@@ -393,7 +476,8 @@ Split-half and LORO procedure:
   - `hier` + `median` reproducing `cluster_metalv.py cluster` exactly (and `cev_hier_set` for the two reproduce sets equal to `reproduce/{set}/metaZ.csv` and `cluster_summary.csv` members).
   - The weighting in `run_median`.
   - `rank1` being non-negative.
-  - Iq, purity and coverage on hand-computed cases.
+  - Purity, redundancy, coverage, reciprocity and `overlap_to_consensus` on hand-computed cases (Iq/silhouette were dropped in 2.2b).
+  - The Jaccard distance against `scipy.spatial.distance.pdist(metric="jaccard")` on boolean toys (2.2c).
   - Hungarian matching.
   - Ground truth from the synthetic generator.
   - `min_frac` → min_models resolution for full, half and LORO subsets.
