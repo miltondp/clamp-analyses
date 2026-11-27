@@ -40,9 +40,9 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
   - Drop `iq` and `silhouette`.
   - Write a headline table.
   - Details are in Implementation, "Step 2.2b".
-- [ ] 2.2c **(prioritized)** Hierarchical clustering on top-gene overlap: distance = 1 − Jaccard of each LV's top-185 positive genes, instead of cosine on raw loadings. Same grid machinery and the same evaluation. Grid `min_jac` [0.05, 0.1, 0.15, 0.2, 0.3] × both linkages × `min_frac` [0.3–0.6] (40 sets). The full spec, ready to run, is in Implementation, "Step 2.2c".
-- [ ] 2.3 Biological metrics: ORA, member pathway coherence, technical leakage.
-- [ ] 2.4 Robustness: split-half and LORO for the hierarchical sets, plus both nulls.
+- [x] 2.2c Hierarchical clustering on top-gene overlap (`topj_*` sets): distance = 1 − Jaccard of each LV's top-185 positive genes, instead of cosine on raw loadings. Same grid machinery and the same evaluation. Grid `min_jac` [0.05, 0.1, 0.15, 0.2, 0.3] × both linkages × `min_frac` [0.3–0.6] (40 sets). Also added `recall_multi_c0.9` to the headline. Results are in the Log and Key facts.
+- [ ] 2.4 **(next; runs before 2.3)** Robustness: split-half and LORO for the hierarchical sets (both `hier_*` and `topj_*`), plus both nulls. Why first, and what to settle before running: Implementation, "Step 2.4". Numbering is kept, so older references to "2.4" still mean split-half.
+- [ ] 2.3 Biological metrics: ORA, member pathway coherence, technical leakage. Run it on the candidates that 2.4 leaves, not the whole grid.
 - [ ] 2.5 Semi-synthetic benchmark.
 - [ ] 2.6 Notebooks `02_computational` and `03_biological`.
 
@@ -51,7 +51,7 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 - [ ] 3.2 Co-association, EAC average linkage, and agreement-vs-k with k selection.
 - [ ] 3.3 Build ensemble sets with replication filter, trim and the five combination functions.
 - [ ] 3.4 Run the same evaluation on the ensemble sets, including split-half, LORO and synthetic.
-- [ ] 3.5 Variants: add hierarchical cuts to the ensemble, PCA-256, and (later) spectral consensus.
+- [ ] 3.5 Variants: add hierarchical cuts to the ensemble, PCA-256, and (later) spectral consensus. After 2.2c: k-means on raw loadings is cosine-like, so it will likely inherit the single-gene problem. Consider adding the `topj` cuts to the ensemble, or k-means on a transformed input (binary top-gene sets, or sqrt/rank loadings), and score it with `frac_single_gene` and `recall_multi_c0.9`.
 - [ ] 3.6 Notebook `01_ensemble`.
 
 ### Phase 4: Comparison and recommendation
@@ -106,6 +106,31 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
     - Z_6reps: 618, 0.612, 0.100, 0.324.
     - At about 1,040 LVs, average c070_f03 vs complete c050_f04: overlap 0.597 vs 0.554, redundant 0.182 vs 0.187, recall 0.451 vs 0.428.
   - Informativeness (Spearman ρ over the 32 grid sets): `median_overlap_to_consensus` is still the cohesion axis (ρ 0.99 with mean_cos and cos_to_consensus). It becomes independent only for the 2.2c sets. New diagnostic `frac_single_gene` (share of consensus LVs with top1_share > 0.5) is 0.44–0.63, higher than the pool's 28%, and has ρ 0.94 with n_lvs. See Key facts.
+- 2026-11-27: Step 2.2c done, run as planned (`topj_*` sets). Changes:
+  - `cev.condensed_jaccard_distance` (sparse intersections; distance 1 for empty rows) and `hier_linkage_jac`; `hier_partition(L, min_sim)`.
+  - `run.py linkage --dist {cos,jac} --top-n` (npz stores `dist`; `hier-set` asserts it), `grids.topj` (40 sets), `cev_topj_name()`, a `dist` key on every `CEV_SETS` entry, and linkages at `linkage/r{r2}/{dist}_{linkage}/` (old dirs deleted).
+  - 2 new tests (Jaccard vs `pdist` over several blocks with empty rows; planted-module recovery), 13 in all, all pass.
+  - Run: 166 cev jobs in 4 min 54 s, about 5 GB peak. Both reproductions and set checks still pass bit-identically. Pool top-185 sets: 27 LVs have fewer than 185 positive genes (min 71), none are empty.
+  - Set sizes: 198–1,918, nothing degenerate, so no grid cuts were dropped. Only complete j030_f06 (198), average j030_f06 (274) and complete j005_f03 (1,918) fall outside 300–1,700.
+  - Size-matched against the hier set of the same linkage, median topj − hier differences:
+    - `frac_single_gene` −0.14, lower in every pair (−0.03 to −0.26). topj spans 0.13–0.54, hier 0.44–0.63. **The main question: yes.**
+    - `frac_redundant_c0.5` +0.01: lower at loose cuts (j0.05–0.10), higher at strict ones (j0.2–0.3).
+    - `recall_c0.9` −0.07, lower in every pair.
+    - `median_cos_to_consensus` −0.05, `median_mean_cos` −0.09 (lower at loose cuts, about equal at j ≥ 0.15).
+  - The recall drop is mostly single-gene LVs at about 450–550 LVs, but not at Z_4reps' size. So, as the user chose, added `recall_multi_c0.9` (recall over the 4,735 reproducible pool LVs with top1_share ≤ 0.5) to `cev.coverage` / `summarize` and the headline:
+    | Set | n_lvs | frac_single_gene | recall_c0.9 | recall_multi_c0.9 |
+    |---|---|---|---|---|
+    | Z_4reps (= hier_complete_c050_f04) | 1,058 | 0.57 | 0.428 | 0.359 |
+    | topj_complete_j010_f04 | 1,077 | 0.45 | 0.343 | 0.290 |
+    | hier_average_c070_f03 | 1,040 | 0.59 | 0.451 | 0.382 |
+    | topj_average_j015_f03 | 1,091 | 0.50 | 0.332 | 0.254 |
+    | hier_complete_c070_f05 | 453 | 0.49 | 0.306 | 0.293 |
+    | topj_complete_j020_f05 | 464 | 0.28 | 0.257 | 0.289 |
+    | hier_average_c060_f06 | 560 | 0.50 | 0.317 | 0.297 |
+    | topj_average_j020_f05 | 526 | 0.31 | 0.254 | 0.266 |
+  - Z_4reps vs the size-matched topj sets: 62% (complete j005_f05) and 69% (average j015_f03) of Z_4reps LVs have a topj counterpart at cos ≥ 0.9. The unmatched ones are no more single-gene than the matched ones (top1_share median 0.62 vs 0.66). The topj LVs with no Z_4reps counterpart are clearly multi-gene (median top1_share 0.21–0.28): modules that cosine clustering missed.
+  - Informativeness within topj: overlap and cosine cohesion still move together (ρ 0.98). `frac_redundant_c0.5` now follows cohesion (ρ 0.6) rather than size (−0.04), and `recall_c0.9` depends less on size (0.52 vs 0.87 for hier).
+  - Decisions (user, 2026-11-27): tick 2.2c, keep `recall_multi_c0.9` in the headline, and **run 2.4 (split-half/LORO) before 2.3**. The rationale is in Implementation, "Step 2.4". Not run yet.
 ---
 
 ## Context
@@ -231,6 +256,7 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
 
     Even near-identical-cosine pairs share less than half of their top-185 genes. Over all reciprocal hits, Jaccard quantiles are p25 0.079, p50 0.167, p75 0.321; over those with cos ≥ 0.5, p25 0.138, p50 0.25, p75 0.40.
   - So the legacy method (cosine on raw loadings) partly clusters by top gene. This motivates 2.2c, and it is why the fidelity metric uses top-gene overlap rather than cosine.
+- **Top-gene (topj) vs cosine sets (2.2c).** Clustering on 1 − top-185 Jaccard cuts single-gene consensus LVs a lot at matched size (median −0.14 `frac_single_gene`), at no gain in redundancy. Strict cuts (j0.15–0.2, f0.5–0.6, about 450–650 LVs) keep multi-gene recall and cosine cohesion close to the hier sets. At about 1,000 LVs, topj loses multi-gene recall too (0.25–0.29 vs 0.36–0.38). `recall_c0.9` rewards recovering single-gene LVs, so read it with `recall_multi_c0.9` (headline). No 2.2 metric breaks the tie between the families; split-half (2.4) is meant to.
 - **Builder exactness.** Set Z is float32. Compare it to CSVs in float32 (exact equality), not with an absolute float64 tolerance: loadings reach about 350, so the float32→float64 rounding is about 1e-5.
 - **Every cev rule lists `run.py` (and most list `cev.py`) as an input**, so an edit reruns the whole cev chain. That's about 3 min today. Recheck this before the Phase 3 GPU ensembles: wrap those inputs in `ancient()` for the expensive rules if needed.
 - **PhenoPLIER code to port** (`/home/miltondp/projects/phenoplier/phenoplier/libs/clustering/`):
@@ -371,9 +397,9 @@ What to reuse:
 - **Run:** `cev_pool_hits`, `cev_evaluate` and `cev_aggregate`; the rest of the chain also reruns because `run.py` changed (about 3 min).
 - **Check:** `n_reproducible` ≈ 7,981. The exploration used null seed 0 (Jaccard null p99.9 0.031); the configured `null_seed` may move the count slightly. Record the new headline table in the Log.
 
-### Step 2.2c: hierarchical clustering on top-gene overlap (prioritized)
+### Step 2.2c: hierarchical clustering on top-gene overlap (done; see Log)
 
-Ready to run. The plan below was written 2026-11-27, after 2.2b. Follow the working style: dry-run, run, then review the results with the user before ticking the box.
+The plan below was written 2026-11-27, after 2.2b, and was run as written.
 
 **Idea.** Use the same hierarchical machinery as the `hier_*` sets, with one change to the distance: 1 − Jaccard of the LVs' top-185 positive-gene sets (`cev.top_genes`, the `run_ora.R` selection), instead of 1 − cosine of raw loadings. The consensus is still the median of raw loadings, and the evaluation rules are unchanged.
 
@@ -426,6 +452,24 @@ topj: {linkage: [complete, average], min_jac: [0.05, 0.1, 0.15, 0.2, 0.3],
 - Informativeness: Spearman ρ of the headline metrics within the topj family, and whether overlap and cosine cohesion come apart there (they had ρ 0.99 for the cosine sets).
 - How many of Z_4reps' consensus LVs have a close topj counterpart (cos ≥ 0.9) in the size-matched topj set, and what the unmatched ones look like (`top1_share`).
 - Then tick 2.2c, add a Log line, and update Key facts. Split-half (2.4) and biology (2.3) then apply to the topj sets like every other set.
+
+### Step 2.4: split-half and LORO (next; runs before 2.3)
+
+Moved ahead of 2.3 on 2026-11-27, after the 2.2c review. Not run yet. Present a plan for it first (working style); the procedure is already sketched in Design ideas 1 and 3, "Rules" and "Split-half and LORO procedure" below.
+
+**Why it goes first.**
+- **It is the agreed main score, and nothing else can settle cosine vs top-gene.** The 2.2 metrics are either size-driven (coverage, recall), circular for one family (cohesion: cosine for `hier_*`, top-gene overlap for `topj_*`), or biased by single-gene LVs (`recall_c0.9` rewards recovering them). After 2.2c the two families trade off (topj: far fewer single-gene LVs; hier: higher recall at Z_4reps' size), and there is no neutral metric to break the tie. Split-half asks directly whether a method's consensus LVs come back when it is run on disjoint runs, and it applies identically to every family, including the Phase 3 ensembles.
+- **It shrinks the grid before the expensive step.** 2.3 runs `run_ora.R` on 4 databases plus leakage and coherence. Running it on all 74 sets is wasteful when 2.4 can leave a few candidates per family. ORA is deduplicated by top-gene set, but the grid sets still differ enough that the union is large.
+- **It decides Phase 5 early.** If 5-vs-5 halves on ARCHS4 are too noisy to rank methods, the fix is 10 extra GTEx fits (48 GB, 8 threads each). That's the biggest compute decision left, so it should be made before more analysis is built on ARCHS4 alone.
+- **It is cheap and needs no new inputs.** It reuses `cev_linkage` / `cev_hier_set` through the `{subset}` wildcard (`CEV_SUBSETS`, today only `full`). A 5-run half has about 7.5k LVs, so each linkage costs about a quarter of the full one.
+- **The label-permutation null calibrates `min_frac`.** Shuffling run labels while keeping clusters gives the number of clusters spanning ≥ m runs by chance. That number would justify (or prune) the `min_frac` axis of both grids before 2.3 and Phase 3 inherit it.
+
+**Settle with the user before running.**
+- **Scale.** With `split_half.n_splits: 10` there are 20 halves plus 10 LORO subsets, i.e. 30 subsets. That's 150 linkages (5 dist × linkage × r2 combinations) and 2,220 set builds. Each build reloads `Z_all.npz`, so this may take about an hour. Options: start with n_splits 5, build only the `full` set's family (not the reproduce sets), or build every cut of a subset in one job.
+- **Reproduce sets.** `cl_c050_m4_r015` has the same metrics as `hier_complete_c050_f04_r015_median`, so leave it out of the subsets (an absolute `min_models` 4 means something else in a 5-run half). `cl_c050_m6_r025` (r2 0.25) has no grid twin. Either skip it, or add a `hier_complete_c050_f06_r025` twin.
+- **Score.** Hungarian match of half a vs half b (`scipy.optimize.linear_sum_assignment`). Report the fraction matched at cos ≥ 0.9 and the median matched cosine, **plus the matched top-gene Jaccard**, so that neither family is scored only in its own metric. LORO: each full-set consensus LV's recovery rate at cos ≥ 0.9 across the 10 leave-one-out sets.
+- **Stratify by single-gene.** A single-gene LV probably reproduces easily, because the same hub gene recurs in every run, so split-half could favor the cosine sets for the reason 2.2c set out to fix. Report split-half separately for single-gene and multi-gene consensus LVs (`top1_share > eval.single_gene`), in the same way as `recall_multi_c0.9`.
+- **Size.** Match rates depend on set size, so compare at matched `n_lvs` as in 2.2c.
 
 ### Config: `workflow/config/consensus_eval.yaml` (sketch)
 
@@ -533,7 +577,7 @@ Split-half and LORO procedure:
 
 - **Memory and compute.**
   - For about 15k LVs, the uint8 co-association counts take about 225 MB and the condensed float64 distance about 0.9 GB. Avoid dense `1 − C` and `squareform` temporaries.
-  - One cosine-distance-plus-linkage build takes about 12 s at n = 15k (8 s distance, 3 s linkage, measured), which is why linkages are cached per (r2, linkage, subset).
+  - One cosine-distance-plus-linkage build takes about 12 s at n = 15k (8 s distance, 3 s linkage, measured alone), which is why linkages are cached per (r2, dist, linkage, subset). With 5 linkages running at once (2.2c run) cosine took about 67 s and top-gene Jaccard 30 s (average) / 44 s (complete), including `top_genes`; the jac linkage stays within the 16 GB linkage request.
   - k-means on 18k dimensions takes about 1 s per iteration at k = 3000 on CPU, so use cuML on the GPU; PCA-256 is about 70× cheaper.
   - AMI with thousands of clusters is slow, so use ARI as the main criterion.
 - **Rescaling.** `mean_l2`, `medoid` and `rank1` change the loading scale. ORA uses ranks only, but projection uses L2 from the reference, so rescale to the median member norm.
