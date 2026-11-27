@@ -21,10 +21,10 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 - [x] 0.5 Build the GO BP gmt for ORA if it is missing (`generate_archs4_go_bp_gmt`).
 
 ### Phase 1: Reproduce the existing consensus sets (stop if this fails)
-- [ ] 1.1 Scaffold the new area: config, `.smk`, Snakefile include and target, staging rules. (Partly done in 0.4: the config, `.smk`, include, `consensus_eval_archs4` aggregate and public `consensus_evaluation` target exist; extend them.)
-- [ ] 1.2 Check that the exported `Z_all.npz` has the same (model, LV) keys as the legacy `noise_flags.csv`, plus 18,423 genes with no NaNs (`cev_zcache_check`). There's no legacy `Z_all.npz` to compare against.
-- [ ] 1.3 Check that `cl_c050_m4_r015` equals `Z_4reps.csv` exactly, and that its members equal `data/legacy_archs4/consensus_4reps/mgm_mapping.csv`.
-- [ ] 1.4 Check that `cl_c050_m6_r025` equals `Z_6reps.csv`, and that its members equal `data/legacy_archs4/consensus_6reps/mgm_mapping.csv`. If they differ, the member lists show where.
+- [x] 1.1 Scaffold the new area: config, `.smk`, Snakefile include and target, staging rules (`cev_zcache`, `cev_flags`, `cev_reproduce_set`, `cev_reproduction`; CLI `scripts/consensus_eval/run.py`).
+- [x] 1.2 Check that the exported `Z_all.npz` has the same (model, LV) keys as the legacy `noise_flags.csv`, plus 18,423 genes with no NaNs (`cev_zcache_check`). There's no legacy `Z_all.npz` to compare against.
+- [x] 1.3 Check that `cl_c050_m4_r015` equals `Z_4reps.csv` exactly, and that its members equal `data/legacy_archs4/consensus_4reps/mgm_mapping.csv`.
+- [x] 1.4 Check that `cl_c050_m6_r025` equals `Z_6reps.csv`, and that its members equal `data/legacy_archs4/consensus_6reps/mgm_mapping.csv`. If they differ, the member lists show where.
 - [ ] 1.5 Notebook `00_reproduction`.
 
 ### Phase 2: Evaluation framework, applied to the existing sets
@@ -70,6 +70,7 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 - 2026-11-26: Searched pico (dbmila) at the user's suggestion and found the 4-rep consensus folder (`Z.csv` = `Z_4reps.csv`, true members), the canonical S123 Z/summary and the gene-level `gene_properties.csv`. Staged all three under `data/legacy_archs4/` (see Key facts). Added member checks to 1.3, an export byte-check to 0.4, and config keys. Leakage is no longer blocked.
 - 2026-11-26: Step 0.4 done. Added `scripts/consensus_eval/export_run.R`, a minimal `workflow/config/consensus_eval.yaml`, `workflow/rules/consensus_eval.smk` (`cev_export_run`, `cev_export_check`, `consensus_eval_archs4`), and the Snakefile configfile/include plus the public `consensus_evaluation` target (pulled forward from 1.1). The dry run listed only the 10 `cev_export_run` jobs, `cev_export_check` and the target. Ran in about 1.5 min with 6 jobs in parallel. Output is `{root}/archs4/runs/S*/{Z.csv, summary.csv, manifest.json}` (966 MB). `cev_export_check` passed: S123 `Z.csv` and `summary.csv` are byte-identical to `data/legacy_archs4/canonical_S123/`, even though the local `seed123.rds` (re-saved Sep 17) is 9,479 bytes larger than the original fit's rds. The manifest md5 is read from `MD5SUM.txt`, not recomputed: the user had already verified the rds md5s, so don't re-check them.
 - 2026-11-26: Step 0.5 done. `data/pathways/go_bp.Hs.symbols.gmt` was missing, so ran `generate_archs4_go_bp_gmt` (the dry run listed only that job; it took about 25 s). It has 15,413 GO BP terms, and its sha256 matches the rule's pin (`33e559d…`).
+- 2026-11-26: Steps 1.1–1.4 done. As the user chose, the two reproduction sets are built by the **unchanged** `cluster_metalv.py` (`cache` + `cluster`), so Phase 1 tests only our inputs; cev.py's builder is checked against these outputs in 2.1. Added `run.py` (`flags`, `zcache-check`, `reproduction`), the `reproduce:` config block (each entry carries its `external` Z and legacy `members` file) and rules `cev_zcache`, `cev_zcache_check`, `cev_flags`, `cev_reproduce_set` (→ `{root}/archs4/reproduce/{set}/`) and `cev_reproduction` (→ `report/reproduction/{set}.{csv,log}`). The dry run listed only those 9 jobs; the whole run took about 2.5 min. Results: the cache has 17,280 LVs × 18,423 genes, with keys equal to the legacy flags. Flags: 2,117 at r2 0.15 (15,163 kept) and 1,324 at 0.25 (15,956 kept). `cl_c050_m4_r015` gives 7,860 clusters and keeps 1,058; `cl_c050_m6_r025` gives 8,025 and keeps 618. **Both `metaZ.csv` files are byte-identical to `Z_4reps.csv` / `Z_6reps.csv`** (max|ΔZ| = 0), and every metaLV's member set, `n_models` and `n_lvs` equal the legacy `mgm_mapping.csv`. This confirms the `A4_METALV_MODELS` order and the re-thresholded legacy flags.
 ---
 
 ## Context
@@ -289,15 +290,15 @@ consensus_eval:
       rds: data/clamp_archs4/CLAMPfull_canonical_seed{seed}.rds
       md5: data/clamp_archs4/MD5SUM.txt
       legacy_flags: data/legacy_archs4/consensus_6reps/noise_flags.csv
-      legacy_members_6reps: data/legacy_archs4/consensus_6reps/mgm_mapping.csv
-      legacy_members_4reps: data/legacy_archs4/consensus_4reps/mgm_mapping.csv
       gene_properties: data/legacy_archs4/noise_inputs/gene_properties.csv
       reference_dir: data/legacy_archs4/canonical_{model}   # export check (staged con_ref model)
   reproduce:   # frozen legacy sets: absolute min_models, checked against the external Z
     cl_c050_m4_r015: {linkage: complete, min_cos: 0.5, min_models: 4, noise_r2: 0.15,
-                      external: data/clamp_archs4/consensus/Z_4reps.csv}
+                      external: data/clamp_archs4/consensus/Z_4reps.csv,
+                      members: data/legacy_archs4/consensus_4reps/mgm_mapping.csv}
     cl_c050_m6_r025: {linkage: complete, min_cos: 0.5, min_models: 6, noise_r2: 0.25,
-                      external: data/clamp_archs4/consensus/Z_6reps.csv}
+                      external: data/clamp_archs4/consensus/Z_6reps.csv,
+                      members: data/legacy_archs4/consensus_6reps/mgm_mapping.csv}
   grids:       # the .smk expands each grid into set names and the {set} wildcard constraint
     hier:     {linkage: [complete, average], min_cos: [0.4, 0.5, 0.6, 0.7],
                min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
@@ -329,10 +330,12 @@ cev_export_run (R)            ancient(rds) -> runs/{model}/Z.csv, summary.csv, m
 cev_zcache                    runs/*/Z.csv -> Z_all.npz            (cluster_metalv.py cache, A4_METALV_MODELS order)
 cev_zcache_check              Z_all.npz keys vs ancient(legacy noise_flags.csv) -> checks/zcache.ok
 cev_flags                     ancient(legacy noise_flags.csv) -> noise/flags_r{r2}.csv  (re-threshold technical_joint)
+cev_reproduce_set             Z_all + flags -> reproduce/{set}/{metaZ.csv, cluster_summary.csv, ...}
+                              (unchanged cluster_metalv.py cluster; the reference that cev_hier_set must match)
 cev_linkage                   Z_all + flags -> linkage/r{r2}/{linkage}/{subset}.npy  (one dendrogram, shared by all cuts)
 cev_hier_set                  linkage + Z_all -> sets/{set}/{subset}/{Z.npy, lvs.csv, members.csv, meta.json}
-cev_reproduction              reproduce sets vs ancient(external Z) -> report/reproduction.csv
-                              (fails unless max|ΔZ| < 1e-6 and names equal)
+cev_reproduction              reproduce/{set} vs ancient(external Z, legacy members) -> report/reproduction/{set}.csv
+                              (fails unless max|ΔZ| < 1e-6, names equal and member sets equal)
 cev_ensemble     [gpu-kmeans, gpu=1]  Z_all + flags -> ensembles/{ens}/{subset}/partitions.npz   (k-means only)
 cev_eac                       partitions + hier cuts from cev_linkage
                               -> ensembles/{ens}/{subset}/{agreement_by_k.csv, consensus_partitions.npz, selected_k.txt}
@@ -385,7 +388,7 @@ Split-half and LORO procedure:
 - `python -m unittest discover -s scripts/consensus_eval/tests` (in `clamp-analyses`). The tests cover:
   - `coassoc` against PhenoPLIER's slow version.
   - `eac` recovering a planted partition.
-  - `hier` + `median` reproducing `cluster_metalv.py cluster` exactly.
+  - `hier` + `median` reproducing `cluster_metalv.py cluster` exactly (and `cev_hier_set` for the two reproduce sets equal to `reproduce/{set}/metaZ.csv` and `cluster_summary.csv` members).
   - The weighting in `run_median`.
   - `rank1` being non-negative.
   - Iq, purity and coverage on hand-computed cases.
