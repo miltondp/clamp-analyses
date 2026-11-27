@@ -310,7 +310,7 @@ What to reuse:
 `cev.py` contents (2.1 implemented loading/distance, hier, `replicated`, `median` and the metrics except `hungarian_match`; the rest lands with the step that first uses it):
 
 - **Loading and distance:**
-  - `load_lvs(npz, flags)` returns `LVTable(X, Xn, models, lvs, genes)`.
+  - `load_lvs(npz, flags)` returns `LVTable(X, models, lvs, genes)`; `Xn` is a lazy `cached_property`.
   - `condensed_cosine_distance(Xn)`: an exact copy of `cluster_metalv.py:109-117`, so results stay identical. It's inline in `cluster_main`, so it can't be imported without editing that file. The reproduction test guards the copy.
 - **Clustering:**
   - `hier_linkage(Xn, method)`, computed once per (noise_r2, linkage, run subset) and saved (n−1 × 4, tiny). `hier_partition(L, min_cos)` is then just `fcluster`, and every min_cos / min_models set reuses the same dendrogram.
@@ -347,7 +347,7 @@ What to reuse:
   - `cev.condensed_jaccard_distance(B)` uses the same 256-row blocks as the cosine version: intersections come from a float32 boolean matmul, and union = |a| + |b| − intersection.
   - Memory and time should be about the same as cosine (measured about 12 s per build at n = 15k; not yet measured for Jaccard).
 - **Linkage cache:** linkages gain a distance dimension, `linkage/r{r2}/{dist}_{linkage}/{subset}.npz` with `dist` ∈ {cos, jac}. Migrate the existing cosine paths, accepting the cheap rerun.
-- **Grid:** `grids.topj`, with names like `topj_{linkage}_j{min_jac*100:03d}_f{min_frac*10:02d}_r{r2*100:03d}_{combine}` and `cev_set_args` extended.
+- **Grid:** `grids.topj`, with names like `topj_{linkage}_j{min_jac*100:03d}_f{min_frac*10:02d}_r{r2*100:03d}_{combine}`. `hier-set` reads the whole set definition from its `--params` JSON, so the new keys (e.g. `min_jac`) need no new flags.
   - Consensus = median of raw loadings, as before.
   - Choose `min_jac` *first*, from data: the distribution of reciprocal best-hit Jaccard among cos ≥ 0.5 hits (observed best-hit median 0.114, p75 0.221; null max 0.031). Also pick cuts whose set sizes bracket the cosine grid's (about 300–1,700 LVs). A starting guess is [0.1, 0.15, 0.2, 0.3].
 - **Evaluation:** same rules, no new metrics. Circularity flips here: overlap metrics become partly circular for these sets, and cosine metrics (`cos_to_consensus`, member cosine) become the independent check. Read the 2.2c sets against the cosine sets at matched `n_lvs`.

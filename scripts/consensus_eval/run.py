@@ -53,8 +53,7 @@ def zcache_check_main(args):
     ap.add_argument("--out", required=True)
     a = ap.parse_args(args)
 
-    d = np.load(a.z_cache, allow_pickle=True)
-    X, models, lvs, genes = d["X"], d["models"], d["lvs"], d["genes"]
+    X, models, lvs, genes = cev.load_cache(a.z_cache)
     keys = list(zip(models, lvs))
     flags = pd.read_csv(a.flags)
     fkeys = list(zip(flags.model, flags.LV))
@@ -157,6 +156,12 @@ def write_set(out_dir, Z, lvs, members, meta):
     (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
 
 
+def read_set(set_dir):
+    sd = Path(set_dir)
+    return (np.load(sd / "Z.npy"), pd.read_csv(sd / "lvs.csv"), pd.read_csv(sd / "members.csv"),
+            json.loads((sd / "meta.json").read_text()))
+
+
 def hier_set_main(args):
     ap = argparse.ArgumentParser(prog="run.py hier-set")
     ap.add_argument("--set", required=True)
@@ -164,23 +169,20 @@ def hier_set_main(args):
     ap.add_argument("--z-cache", required=True)
     ap.add_argument("--flags", required=True)
     ap.add_argument("--linkage", required=True)
-    ap.add_argument("--min-cos", type=float, required=True)
-    g = ap.add_mutually_exclusive_group(required=True)
-    g.add_argument("--min-models", type=int)
-    g.add_argument("--min-frac", type=float)
-    ap.add_argument("--combine", default="median", choices=list(cev.COMBINE))
-    ap.add_argument("--params", required=True, help="JSON of the set definition, copied to meta.json")
+    ap.add_argument("--params", required=True,
+                    help="JSON set definition (min_cos, min_models or min_frac, combine, ...), copied to meta.json")
     ap.add_argument("--out-dir", required=True)
     a = ap.parse_args(args)
+    p = json.loads(a.params)
 
     pool = cev.load_pool(a.z_cache, a.flags)
     d = np.load(a.linkage, allow_pickle=True)
     assert (d["models"] == pool.models).all() and (d["lvs"] == pool.lvs).all(), "linkage keys differ from the pool"
     n_runs = len(pd.unique(pool.models))
-    min_models = a.min_models if a.min_models is not None else cev.resolve_min_models(a.min_frac, n_runs)
-    labels = cev.hier_partition(d["L"], a.min_cos)
-    Z, lvs, members, n_clusters = cev.build_set(pool, labels, min_models, a.combine)
-    meta = {"set": a.set, "subset": a.subset, **json.loads(a.params), "n_runs": n_runs,
+    min_models = p["min_models"] if "min_models" in p else cev.resolve_min_models(p["min_frac"], n_runs)
+    labels = cev.hier_partition(d["L"], p["min_cos"])
+    Z, lvs, members, n_clusters = cev.build_set(pool, labels, min_models, p["combine"])
+    meta = {"set": a.set, "subset": a.subset, **p, "n_runs": n_runs,
             "min_models_resolved": min_models, "n_pool": len(pool.lvs), "n_clusters": n_clusters,
             "n_metalvs": len(lvs), "n_members": len(members)}
     write_set(a.out_dir, Z, lvs, members, meta)
@@ -196,26 +198,9 @@ def set_check_main(args):
     a = ap.parse_args(args)
 
     sd, rd = Path(a.set_dir), Path(a.reproduce_dir)
-    Z, lvs, members = np.load(sd / "Z.npy"), pd.read_csv(sd / "lvs.csv"), pd.read_csv(sd / "members.csv")
+    Z, lvs, members, _ = read_set(sd)
     ref_z, ref_s = pd.read_csv(rd / "metaZ.csv", index_col=0), pd.read_csv(rd / "cluster_summary.csv")
-    problems = []
-    if list(lvs.metaLV) != list(ref_z.columns):
-        problems.append("metaLV names/order differ")
-    elif Z.shape != ref_z.shape:
-        problems.append(f"Z shape {Z.shape} vs {ref_z.shape}")
-    else:
-        # metaZ.csv holds float32 values in shortest repr, so the round trip is exact; an absolute
-        # float64 tolerance would fail on large loadings (~1e-8 relative).
-        ref32 = ref_z.to_numpy().astype(Z.dtype)
-        if not (Z == ref32).all():
-            problems.append(f"{int((Z != ref32).sum())} values differ in {Z.dtype}, "
-                            f"max|dZ| {float(np.abs(Z.astype(np.float64) - ref_z.to_numpy()).max())}")
-    ours = members.assign(key=members.model + ":" + members.LV).groupby("metaLV", sort=False).key.apply(";".join)
-    ref = ref_s.set_index("metaLV")
-    if set(ours.index) != set(ref.index) or (ours.loc[ref.index] != ref.members).any():
-        problems.append("member lists differ")
-    if not (lvs.set_index("metaLV")[["n_lvs", "n_models"]].loc[ref.index] == ref[["n_lvs", "n_models"]]).all().all():
-        problems.append("n_lvs/n_models differ")
+    problems = cev.compare_to_metalv(Z, lvs, members, ref_z, ref_s)
     if problems:
         sys.exit(f"set check failed for {sd}:\n  " + "\n  ".join(problems))
     msg = f"{sd} equals {rd} exactly ({Z.dtype}): {len(lvs)} metaLVs, {len(members)} members"
@@ -252,13 +237,12 @@ def evaluate_main(args):
 
     sd, out = Path(a.set_dir), Path(a.out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    meta = json.loads((sd / "meta.json").read_text())
-    Z, lvs, members = np.load(sd / "Z.npy"), pd.read_csv(sd / "lvs.csv"), pd.read_csv(sd / "members.csv")
+    Z, lvs, members, meta = read_set(sd)
     cache = cev.load_pool(a.z_cache)  # all LVs: a set may hold LVs flagged at pool_r2 (built at another r2)
     assert Z.shape == (len(cache.genes), len(lvs)), (Z.shape, len(cache.genes), len(lvs))
 
     row_of = {k: i for i, k in enumerate(cache.keys)}
-    member_rows = np.array([row_of[f"{m}:{l}"] for m, l in zip(members.model, members.LV)])
+    member_rows = np.array([row_of[k] for k in cev.lv_keys(members.model, members.LV)])
     codes = pd.Categorical(members.metaLV, categories=lvs.metaLV).codes
     assert (codes >= 0).all()
     per, sil = cev.cluster_metrics(cache, member_rows, codes, Z, a.top_n)
@@ -266,7 +250,7 @@ def evaluate_main(args):
     per.insert(0, "metaLV", lvs.metaLV)
 
     h = np.load(a.best_hits, allow_pickle=True)
-    pool_rows = np.array([row_of[f"{m}:{l}"] for m, l in zip(h["models"], h["lvs"])])
+    pool_rows = np.array([row_of[k] for k in cev.lv_keys(h["models"], h["lvs"])])
     runs = list(h["runs"])
     repro = cev.reproducible(h["hits"], a.reproducible_cos, cev.resolve_min_models(a.reproducible_frac, len(runs)))
     best = cev.best_cos(cache.Xn[pool_rows], cev.l2norm(Z.T))

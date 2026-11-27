@@ -35,7 +35,7 @@ consensus_eval:
   resources:
     export: {mem_mb: 16000, runtime: 30}   # readRDS peaks at ~12 GB
     zcache: {mem_mb: 16000, runtime: 30}
-    set: {mem_mb: 16000, runtime: 60, threads: 4}       # as crispercas_metalv_cluster
+    set: {mem_mb: 16000, runtime: 60}       # as crispercas_metalv_cluster
     linkage: {mem_mb: 16000, runtime: 30, threads: 4}   # condensed distance 0.9 GB + linkage copy
     eval: {mem_mb: 16000, runtime: 60, threads: 4}
     check: {mem_mb: 4000, runtime: 30}     # zcache/reproduction checks and the report (peak ~2 GB)

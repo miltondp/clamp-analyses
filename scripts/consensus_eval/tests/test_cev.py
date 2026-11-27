@@ -61,13 +61,8 @@ class BuilderReproducesClusterMetalvTest(unittest.TestCase):
                 Z, set_lvs, members, _ = cev.build_set(pool, labels, min_models)
 
                 self.assertGreater(Z.shape[1], 0)
-                self.assertEqual(list(set_lvs.metaLV), list(ref_z.columns))
                 self.assertEqual(list(pool.genes), list(ref_z.index))
-                np.testing.assert_array_equal(Z, ref_z.to_numpy().astype(np.float32))
-                ours = members.assign(key=members.model + ":" + members.LV).groupby("metaLV", sort=False).key.apply(";".join)
-                self.assertEqual(list(ours.loc[ref_s.metaLV]), list(ref_s.members))
-                self.assertEqual(list(set_lvs.n_lvs), list(ref_s.n_lvs))
-                self.assertEqual(list(set_lvs.n_models), list(ref_s.n_models))
+                self.assertEqual(cev.compare_to_metalv(Z, set_lvs, members, ref_z, ref_s), [])
 
     def test_condensed_distance_matches_pdist(self):
         X = cev.l2norm(toy_runs(n_runs=2)[0])
@@ -128,7 +123,7 @@ class MetricsTest(unittest.TestCase):
 
     def test_cluster_metrics_purity_and_cohesion(self):
         X, models, lvs, genes = toy_runs(n_runs=3, n_modules=3, n_genes=60, n_noise=0)
-        cache = cev.LVTable(X, cev.l2norm(X), models, lvs, pd.Index(genes))
+        cache = cev.LVTable(X, models, lvs, pd.Index(genes))
         rows = np.array([0, 1, 3, 2])          # two members of run 1 in cluster 0
         codes = np.array([0, 0, 0, 1])
         Z = np.stack([np.median(X[rows[:3]], 0), X[2]], axis=1)

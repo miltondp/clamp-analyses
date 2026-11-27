@@ -6,6 +6,7 @@ and, on real data, by the cev_set_check rule.
 """
 import math
 from dataclasses import dataclass
+from functools import cached_property
 
 import numpy as np
 import pandas as pd
@@ -18,17 +19,30 @@ BLOCK = 1024  # rows per similarity block
 # Loading and distance
 # ------------------------------------------------------------
 
+def l2norm(M):
+    return M / np.linalg.norm(M, axis=1, keepdims=True)
+
+
+def lv_keys(models, lvs):
+    """'model:LV' keys, the member format of cluster_metalv.py's cluster_summary.csv."""
+    return [f"{m}:{l}" for m, l in zip(models, lvs)]
+
+
 @dataclass
 class LVTable:
     X: np.ndarray       # n x genes, raw loadings (float32)
-    Xn: np.ndarray      # L2-normalized rows
     models: np.ndarray
     lvs: np.ndarray
     genes: pd.Index
 
+    @cached_property
+    def Xn(self):
+        """L2-normalized rows, built on first use (hier-set never needs them)."""
+        return l2norm(self.X)
+
     @property
     def keys(self):
-        return [f"{m}:{l}" for m, l in zip(self.models, self.lvs)]
+        return lv_keys(self.models, self.lvs)
 
 
 def load_cache(npz):
@@ -48,8 +62,7 @@ def load_pool(npz, flags_csv=None):
         noisy = noisy_keys(flags_csv)
         keep = np.array([(m, l) not in noisy for m, l in zip(models, lvs)])
         X, models, lvs = X[keep], models[keep], lvs[keep]
-    Xn = X / np.linalg.norm(X, axis=1, keepdims=True)
-    return LVTable(X, Xn, models, lvs, genes)
+    return LVTable(X, models, lvs, genes)
 
 
 def condensed_cosine_distance(Xn):
@@ -108,13 +121,32 @@ def build_set(pool, labels, min_models, combine="median"):
     return Z, lvs, pd.DataFrame(members, columns=["metaLV", "cluster", "model", "LV"]), n_clusters
 
 
+def compare_to_metalv(Z, lvs, members, ref_z, ref_s):
+    """Problems (empty if none) of a built set vs cluster_metalv.py's metaZ.csv / cluster_summary.csv."""
+    problems = []
+    if list(lvs.metaLV) != list(ref_z.columns):
+        problems.append("metaLV names/order differ")
+    elif Z.shape != ref_z.shape:
+        problems.append(f"Z shape {Z.shape} vs {ref_z.shape}")
+    else:
+        # metaZ.csv holds float32 values in shortest repr, so the round trip is exact; an absolute
+        # float64 tolerance would fail on large loadings (~1e-8 relative).
+        ref32 = ref_z.to_numpy().astype(Z.dtype)
+        if not (Z == ref32).all():
+            problems.append(f"{int((Z != ref32).sum())} values differ in {Z.dtype}, "
+                            f"max|dZ| {float(np.abs(Z.astype(np.float64) - ref_z.to_numpy()).max())}")
+    ours = members.assign(key=lv_keys(members.model, members.LV)).groupby("metaLV", sort=False).key.apply(";".join)
+    ref = ref_s.set_index("metaLV")
+    if set(ours.index) != set(ref.index) or (ours.loc[ref.index] != ref.members).any():
+        problems.append("member lists differ")
+    if not (lvs.set_index("metaLV")[["n_lvs", "n_models"]].loc[ref.index] == ref[["n_lvs", "n_models"]]).all().all():
+        problems.append("n_lvs/n_models differ")
+    return problems
+
+
 # ------------------------------------------------------------
 # Metrics
 # ------------------------------------------------------------
-
-def l2norm(M):
-    return M / np.linalg.norm(M, axis=1, keepdims=True)
-
 
 def top_genes(M, n):
     """Boolean rows x genes: the n largest positive values per row (fewer if fewer are positive),

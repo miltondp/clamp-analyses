@@ -41,7 +41,6 @@ for _vals in itertools.product(*_grid.values()):
     assert _name not in CEV_SETS, f"duplicate set name {_name}"
     CEV_SETS[_name] = _p
 CEV_A4_R2 = sorted({str(v["noise_r2"]) for v in CEV_SETS.values()} | {str(CEV_EVAL["pool_r2"])})
-CEV_LINKAGES = sorted({(str(v["noise_r2"]), v["linkage"]) for v in CEV_SETS.values()})
 
 
 # ============================================================
@@ -212,7 +211,7 @@ rule cev_linkage:
         f"{CEV_A4}/linkage/r{{r2}}/{{linkage}}/{{subset}}.log",
     wildcard_constraints:
         r2="|".join(re.escape(r) for r in CEV_A4_R2),
-        linkage="complete|average",
+        linkage="|".join(sorted({v["linkage"] for v in CEV_SETS.values()})),
         subset="|".join(CEV_SUBSETS),
     threads: CEV_RES["linkage"]["threads"]
     resources:
@@ -222,12 +221,6 @@ rule cev_linkage:
     shell:
         "OPENBLAS_NUM_THREADS={threads} OMP_NUM_THREADS={threads} python {input.script} linkage "
         "--z-cache {input.z} --flags {input.flags} --method {wildcards.linkage} --out {output} > {log} 2>&1"
-
-
-def cev_set_args(wc):
-    p = CEV_SETS[wc.set]
-    rep = f"--min-models {p['min_models']}" if "min_models" in p else f"--min-frac {p['min_frac']}"
-    return f"--min-cos {p['min_cos']} {rep} --combine {p['combine']}"
 
 
 rule cev_hier_set:
@@ -247,7 +240,6 @@ rule cev_hier_set:
         f"{CEV_A4}/sets/{{set}}/{{subset}}/build.log",
     params:
         out=lambda wc, output: os.path.dirname(output.z),
-        args=cev_set_args,
         json=lambda wc: json.dumps(CEV_SETS[wc.set]),
     wildcard_constraints:
         set="|".join(CEV_SETS),
@@ -258,7 +250,7 @@ rule cev_hier_set:
     conda: "clamp-analyses"
     shell:
         "python {input.script} hier-set --set {wildcards.set} --subset {wildcards.subset} "
-        "--z-cache {input.z} --flags {input.flags} --linkage {input.linkage} {params.args} "
+        "--z-cache {input.z} --flags {input.flags} --linkage {input.linkage} "
         "--params '{params.json}' --out-dir {params.out} > {log} 2>&1"
 
 
@@ -271,8 +263,8 @@ rule cev_set_check:
     output:
         f"{CEV_A4}/checks/set_{{set}}.ok",
     params:
-        set_dir=lambda wc: f"{CEV_A4}/sets/{wc.set}/full",
-        reproduce_dir=lambda wc: f"{CEV_A4}/reproduce/{wc.set}",
+        set_dir=lambda wc, input: os.path.dirname(input.set[0]),
+        reproduce_dir=lambda wc, input: os.path.dirname(input.reproduce[0]),
     wildcard_constraints:
         set="|".join(CEV_REPRO),
     resources:
@@ -321,7 +313,7 @@ rule cev_evaluate:
     log:
         f"{CEV_A4}/sets/{{set}}/eval/evaluate.log",
     params:
-        set_dir=lambda wc: f"{CEV_A4}/sets/{wc.set}/full",
+        set_dir=lambda wc, input: os.path.dirname(input.set[0]),
         out=lambda wc, output: os.path.dirname(output.metrics),
         thresholds=" ".join(str(t) for t in CEV_EVAL["cos_thresholds"]),
     wildcard_constraints:
