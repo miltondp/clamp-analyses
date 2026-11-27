@@ -181,8 +181,8 @@ rule perturbseq_ora_summary:
         "{output:q} {input:q}"
 
 
-# Step 6: perturbation-response capture. max |r| between each perturbation's logFC and the LVs,
-# against the same gene-label permutation null as the ORA.
+# Step 6: perturbation-response capture. max |r| between each perturbation's logFC (raw, and without
+# its top shared components) and the LVs, against the same gene-label permutation null as the ORA.
 PS_RESPONSE = os.path.join(PS_CFG["output_root"], "response", "{strategy}", "{model}")
 
 
@@ -200,6 +200,7 @@ rule perturbseq_response:
     params:
         out_dir=lambda wc, output: os.path.dirname(output.summary),
         alpha=PS_CFG["response"]["alpha"],
+        remove_pcs=" ".join(str(n) for n in PS_CFG["response"]["remove_pcs"]),
     wildcard_constraints:
         **PS_WC,
     resources:
@@ -209,7 +210,7 @@ rule perturbseq_response:
     shell:
         "python scripts/perturbseq/response_capture.py --z {input.z:q} --logfc {input.logfc:q} "
         "--sizes {input.sizes:q} --strategy {wildcards.strategy} --model {wildcards.model} "
-        "--n-perm {PS_CFG[n_perm]} --seed {PS_CFG[seed]} --alpha {params.alpha} "
+        "--remove-pcs {params.remove_pcs} --n-perm {PS_CFG[n_perm]} --seed {PS_CFG[seed]} --alpha {params.alpha} "
         "--out-dir {params.out_dir:q} > {log:q} 2>&1"
 
 

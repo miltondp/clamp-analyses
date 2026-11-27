@@ -8,6 +8,9 @@ universe; the perturbation's statistic is max |r| over LVs (|r|, so the LV sign 
 * The perturbed gene's own row is left out of that perturbation's correlations (exactly, by removing
   its terms from the sums): the knockdown itself is not a downstream response.
 * A zero-variance LV has r = 0.
+* K562 knockdowns share a strong common response (the first logFC component explains ~23% of the
+  variance), which one hub LV per method tends to absorb. For each --remove-pcs n, the top-n shared
+  components are projected out of the logFC first (residualize()); n = 0 is the raw response.
 
 Null: --n-perm permutations of the Z gene labels (rows) from --seed, the same stream as
 ora_null.py, shared by every LV. The logFC side and the self-mask stay fixed.
@@ -16,9 +19,13 @@ A perturbation is captured when its permutation p, (1 + #{perms >= observed}) / 
 <= --alpha. For the null of the capture rate, every member of {observed, perms} is ranked against
 the other n_perm, so under H0 the rate is about alpha.
 
-Outputs in --out-dir: perturbations.csv (observed per perturbation: best LV, its signed r, max |r|,
-null mean/95th percentile, perm p, captured), null.csv.gz (run statistics per permutation; perm 0
-is observed) and summary.csv (ora_null.summarize's columns).
+Run statistics: median and mean max |r|, % captured, and top_lv_share (% of perturbations whose best
+LV is the single most common one: the hub concentration).
+
+Outputs in --out-dir, stacked over --remove-pcs (column remove_pcs): perturbations.csv (observed per
+perturbation: best LV, its signed r, max |r|, null mean/95th percentile, perm p, captured),
+null.csv.gz (run statistics per permutation; perm 0 is observed) and summary.csv
+(ora_null.summarize's columns).
 """
 import argparse
 import sys
@@ -32,7 +39,7 @@ from build_regulons import log, self_cells  # noqa: E402
 from ora_null import summarize  # noqa: E402
 from signed_z import read_z  # noqa: E402
 
-STATISTICS = ("median_max_abs_r", "mean_max_abs_r", "pct_captured")
+STATISTICS = ("median_max_abs_r", "mean_max_abs_r", "pct_captured", "top_lv_share")
 
 
 class Response:
@@ -77,6 +84,29 @@ class Response:
         return np.divide(num, den, out=np.zeros_like(num), where=~flat & (den > 0))
 
 
+def residualize(logfc, self_rows, n):
+    """logFC without its top-n shared response components, and the variance share they explained.
+
+    Each perturbation column is centred and its own-gene entry zeroed (so a strong knockdown does not
+    steer the shared axes); U holds the top-n left singular vectors (gene space) of that matrix, and
+    the result is the centred logFC minus its projection on U. Own-gene entries stay in the output
+    but are masked in the correlations anyway.
+    """
+    x = np.asarray(logfc, float)
+    if n == 0:
+        return x, 0.0
+    cols = np.flatnonzero(np.asarray(self_rows) >= 0)
+    own = (np.asarray(self_rows)[cols], cols)
+    masked = x.copy()
+    masked[own] = np.nan
+    xc = x - np.nanmean(masked, axis=0)  # the column mean leaves the own gene out too
+    x0 = xc.copy()
+    x0[own] = 0.0
+    u, s, _ = np.linalg.svd(x0, full_matrices=False)
+    u = u[:, :n]
+    return xc - u @ (u.T @ x0), float((s[:n] ** 2).sum() / (s ** 2).sum())
+
+
 def best(r):
     """max |r| over LVs, the LV index reaching it and its signed r, per perturbation."""
     idx = np.abs(r).argmax(axis=1)
@@ -84,13 +114,17 @@ def best(r):
     return np.abs(signed), idx, signed
 
 
-def null_max_abs_r(response, z, n_perm, seed):
-    """(1 + n_perm) x perturbations max |r|; row 0 is observed, then gene-label permutations of Z."""
+def null_best(response, z, n_perm, seed):
+    """(1 + n_perm) x perturbations max |r| and best-LV index; row 0 is observed, then gene-label
+    permutations of Z."""
     rng = np.random.default_rng(seed)
-    rows = [best(response.r(z))[0]]
-    for _ in range(n_perm):
-        rows.append(best(response.r(z[rng.permutation(z.shape[0])]))[0])
-    return np.vstack(rows)
+    values, lvs = [], []
+    for perm in range(n_perm + 1):
+        zp = z if perm == 0 else z[rng.permutation(z.shape[0])]
+        max_abs, idx, _ = best(response.r(zp))
+        values.append(max_abs)
+        lvs.append(idx)
+    return np.vstack(values), np.vstack(lvs)
 
 
 def leave_one_out_p(values):
@@ -103,13 +137,19 @@ def leave_one_out_p(values):
     return count_ge / values.shape[0]
 
 
-def run_statistics(values, alpha):
+def top_lv_share(lvs):
+    """Per member, % of perturbations whose best LV is the most common best LV (hub concentration)."""
+    return np.array([100 * np.bincount(row).max() / len(row) for row in lvs])
+
+
+def run_statistics(values, lvs, alpha):
     p = leave_one_out_p(values)
     return pd.DataFrame({
         "perm": np.arange(values.shape[0]),
         "median_max_abs_r": np.median(values, axis=1),
         "mean_max_abs_r": values.mean(axis=1),
         "pct_captured": 100 * (p <= alpha).mean(axis=1),
+        "top_lv_share": top_lv_share(lvs),
     }), p[0]
 
 
@@ -118,6 +158,40 @@ def read_logfc(path):
     frame.index = frame.index.astype(str)
     frame.columns = frame.columns.astype(str)
     return frame
+
+
+def capture(z, logfc, self_rows, n_pcs, args):
+    """Per-perturbation table, per-permutation statistics and summary for one --remove-pcs value."""
+    x, removed = residualize(logfc.to_numpy(), self_rows, n_pcs)
+    response = Response(x, self_rows)
+    log(f"remove_pcs={n_pcs}: removed {removed:.1%} of the logFC variance")
+
+    values = z.to_numpy(float)
+    max_abs, idx, signed = best(response.r(values))
+    null, lvs = null_best(response, values, args.n_perm, args.seed)
+    stats, perm_p = run_statistics(null, lvs, args.alpha)
+
+    perturbations = pd.DataFrame({
+        "remove_pcs": n_pcs,
+        "perturbation": logfc.columns,
+        "self_masked": response.masked,
+        "best_LV": np.asarray(z.columns)[idx],
+        "best_r": signed,
+        "max_abs_r": max_abs,
+        "null_mean": null[1:].mean(axis=0),
+        "null_p95": np.quantile(null[1:], 0.95, axis=0),
+        "perm_p": perm_p,
+        "captured": perm_p <= args.alpha,
+    })
+    stats.insert(0, "remove_pcs", n_pcs)
+    summary = summarize(stats, {
+        "strategy": args.strategy, "model": args.model, "remove_pcs": n_pcs,
+        "removed_variance": removed, "latent_variables": z.shape[1],
+        "perturbations": logfc.shape[1], "self_masked": int(response.masked.sum()),
+        "n_perm": args.n_perm, "seed": args.seed, "alpha": args.alpha,
+    }, statistics=STATISTICS)
+    log(summary[["statistic", "observed", "null_mean", "null_p95", "perm_p"]].to_string(index=False))
+    return perturbations, stats, summary
 
 
 def run(args):
@@ -130,42 +204,21 @@ def run(args):
     self_rows = np.full(logfc.shape[1], -1)
     rows, cols = self_cells(logfc)
     self_rows[cols] = rows
-    response = Response(logfc.to_numpy(), self_rows)
     log(f"{z.shape[1]} LVs, {len(z)} genes, {logfc.shape[1]} perturbations "
-        f"({int(response.masked.sum())} with their own gene masked)")
+        f"({int((self_rows >= 0).sum())} with their own gene masked)")
 
-    values = z.to_numpy(float)
-    max_abs, idx, signed = best(response.r(values))
-    null = null_max_abs_r(response, values, args.n_perm, args.seed)
-    stats, perm_p = run_statistics(null, args.alpha)
-
-    perturbations = pd.DataFrame({
-        "perturbation": logfc.columns,
-        "self_masked": response.masked,
-        "best_LV": np.asarray(z.columns)[idx],
-        "best_r": signed,
-        "max_abs_r": max_abs,
-        "null_mean": null[1:].mean(axis=0),
-        "null_p95": np.quantile(null[1:], 0.95, axis=0),
-        "perm_p": perm_p,
-        "captured": perm_p <= args.alpha,
-    })
+    results = [capture(z, logfc, self_rows, n, args) for n in args.remove_pcs]
+    perturbations, stats, summary = (pd.concat(parts, ignore_index=True) for parts in zip(*results))
     if args.sizes:
         sizes = pd.read_csv(args.sizes, usecols=["perturbation", "n_de_universe"])
-        perturbations.insert(1, "n_de", perturbations.perturbation.map(
+        perturbations.insert(2, "n_de", perturbations.perturbation.map(
             sizes.set_index("perturbation")["n_de_universe"]))
 
     out = Path(args.out_dir)
     out.mkdir(parents=True, exist_ok=True)
     perturbations.to_csv(out / "perturbations.csv", index=False)
     stats.to_csv(out / "null.csv.gz", index=False)
-    summary = summarize(stats, {
-        "strategy": args.strategy, "model": args.model, "latent_variables": z.shape[1],
-        "perturbations": logfc.shape[1], "self_masked": int(response.masked.sum()),
-        "n_perm": args.n_perm, "seed": args.seed, "alpha": args.alpha,
-    }, statistics=STATISTICS)
     summary.to_csv(out / "summary.csv", index=False)
-    log(summary[["statistic", "observed", "null_mean", "null_p95", "perm_p"]].to_string(index=False))
 
 
 def parse_args(argv=None):
@@ -176,6 +229,8 @@ def parse_args(argv=None):
     parser.add_argument("--strategy", required=True)
     parser.add_argument("--model", required=True)
     # No defaults: the values live in workflow/config/perturbseq.yaml.
+    parser.add_argument("--remove-pcs", type=int, nargs="+", required=True,
+                        help="numbers of shared logFC components to remove; each gives its own results")
     parser.add_argument("--n-perm", type=int, required=True)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--alpha", type=float, required=True)
