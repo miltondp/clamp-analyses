@@ -20,7 +20,7 @@ perturbseq:
   response:
     min_de: 20
     alpha: 0.05
-    remove_pcs: [0, 1]
+    remove_pcs: [0, 1, 2]
     resources: {mem_mb: 8000, runtime: 60}
   # Same ORA settings as the ARCHS4 meta-LV ORA (archs4.yaml: archs4.ora).
   ora:
