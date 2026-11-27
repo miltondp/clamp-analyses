@@ -17,8 +17,9 @@ CEV_A4_REF = con_ref("archs4")
 CEV_A4_REF_DIR = CEV_A4_CFG["reference_dir"].format(model=CEV_A4_REF)
 CEV_REPRO = CEV_CFG["reproduce"]
 CEV_EVAL = CEV_CFG["eval"]
-CEV_SCRIPT = "scripts/consensus_eval/run.py"
-CEV_LIB = "scripts/consensus_eval/cev.py"
+# ancient(): editing the code must not rerun the area; after a logic change, rerun with --forcerun <rule>.
+CEV_SCRIPT = ancient("scripts/consensus_eval/run.py")
+CEV_LIB = ancient("scripts/consensus_eval/cev.py")
 CEV_SUBSETS = ["full"]   # split-half / LORO subsets arrive in PLAN 2.4
 CEV_METALV_SCRIPT = "scripts/archs4/crispercas/cluster_metalv.py"
 assert all(v["linkage"] == "complete" for v in CEV_REPRO.values()), "cluster_metalv.py only does complete linkage"
