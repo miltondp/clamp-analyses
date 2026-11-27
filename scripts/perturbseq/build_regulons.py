@@ -143,6 +143,16 @@ def write_gmt(path, sets, cluster_size):
             handle.write("\t".join([rep, f"cluster_size={n}", *genes]) + "\n")
 
 
+def read_gmt(path):
+    """term -> genes, with run_ora.R::read_gmt's parsing (name, description, genes...)."""
+    terms = {}
+    for line in Path(path).read_text().splitlines():
+        record = line.split("\t")
+        if len(record) >= 3:
+            terms.setdefault(record[0], []).extend(record[2:])
+    return terms
+
+
 def quantiles(values):
     values = np.asarray(values)
     if not len(values):

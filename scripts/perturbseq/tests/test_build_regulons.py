@@ -12,16 +12,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import build_regulons as br
 
 
-def read_gmt(path):
-    """Same parsing as scripts/archs4/coverage/run_ora.R::read_gmt."""
-    terms = {}
-    for line in Path(path).read_text().splitlines():
-        record = line.split("\t")
-        if len(record) >= 3:
-            terms[record[0]] = record[2:]
-    return terms
-
-
 class BhTests(unittest.TestCase):
     def test_matches_hand_computed_values(self):
         p = np.array([0.01, 0.04, 0.03, 0.20])
@@ -135,7 +125,7 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(sizes.loc["T0", "self_logfc"], -1.0)
         self.assertFalse(bool(sizes.loc["SMALL", "regulon"]))
 
-        gmt = read_gmt(out / "regulons.gmt")
+        gmt = br.read_gmt(out / "regulons.gmt")
         self.assertEqual(set(gmt), {"BIG"})                         # T0 and DUP collapse onto BIG
         self.assertEqual(len(gmt["BIG"]), 20)
         clusters = pd.read_csv(out / "clusters.csv").set_index("perturbation")
@@ -151,7 +141,7 @@ class BuildTests(unittest.TestCase):
         out = self.run_build("--max-size", "19")
         sizes = pd.read_csv(out / "sizes.csv").set_index("perturbation")
         self.assertFalse(bool(sizes.loc["BIG", "regulon"]))
-        self.assertEqual(set(read_gmt(out / "regulons.gmt")), {"DUP"})
+        self.assertEqual(set(br.read_gmt(out / "regulons.gmt")), {"DUP"})
 
     def test_mismatched_z_gene_sets_fail(self):
         pd.DataFrame({"LV1": [0.0]}, index=["T0"]).to_csv(self.root / "z2.csv")
