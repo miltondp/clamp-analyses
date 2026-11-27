@@ -13,15 +13,18 @@ import shutil
 import tempfile
 import zipfile
 
-from spredixcan_inputs import checksum, obtain_archive
+import reference_inputs
+from reference_inputs import ROOT, link_verified
+from spredixcan_inputs import obtain_archive
 
-ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / 'workflow/config/perturbseq_inputs.json'
 
 
 def verify(path, member):
-    if path.stat().st_size != member['bytes'] or checksum(path) != member['sha256']:
-        raise ValueError(f'Checksum mismatch for {path}. Existing files are never replaced; inspect this input before proceeding.')
+    # Size first: a mismatch fails fast without hashing a multi-GB file.
+    if path.stat().st_size != member['bytes']:
+        raise ValueError(f"Checksum mismatch for {path}: expected {member['bytes']} bytes. Existing files are never replaced; inspect this input before proceeding.")
+    reference_inputs.verify(path, member)
 
 
 def safe_member(name):
@@ -32,42 +35,28 @@ def safe_member(name):
 
 
 def stage(manifest, root=ROOT, archive=None, source_root=None, check=False):
-    members = manifest['members']
     pending = {}
-    for key, member in members.items():
+    for key, member in manifest['members'].items():
         destination = root / member['path']
         if destination.exists():
             verify(destination, member)
             print(f'OK {key}: {destination}')
-        else:
-            pending[key] = member
+        elif check or not (source_root and link_verified(key, member, destination, [source_root / safe_member(member['member'])])):
+            pending[key] = (member, destination)
     if not pending:
         return
     if check:
-        raise FileNotFoundError('Missing: ' + ', '.join(str(root / m['path']) for m in pending.values()))
-    if source_root:
-        for key, member in list(pending.items()):
-            candidate = source_root / safe_member(member['member'])
-            if candidate.is_file():
-                verify(candidate, member)
-                destination = root / member['path']
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                destination.symlink_to(candidate.resolve())
-                print(f'LINKED {key}: {destination} -> {candidate.resolve()}')
-                del pending[key]
-    if not pending:
-        return
+        raise FileNotFoundError('Missing: ' + ', '.join(str(destination) for _, destination in pending.values()))
     archive = archive or root / manifest['archive']['path']
     obtain_archive(archive, manifest['archive'])
     with zipfile.ZipFile(archive) as handle:
-        for key, member in pending.items():
+        for key, (member, destination) in pending.items():
             try:
                 info = handle.getinfo(safe_member(member['member']))
             except KeyError:
                 raise ValueError(f"Archive {archive} has no member {member['member']}") from None
             if info.file_size != member['bytes']:
                 raise ValueError(f"Unexpected size for archive member {member['member']}")
-            destination = root / member['path']
             destination.parent.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory(prefix='.perturbseq-', dir=destination.parent) as scratch:
                 temporary = Path(scratch) / 'input'

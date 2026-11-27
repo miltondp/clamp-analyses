@@ -39,6 +39,18 @@ def verify(path, asset):
         raise ValueError(f"Checksum mismatch for {path}: expected {asset['sha256']}, found {actual}. Existing files are never replaced; inspect this input before proceeding.")
 
 
+def link_verified(key, asset, destination, candidates):
+    """Symlink destination to the first existing candidate, after it passes verify()."""
+    for candidate in candidates:
+        if candidate.is_file():
+            verify(candidate, asset)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.symlink_to(candidate.resolve())
+            print(f'LINKED {key}: {destination} -> {candidate.resolve()}')
+            return True
+    return False
+
+
 def fetch(key, asset, destination_root, check=False, upstream=False, offline=False, destination_override=None, source_root=None):
     destination = destination_override.resolve() if destination_override else destination_root / asset['path']
     if destination.exists():
@@ -52,13 +64,8 @@ def fetch(key, asset, destination_root, check=False, upstream=False, offline=Fal
     if source_root:
         candidates.append(source_root / asset['path'])
         candidates.extend(source_root / candidate for candidate in asset.get('source_candidates', []))
-    for candidate in candidates:
-        if candidate.is_file():
-            verify(candidate, asset)
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.symlink_to(candidate.resolve())
-            print(f'LINKED {key}: {destination}')
-            return
+    if link_verified(key, asset, destination, candidates):
+        return
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.reference-', dir=destination.parent) as scratch:
         temporary = Path(scratch) / 'input'
