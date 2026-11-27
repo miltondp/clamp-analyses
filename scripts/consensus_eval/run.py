@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Consensus-LV evaluation CLI (see PLAN.md). Subcommands: flags, zcache-check, reproduction,
-linkage, hier-set, set-check, pool-hits, evaluate, aggregate."""
+linkage, hier-set, hier-sets, set-check, pool-hits, evaluate, compare, label-null, aggregate."""
 import argparse
 import filecmp
 import json
@@ -134,10 +134,21 @@ def reproduction_main(args):
         sys.exit(1)
 
 
-def linkage_main(args):
-    ap = argparse.ArgumentParser(prog="run.py linkage")
+def add_pool_args(ap):
     ap.add_argument("--z-cache", required=True)
     ap.add_argument("--flags", required=True)
+    ap.add_argument("--runs", nargs="+", default=None, help="keep only these runs (split-half / LORO subset)")
+    ap.add_argument("--gene-perm-seed", type=int, default=None,
+                    help="shuffle the gene order within every pool LV (gene-permutation null)")
+
+
+def subset_pool(a):
+    return cev.load_pool(a.z_cache, a.flags, runs=a.runs, gene_perm_seed=a.gene_perm_seed)
+
+
+def linkage_main(args):
+    ap = argparse.ArgumentParser(prog="run.py linkage")
+    add_pool_args(ap)
     ap.add_argument("--method", required=True, choices=["complete", "average"])
     ap.add_argument("--dist", required=True, choices=["cos", "jac"],
                     help="cos: 1 - cosine of raw loadings; jac: 1 - Jaccard of the top-n positive genes")
@@ -145,7 +156,7 @@ def linkage_main(args):
     ap.add_argument("--out", required=True)
     a = ap.parse_args(args)
 
-    pool = cev.load_pool(a.z_cache, a.flags)
+    pool = subset_pool(a)
     t0 = time.time()
     if a.dist == "cos":
         L = cev.hier_linkage(pool.Xn, a.method)
@@ -174,33 +185,56 @@ def read_set(set_dir):
             json.loads((sd / "meta.json").read_text()))
 
 
-def hier_set_main(args):
-    ap = argparse.ArgumentParser(prog="run.py hier-set")
-    ap.add_argument("--set", required=True)
-    ap.add_argument("--subset", required=True)
-    ap.add_argument("--z-cache", required=True)
-    ap.add_argument("--flags", required=True)
-    ap.add_argument("--linkage", required=True)
-    ap.add_argument("--params", required=True,
-                    help="JSON set definition (dist, min_cos or min_jac, min_models or min_frac, combine, ...), copied to meta.json")
-    ap.add_argument("--out-dir", required=True)
-    a = ap.parse_args(args)
-    p = json.loads(a.params)
-
-    pool = cev.load_pool(a.z_cache, a.flags)
-    d = np.load(a.linkage, allow_pickle=True)
+def load_linkage(path, pool):
+    d = np.load(path, allow_pickle=True)
     assert (d["models"] == pool.models).all() and (d["lvs"] == pool.lvs).all(), "linkage keys differ from the pool"
+    return d
+
+
+def build_hier_set(pool, d, name, subset, p, out_dir):
+    """Cut the linkage d at the set's min_<dist>, keep clusters spanning enough runs, write the set."""
     n_runs = len(pd.unique(pool.models))
     min_models = p["min_models"] if "min_models" in p else cev.resolve_min_models(p["min_frac"], n_runs)
     dist = p["dist"]
     assert str(d["dist"]) == dist, f"linkage dist {d['dist']} differs from the set's {dist}"
     labels = cev.hier_partition(d["L"], p[f"min_{dist}"])
     Z, lvs, members, n_clusters = cev.build_set(pool, labels, min_models, p["combine"])
-    meta = {"set": a.set, "subset": a.subset, **p, "n_runs": n_runs,
+    meta = {"set": name, "subset": subset, **p, "n_runs": n_runs,
             "min_models_resolved": min_models, "n_pool": len(pool.lvs), "n_clusters": n_clusters,
             "n_metalvs": len(lvs), "n_members": len(members)}
-    write_set(a.out_dir, Z, lvs, members, meta)
+    write_set(out_dir, Z, lvs, members, meta)
+    return meta
+
+
+def hier_set_main(args):
+    ap = argparse.ArgumentParser(prog="run.py hier-set")
+    ap.add_argument("--set", required=True)
+    ap.add_argument("--subset", required=True)
+    add_pool_args(ap)
+    ap.add_argument("--linkage", required=True)
+    ap.add_argument("--params", required=True,
+                    help="JSON set definition (dist, min_cos or min_jac, min_models or min_frac, combine, ...), copied to meta.json")
+    ap.add_argument("--out-dir", required=True)
+    a = ap.parse_args(args)
+    pool = subset_pool(a)
+    meta = build_hier_set(pool, load_linkage(a.linkage, pool), a.set, a.subset, json.loads(a.params), a.out_dir)
     print(json.dumps(meta))
+
+
+def hier_sets_main(args):
+    """Every set cut from one linkage, built from one pool load (split-half / LORO / null subsets)."""
+    ap = argparse.ArgumentParser(prog="run.py hier-sets")
+    ap.add_argument("--subset", required=True)
+    add_pool_args(ap)
+    ap.add_argument("--linkage", required=True)
+    ap.add_argument("--params", required=True, help="JSON {set name: set definition}")
+    ap.add_argument("--out-dir", required=True, help="one sub-directory per set")
+    a = ap.parse_args(args)
+    pool = subset_pool(a)
+    d = load_linkage(a.linkage, pool)
+    for name, p in json.loads(a.params).items():
+        meta = build_hier_set(pool, d, name, a.subset, p, Path(a.out_dir) / name)
+        print(json.dumps(meta))
 
 
 def set_check_main(args):
@@ -304,17 +338,117 @@ def evaluate_main(args):
     print(pd.Series(row).to_string())
 
 
+def compare_main(args):
+    """Split-half (Hungarian, half a vs half b), LORO recovery and the null counts of one set."""
+    ap = argparse.ArgumentParser(prog="run.py compare")
+    ap.add_argument("--full-dir", required=True)
+    ap.add_argument("--half-a", nargs="+", required=True, help="half-a set dirs, paired in order with --half-b")
+    ap.add_argument("--half-b", nargs="+", required=True)
+    ap.add_argument("--loro", nargs="+", required=True, help="leave-one-run-out set dirs")
+    ap.add_argument("--geneperm", nargs="+", required=True, help="gene-permutation null set dirs")
+    ap.add_argument("--label-null", required=True, help="label-null table of the set's full linkage")
+    ap.add_argument("--top-n", type=int, required=True)
+    ap.add_argument("--match-cos", type=float, required=True)
+    ap.add_argument("--match-jac", type=float, required=True, help="top-gene Jaccard cut of the Jaccard-matched scores")
+    ap.add_argument("--single-gene", type=float, required=True)
+    ap.add_argument("--out-dir", required=True)
+    a = ap.parse_args(args)
+    assert len(a.half_a) == len(a.half_b)
+    out = Path(a.out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    Z, lvs, _, meta = read_set(a.full_dir)
+    t, tj = f"c{a.match_cos:g}", f"j{a.match_jac:g}"
+
+    rows = []
+    for i, (da, db) in enumerate(zip(a.half_a, a.half_b)):
+        Za, _, _, ma = read_set(da)
+        Zb, _, _, mb = read_set(db)
+        assert ma["set"] == mb["set"] == meta["set"], (ma["set"], mb["set"], meta["set"])
+        assert ma["min_models_resolved"] == mb["min_models_resolved"]
+        rows.append({"split": i, "subset_a": ma["subset"], "subset_b": mb["subset"],
+                     "min_models": ma["min_models_resolved"],
+                     **cev.split_half_scores(Za, Zb, a.top_n, a.match_cos, a.match_jac, a.single_gene)})
+    sh = pd.DataFrame(rows)
+    sh.to_csv(out / "split_half.csv", index=False)
+
+    subs = [read_set(d) for d in a.loro]
+    best, best_j = cev.loro_recovery(Z, [x[0] for x in subs], a.top_n)
+    loro = lvs[["metaLV", "n_lvs", "n_models"]].copy()
+    loro["top1_share"] = cev.top1_share(Z.T)
+    for j, x in enumerate(subs):
+        loro[x[3]["subset"]] = best[:, j]
+    loro["recovery"] = (best >= a.match_cos).mean(1)
+    loro["recovery_jac"] = (best_j >= a.match_jac).mean(1)
+    loro.to_csv(out / "loro.csv", index=False)
+
+    row = {"set": meta["set"], "sh_n_splits": len(sh), "sh_n_empty": int(sh.n_empty.sum()), "sh_min_models": int(sh.min_models.iloc[0]),
+           "sh_n_lvs": float(sh[["n_a", "n_b"]].to_numpy().mean())}
+    for prefix, thr in [("", t), ("j", tj)]:
+        for st in cev.STRATA:
+            row[f"sh_{prefix}share_{thr}_{st}"] = sh[f"{prefix}share_{st}"].mean()
+            row[f"sh_{prefix}share_{thr}_{st}_sd"] = sh[f"{prefix}share_{st}"].std()
+            row[f"sh_{prefix}pair_cos_{st}"] = sh[f"{prefix}pair_cos_{st}"].mean()
+            row[f"sh_{prefix}pair_jac_{st}"] = sh[f"{prefix}pair_jac_{st}"].mean()
+    mask = cev.strata(Z, a.single_gene)
+    for col, thr in [("recovery", t), ("recovery_jac", tj)]:
+        for st in cev.STRATA:
+            rec = loro[col][mask[st]]
+            row[f"loro_recovery_{thr}_{st}"] = rec.mean() if len(rec) else np.nan
+            row[f"loro_frac_stable_{thr}_{st}"] = (rec == 1).mean() if len(rec) else np.nan
+    row["loro_n_lvs"] = float(np.mean([len(x[1]) for x in subs]))
+    row["geneperm_n_lvs"] = float(np.mean([len(read_set(d)[1]) for d in a.geneperm]))
+
+    ln = pd.read_csv(a.label_null)
+    cut = meta[f"min_{meta['dist']}"]
+    ln = ln[np.isclose(ln.cut, cut) & (ln.m == meta["min_models_resolved"])]
+    assert len(ln), f"no label-null rows for cut {cut}, m {meta['min_models_resolved']}"
+    row.update({"labelnull_observed": int(ln["observed"].iloc[0]), "labelnull_mean": ln["null"].mean(),
+                "labelnull_max": int(ln["null"].max())})
+    pd.DataFrame([row]).to_csv(out / "robust.csv", index=False)
+    print(sh.to_string(index=False))
+    print(pd.Series(row).to_string())
+
+
+def label_null_main(args):
+    """Clusters spanning >= m runs at each cut of one linkage, observed and with run labels shuffled."""
+    ap = argparse.ArgumentParser(prog="run.py label-null")
+    ap.add_argument("--linkage", required=True)
+    ap.add_argument("--cuts", type=float, nargs="+", required=True, help="similarity cuts (min_cos or min_jac)")
+    ap.add_argument("--n-perm", type=int, required=True)
+    ap.add_argument("--seed", type=int, required=True)
+    ap.add_argument("--out", required=True)
+    a = ap.parse_args(args)
+    d = np.load(a.linkage, allow_pickle=True)
+    tabs = []
+    for cut in a.cuts:
+        labels = cev.hier_partition(d["L"], cut)
+        tab = cev.label_perm_null(labels, d["models"], a.n_perm, a.seed)
+        tab.insert(0, "cut", cut)
+        tabs.append(tab)
+    res = pd.concat(tabs, ignore_index=True)
+    res.to_csv(a.out, index=False)
+    print(res.groupby(["cut", "m"]).agg(observed=("observed", "first"), null_mean=("null", "mean"),
+                                        null_max=("null", "max")).to_string())
+
+
 def aggregate_main(args):
     ap = argparse.ArgumentParser(prog="run.py aggregate")
     ap.add_argument("--metrics", nargs="+", required=True)
     ap.add_argument("--params", nargs="+", required=True,
                     help="set-definition columns that lead the headline table (absent ones are skipped)")
     ap.add_argument("--headline", nargs="+", required=True, help="metric columns of the headline table")
+    ap.add_argument("--robust", nargs="*", default=[], help="compare robust.csv files (grid sets only)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--headline-out", required=True)
+    ap.add_argument("--robust-out", default=None)
     a = ap.parse_args(args)
     d = pd.concat([pd.read_csv(p) for p in a.metrics], ignore_index=True)
     d.to_csv(a.out, index=False)
+    if a.robust:
+        rob = pd.concat([pd.read_csv(p) for p in a.robust], ignore_index=True)
+        rob = d[[c for c in a.params if c in d.columns] + ["n_lvs"]].merge(rob, on="set")
+        rob.to_csv(a.robust_out, index=False)
+        d = d.merge(rob[["set"] + [c for c in rob.columns if c not in d.columns]], on="set", how="left")
     head = d[[c for c in a.params if c in d.columns] + a.headline]
     head.to_csv(a.headline_out, index=False)
     print(f"{len(d)} sets -> {a.out}, {a.headline_out}")
@@ -323,8 +457,9 @@ def aggregate_main(args):
 
 def main():
     commands = {"flags": flags_main, "zcache-check": zcache_check_main, "reproduction": reproduction_main,
-                "linkage": linkage_main, "hier-set": hier_set_main, "set-check": set_check_main,
-                "pool-hits": pool_hits_main, "evaluate": evaluate_main, "aggregate": aggregate_main}
+                "linkage": linkage_main, "hier-set": hier_set_main, "hier-sets": hier_sets_main,
+                "set-check": set_check_main, "pool-hits": pool_hits_main, "evaluate": evaluate_main,
+                "compare": compare_main, "label-null": label_null_main, "aggregate": aggregate_main}
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=commands)
     args = parser.parse_args(sys.argv[1:2])

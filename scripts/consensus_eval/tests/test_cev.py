@@ -223,5 +223,75 @@ class ReproducibleTest(unittest.TestCase):
         self.assertAlmostEqual(q["p50"], 50)
 
 
+class RobustnessTest(unittest.TestCase):
+    def test_load_pool_runs_and_gene_perm(self):
+        X, models, lvs, genes = toy_runs()
+        with tempfile.TemporaryDirectory() as tmp:
+            npz = Path(tmp) / "Z_all.npz"
+            np.savez(npz, X=X, models=models, lvs=lvs, genes=genes)
+            full = cev.load_pool(npz)
+            sub = cev.load_pool(npz, runs=["R4", "R2"])
+            keep = np.isin(models, ["R2", "R4"])
+            np.testing.assert_array_equal(sub.X, X[keep])            # cache order, not the runs order
+            np.testing.assert_array_equal(sub.lvs, lvs[keep])
+            perm = cev.load_pool(npz, gene_perm_seed=1)
+            np.testing.assert_array_equal(np.sort(perm.X, 1), np.sort(full.X, 1))   # same values per LV
+            self.assertFalse(np.array_equal(perm.X, full.X))
+            np.testing.assert_array_equal(perm.X, cev.load_pool(npz, gene_perm_seed=1).X)
+            with self.assertRaises(AssertionError):
+                cev.load_pool(npz, runs=["R9"])
+
+    def test_hungarian_and_split_half(self):
+        rng = np.random.default_rng(0)
+        Za = (rng.gamma(1.0, 1.0, (200, 12)) * (rng.random((200, 12)) < 0.3)).astype(np.float32)
+        perm = rng.permutation(12)
+        for by in ["cos", "jac"]:
+            ia, ib, cos, jac = cev.hungarian_match(Za, Za[:, perm], top_n=20, by=by)
+            np.testing.assert_array_equal(perm[ib], ia)
+            np.testing.assert_allclose(cos, 1, atol=1e-5)
+            np.testing.assert_allclose(jac, 1)
+        # half b: the same 12 LVs permuted plus 4 unrelated ones -> 24 of 28 LVs matched
+        extra = np.zeros((200, 4), dtype=np.float32)
+        for j in range(4):
+            extra[j * 50:(j + 1) * 50, j] = 1   # disjoint gene blocks: low cosine to everything in Za
+        Zb = np.hstack([Za[:, perm], extra])
+        row = cev.split_half_scores(Za, Zb, top_n=20, match_cos=0.9, match_jac=0.25, single_gene=0.5)
+        self.assertEqual((row["n_a"], row["n_b"], row["n_pairs"]), (12, 16, 12))
+        self.assertAlmostEqual(row["share_all"], 24 / 28)
+        self.assertAlmostEqual(row["jshare_all"], 24 / 28)
+        self.assertAlmostEqual(row["jpair_cos_all"], 1, places=5)
+        self.assertAlmostEqual(row["pair_jac_all"], 1)
+        self.assertEqual(row["n_single"] + row["n_multi"], 28)
+
+    def test_empty_consensus_lv_never_matches(self):
+        Za = np.eye(5, 3, dtype=np.float32)
+        Zb = Za.copy()
+        Zb[:, 2] = 0                      # all-zero consensus LV
+        row = cev.split_half_scores(Za, Zb, top_n=2, match_cos=0.9, match_jac=0.25, single_gene=0.5)
+        self.assertEqual(row["n_empty"], 1)
+        self.assertAlmostEqual(row["share_all"], 4 / 6)
+        self.assertAlmostEqual(row["jshare_all"], 4 / 6)
+        best, best_j = cev.loro_recovery(Zb, [Za], top_n=2)
+        np.testing.assert_allclose(best[:, 0], [1, 1, 0], atol=1e-6)
+        np.testing.assert_allclose(best_j[:, 0], [1, 1, 0])
+
+    def test_loro_recovery(self):
+        Z = np.eye(4, 3, dtype=np.float32)
+        best, best_j = cev.loro_recovery(Z, [Z[:, :2], np.zeros((4, 0), np.float32)], top_n=1)
+        np.testing.assert_allclose(best[:, 0], [1, 1, 0], atol=1e-6)
+        np.testing.assert_allclose(best_j[:, 0], [1, 1, 0])
+        self.assertTrue(np.isnan(best[:, 1]).all() and np.isnan(best_j[:, 1]).all())
+
+    def test_label_perm_null(self):
+        # 6 clusters of one LV per run (span 3 runs) and 3 clusters drawn from one run (span 1)
+        labels = np.r_[np.repeat(np.arange(6), 3), np.repeat([6, 7, 8], 2)]
+        models = np.r_[np.tile(["A", "B", "C"], 6), ["A"] * 6]
+        tab = cev.label_perm_null(labels, models, n_perm=5, seed=0)
+        obs = tab.groupby("m")["observed"].first()
+        self.assertEqual(obs.tolist(), [9, 6, 6])
+        self.assertTrue((tab[tab.m == 1].null == 9).all())          # every cluster spans >= 1 run
+        self.assertEqual(len(tab), 5 * 3)
+
+
 if __name__ == "__main__":
     unittest.main()

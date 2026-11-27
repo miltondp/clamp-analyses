@@ -56,13 +56,23 @@ def noisy_keys(flags_csv):
     return set(zip(flags.loc[flags.any_flag, "model"], flags.loc[flags.any_flag, "LV"]))
 
 
-def load_pool(npz, flags_csv=None):
-    """Cache rows minus flagged LVs, in cache order (as cluster_metalv.py:101-109)."""
+def load_pool(npz, flags_csv=None, runs=None, gene_perm_seed=None):
+    """Cache rows minus flagged LVs, in cache order (as cluster_metalv.py:101-109).
+
+    runs: keep only these runs' LVs (split-half / LORO subsets), still in cache order.
+    gene_perm_seed: shuffle the gene order within every LV (gene-permutation null)."""
     X, models, lvs, genes = load_cache(npz)
+    keep = np.ones(len(lvs), dtype=bool)
     if flags_csv is not None:
         noisy = noisy_keys(flags_csv)
-        keep = np.array([(m, l) not in noisy for m, l in zip(models, lvs)])
+        keep &= np.array([(m, l) not in noisy for m, l in zip(models, lvs)])
+    if runs is not None:
+        assert set(runs) <= set(models), f"runs not in the cache: {sorted(set(runs) - set(models))}"
+        keep &= np.isin(models, list(runs))
+    if not keep.all():
         X, models, lvs = X[keep], models[keep], lvs[keep]
+    if gene_perm_seed is not None:
+        X = np.random.default_rng(gene_perm_seed).permuted(X, axis=1)
     return LVTable(X, models, lvs, genes)
 
 
@@ -374,3 +384,98 @@ def summarize(per, cov, thresholds, single_gene):
     for scope in ["reproducible", "reproducible_multi"]:
         row[f"n_{scope}"] = int(by.n[scope, thresholds[0]])
     return row
+
+
+# ------------------------------------------------------------
+# Robustness: split-half, LORO and the run-label null (PLAN 2.4)
+# ------------------------------------------------------------
+
+STRATA = ["all", "single", "multi"]
+
+
+def unit_cols(Z):
+    """Columns of a set (genes x k) as unit rows (k x genes). An all-zero consensus LV (the median of a
+    large, loose cluster can be all zeros) becomes a zero row: cosine 0 to everything, so it never matches."""
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return np.nan_to_num(l2norm(Z.T))
+
+
+def hungarian_match(Za, Zb, top_n, by="cos"):
+    """One-to-one match of the columns of two sets (genes x k) maximizing total cosine (by="cos") or
+    total top-gene Jaccard (by="jac"). Returns ia, ib and the pairs' cosine and Jaccard (min(ka, kb) pairs)."""
+    from scipy.optimize import linear_sum_assignment
+
+    C = unit_cols(Za) @ unit_cols(Zb).T
+    J = np.nan_to_num(jaccard(top_genes(Za.T, top_n), top_genes(Zb.T, top_n)))   # empty LV: 0
+    ia, ib = linear_sum_assignment(C if by == "cos" else J, maximize=True)
+    return ia, ib, C[ia, ib], J[ia, ib]
+
+
+def strata(Z, single_gene):
+    """{'all', 'single', 'multi'} -> mask over the set's LVs (top1_share > single_gene is single)."""
+    single = top1_share(Z.T) > single_gene
+    return {"all": np.ones(len(single), bool), "single": single, "multi": ~single}
+
+
+# split-half matching modes: column prefix, Hungarian objective, the paired value thresholded
+MATCH_MODES = {"": "cos", "j": "jac"}
+
+
+def split_half_scores(Za, Zb, top_n, match_cos, match_jac, single_gene):
+    """Hungarian match of half a vs half b, once on cosine and once on top-gene Jaccard ('j' prefix).
+    For each stratum (an LV's own top1_share): share of the LVs of both halves whose partner clears the
+    threshold (cos >= match_cos, or Jaccard >= match_jac; unmatched LVs count as misses, so for 'all' it
+    is matched pairs / mean set size), and the median cosine and Jaccard of their pairs."""
+    row = {"n_a": Za.shape[1], "n_b": Zb.shape[1], "n_pairs": min(Za.shape[1], Zb.shape[1]),
+           "n_empty": int((~Za.any(0)).sum() + (~Zb.any(0)).sum())}
+    masks = [strata(Za, single_gene), strata(Zb, single_gene)]
+    for s in STRATA:
+        row[f"n_{s}"] = int(masks[0][s].sum() + masks[1][s].sum())
+    for prefix, by in MATCH_MODES.items():
+        ia, ib, cos, jac = hungarian_match(Za, Zb, top_n, by)
+        sides = []
+        for Z, idx in [(Za, ia), (Zb, ib)]:
+            pc = np.full(Z.shape[1], np.nan)
+            pj = np.full(Z.shape[1], np.nan)
+            pc[idx], pj[idx] = cos, jac
+            sides.append((pc, pj))
+        for s in STRATA:
+            pc = np.concatenate([side[0][m[s]] for side, m in zip(sides, masks)])
+            pj = np.concatenate([side[1][m[s]] for side, m in zip(sides, masks)])
+            hit = pc >= match_cos if by == "cos" else pj >= match_jac
+            row[f"{prefix}share_{s}"] = hit.mean() if len(pc) else np.nan
+            row[f"{prefix}pair_cos_{s}"] = np.nanmedian(pc) if np.isfinite(pc).any() else np.nan
+            row[f"{prefix}pair_jac_{s}"] = np.nanmedian(pj) if np.isfinite(pj).any() else np.nan
+    return row
+
+
+def loro_recovery(Z, Zsubs, top_n):
+    """genes x k full set vs a list of subset sets: k x len(Zsubs) best cosines and best top-gene
+    Jaccards (NaN for empty sets)."""
+    A = unit_cols(Z)
+    BA = top_genes(Z.T, top_n)
+    cos = np.full((Z.shape[1], len(Zsubs)), np.nan, dtype=np.float32)
+    jac = np.full((Z.shape[1], len(Zsubs)), np.nan, dtype=np.float32)
+    for j, Zs in enumerate(Zsubs):
+        if Zs.shape[1]:
+            cos[:, j] = best_cos(A, unit_cols(Zs))
+            jac[:, j] = np.nan_to_num(jaccard(BA, top_genes(Zs.T, top_n))).max(1)
+    return cos, jac
+
+
+def runs_spanned(labels, models):
+    """Number of distinct runs in each cluster (one value per cluster)."""
+    return pd.DataFrame({"c": labels, "m": models}).groupby("c").m.nunique().to_numpy()
+
+
+def label_perm_null(labels, models, n_perm, seed):
+    """Clusters spanning >= m runs, observed and with run labels shuffled across LVs (clusters kept;
+    run sizes kept). Long table: m, observed, perm, null count."""
+    rng = np.random.default_rng(seed)
+    ms = np.arange(1, len(pd.unique(models)) + 1)
+    obs = runs_spanned(labels, models)
+    rows = []
+    for p in range(n_perm):
+        null = runs_spanned(labels, rng.permutation(models))
+        rows += [{"m": m, "observed": int((obs >= m).sum()), "perm": p, "null": int((null >= m).sum())} for m in ms]
+    return pd.DataFrame(rows)

@@ -28,9 +28,13 @@ consensus_eval:
   # topj: the same machinery on 1 - Jaccard of each LV's top-n positive genes (crispercas.top_n),
   # named topj_{linkage}_j{min_jac}_f{min_frac}_r{noise_r2}_{combine}. 0.05 is the loosest cut above
   # the gene-shuffled null (max 0.036); reciprocal cos >= 0.5 hits have Jaccard p25/p50/p75 0.14/0.25/0.40.
+  # A grid may be a list of grids (same prefix). The second hier entry is the grid twin of
+  # cl_c050_m6_r025 (Z_6reps: 0.6 x 10 runs = 6), so the old published set gets split-half / LORO scores.
   grids:
-    hier: {dist: [cos], linkage: [complete, average], min_cos: [0.4, 0.5, 0.6, 0.7],
-           min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
+    hier:
+      - {dist: [cos], linkage: [complete, average], min_cos: [0.4, 0.5, 0.6, 0.7],
+         min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
+      - {dist: [cos], linkage: [complete], min_cos: [0.5], min_frac: [0.6], noise_r2: [0.25], combine: [median]}
     topj: {dist: [jac], linkage: [complete, average], min_jac: [0.05, 0.1, 0.15, 0.2, 0.3],
            min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
   eval:
@@ -43,7 +47,20 @@ consensus_eval:
     single_gene: 0.5       # top1_share above which an LV counts as single-gene dominated (consensus and pool)
     # recall_multi_c0.9: recall over reproducible LVs that are not single-gene dominated (recall_c0.9
     # rewards recovering single-gene LVs, which the topj sets deliberately shed).
-    headline: [n_lvs, median_overlap_to_consensus, frac_redundant_c0.5, recall_c0.9, recall_multi_c0.9]
+    # Robustness (PLAN 2.4), grid sets only. Split-half: n_splits seeded 5-vs-5 splits (half a always holds
+    # the first model, so no split repeats); Hungarian match on cosine, matched at >= match_cos. LORO: one
+    # subset per left-out run. Nulls: gene_perm shuffles the gene order within every pool LV (n_perm pseudo-
+    # subsets geneperm{i}, seed + i) and rebuilds every set; label_perm shuffles run labels over each full cut.
+    # match_jac: cut of the Jaccard-matched split-half / LORO scores (the symmetric twin of match_cos:
+    # cosine matching favors cosine-built sets). 0.25 is the median top-gene Jaccard of reciprocal cos >= 0.5 hits.
+    match_cos: 0.9
+    match_jac: 0.25
+    split_half: {n_splits: 10, seed: 1}
+    loro: true
+    nulls: {gene_perm: {n_perm: 1, seed: 2}, label_perm: {n_perm: 3, seed: 2}}
+    headline: [n_lvs, median_overlap_to_consensus, frac_redundant_c0.5, recall_c0.9, recall_multi_c0.9,
+               sh_share_c0.9_all, sh_share_c0.9_multi, sh_jshare_j0.25_all, sh_jshare_j0.25_multi,
+               loro_recovery_c0.9_all, loro_recovery_j0.25_all]
   resources:
     export: {mem_mb: 16000, runtime: 30}   # readRDS peaks at ~12 GB
     zcache: {mem_mb: 16000, runtime: 30}
