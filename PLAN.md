@@ -187,11 +187,12 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     - Add rule `perturbseq_response`.
   - [x] **6.2 Remove the shared knockdown response.** No peer-knockdown null (decided 2026-11-27).
     - `response_capture.py --remove-pcs` projects the top-n logFC components out before
-      correlating. Config `response.remove_pcs`; currently 0 (raw) and 1.
+      correlating. Config `response.remove_pcs`: 0 (raw), 1 and 2. Two PCs is the headline
+      "shared response removed" view (decided 2026-11-27); one PC does not break the hubs.
     - New hub statistic `top_lv_share`.
   - [x] **6.3 Review Saelens et al. 2018** and choose metrics to reuse. See "Module-evaluation
     metrics (Saelens 2018)" under Key facts.
-  - [ ] **6.4 aucodds / F-aucodds.**
+  - [x] **6.4 aucodds / F-aucodds.**
     - New `scripts/perturbseq/module_scores.py` (with tests) and rule `perturbseq_module_scores`
       per strategy and model, plus an aggregate `module_scores_summary.csv`.
     - Reuse `ora_null.Ora`: its sparse regulon membership, annotated universe (N) and `query()`.
@@ -213,6 +214,7 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     `perturbseq_report`. It shows per-method observed − null for regulon ORA, response capture
     (raw and with the shared response removed) and aucodds / F-aucodds, next to the cell-type
     mean r, plus the top CLAMPfull LV↔regulon hits with their cell-type assignment.
+    `remove_pcs = 2` is the headline response view; 0 and 1 are shown for comparison.
   - Add aggregate `perturbseq_pseudobulk` and hook it into `biology_pseudobulk`.
   - The stratification needs OneK1K CLAMPfull LV↔cell-type assignments. Add a small OneK1K-only
     rule that reuses `assign_with_margins()` from `scripts/pseudobulk/common.R` on
@@ -440,3 +442,88 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
   - **Open decision:** add `remove_pcs: 2` (and maybe 3) to the config? One PC is not enough to
     remove the shared response.
   - Next: decide `remove_pcs`, then Step 6.4.
+- 2026-11-27: **`remove_pcs` decided: [0, 1, 2]**, with 2 as the headline (user choice).
+  - Forced rerun of `perturbseq_response` (11 jobs, about 2.5 min). The 0 and 1 rows reproduce the
+    previous run exactly. PCs 1–2 remove 33.2% of the logFC variance. The null capture rate stays
+    at 4.0–4.1%.
+  - Per method, raw → PC1 → PC1–2 removed:
+
+    | Method | Median max \|r\| Δ | top_lv_share | Distinct best LVs |
+    |---|---|---|---|
+    | PLIER | 0.151 → 0.123 → 0.074 | 60.6 → 57.8 → 24.2 | 30 → 37 → 49 |
+    | flashier | 0.117 → 0.094 → 0.066 | 49.9 → 41.4 → 33.3 | 28 → 29 → 37 |
+    | CLAMPbase | 0.126 → 0.096 → 0.062 | 62.1 → 53.6 → 33.2 | 30 → 36 → 47 |
+    | CLAMPfull | 0.134 → 0.109 → 0.058 | 60.4 → 63.6 → 22.7 | 34 → 35 → 44 |
+    | NMF | 0.124 → 0.094 → 0.058 | 51.6 → 37.1 → 18.9 | 58 → 71 → 88 |
+    | ICA | 0.097 → 0.079 → 0.056 | 17.4 → 24.9 → 9.8 | 86 → 87 → 101 |
+    | CoGAPS | 0.097 → 0.074 → 0.052 | 27.8 → 20.3 → 33.3 | 28 → 34 → 44 |
+    | PCA | 0.095 → 0.071 → 0.048 | 56.8 → 46.5 → 29.2 | 33 → 45 → 63 |
+    | MOFA-FLEX | 0.084 → 0.068 → 0.044 | 25.9 → 20.1 → 12.0 | 149 → 163 → 213 |
+    | GSSig | 0.058 → 0.045 → 0.040 | 40.3 → 29.0 → 32.2 | 25 → 30 → 30 |
+
+    Donor-bulk CLAMPfull: Δ 0.144 → 0.100 → 0.059; top_lv_share 54.4 → 49.6 → 18.8.
+  - With 2 PCs removed the spread between methods narrows (Δ 0.040–0.074). PLIER still leads, and
+    flashier moves up from fifth to second. CLAMPfull, NMF and ICA are within 0.002 of each other.
+  - "% captured" is still saturated (77–99%).
+  - CLAMPfull sanity regulators with PCs 1–2 removed: GATA1 (r −0.25), LDB1 (−0.25), LMO2 (−0.18)
+    and TAL1 (−0.14) all go back to LV37, now that LV37 is no longer the best LV for most
+    perturbations (top_lv_share 22.7%). MYB → LV108, MYC → LV65, SPI1 → LV2 (−0.07, just above
+    p95 0.046). LV37 looks like a real erythroid program once the shared response is removed.
+  - Next: Step 6.4.
+- 2026-11-27: **Step 6.4 done.**
+  - New `scripts/perturbseq/module_scores.py`, with 10 new tests (44 pass in
+    `scripts/perturbseq/tests/`). Rules `perturbseq_module_scores` (11 jobs, 2.2 min in total) and
+    `perturbseq_module_scores_summary` (`07_perturbseq/module_scores_summary.csv`). Config
+    `perturbseq.modules`. Per model, `modules/{strategy}/{model}/` holds `null.csv.gz`,
+    `summary.csv`, `module_hits.csv` (best regulon per module) and `regulon_hits.csv` (best module
+    per regulon).
+  - The tests check against a re-implementation of the paper's scorer (`test_enrichment` +
+    statsmodels Holm–Šidák + `cal_aucodds` / `cal_faucodds`, using scipy's Fisher test). The odds
+    match exactly and the scores to 12 decimals. One edge case is intended: a module equal to a
+    regulon gives OR = inf.
+  - Deviations from the paper's code:
+    - ORs are kept at q ≤ 0.05 (the code uses 0.05; the paper text says 0.1).
+    - The z-score module is centered (mean ± 3 SD), which matters for nonnegative methods.
+    - The universe is the annotated genes, as in the ORA.
+  - **Speed:** `scipy.stats.hypergeom.sf` was the bottleneck (about 50 s per permutation for
+    MOFA-FLEX). It's replaced by cached right-tail tables per module size, built from `gammaln` with
+    a reverse cumulative sum (relative error vs scipy < 1e-10, tested). Now about 2 s per
+    permutation; the results are identical.
+  - **Results, main pseudobulk (`top` = top 1% per tail; `zscore` = beyond 3 SD).** The null
+    F-aucodds is 0.0003–0.004 for every method, with perm p = 1/101. So the paper's fold
+    (observed / null) is huge and unstable (hundreds to thousands); report observed − null (≈
+    observed) instead.
+
+    | Method | Modules (top) | aucodds modules | aucodds regulons | F-aucodds top | F-aucodds zscore |
+    |---|---|---|---|---|---|
+    | PLIER | 130 | 0.185 | 0.359 | 0.244 | 0.229 |
+    | CoGAPS | 106 | 0.162 | 0.404 | 0.231 | 0.230 |
+    | ICA | 260 | 0.184 | 0.307 | 0.230 | 0.231 |
+    | CLAMPfull | 130 | 0.116 | 0.372 | 0.176 | 0.177 |
+    | CLAMPbase | 130 | 0.123 | 0.280 | 0.170 | 0.162 |
+    | NMF | 130 | 0.102 | 0.292 | 0.151 | 0.160 |
+    | flashier | 260 | 0.070 | 0.341 | 0.116 | 0.102 |
+    | MOFA-FLEX | 1324 | 0.067 | 0.326 | 0.111 | 0.111 |
+    | GSSig | 64 | 0.088 | 0.106 | 0.096 | 0.016 |
+    | PCA | 260 | 0.052 | 0.323 | 0.090 | 0.068 |
+
+    The aucodds columns are for the `top` modules. Donor-bulk CLAMPfull: F-aucodds 0.198 (top) and
+    0.213 (zscore), above main CLAMPfull again, as in the ORA and response capture.
+  - The two module definitions give the same ranking. The exception is GSSig's z-score modules,
+    whose regulon aucodds collapses to 0.01.
+  - **The module half drives the ranking** (0.05–0.19). The regulon half sits at 0.28–0.40 for
+    every method except GSSig.
+  - % of `top` modules with ≥ 1 significant regulon: ICA 38.5, PLIER 36.2, donor-bulk CLAMPfull
+    30.8, CLAMPbase 28.5, CoGAPS 25.5, CLAMPfull 23.8, NMF 22.3, GSSig 21.9, flashier 16.2,
+    MOFA-FLEX 15.0, PCA 13.1. This is close to the ORA "% of LVs", though Holm–Šidák is stricter
+    than BH.
+  - **The regulon half is hub-dominated too.** One module is the best match for most regulons:
+    CLAMPfull LV37 82%, PLIER LV128 85%, CLAMPbase LV8 82%, NMF LV16 80%, PCA PC1 92%. CoGAPS
+    (34%) and ICA (43%) spread more. So aucodds over regulons mostly measures one hub's coverage,
+    and F-aucodds penalizes hubs only through the module half.
+  - CLAMPfull sanity regulators (`top`): MYB, GATA1, LDB1, LMO2 and TAL1 all have LV37 as their best
+    module (OR 27–685), and MYC has LV119. SPI1, ZFPM1 and RUNX1 have no significant module.
+  - **Open for Step 7:** report a hub-excluded regulon aucodds (drop each method's top-share
+    module) next to F-aucodds. Lead with F-aucodds and the module half, and treat fold as
+    secondary.
+  - Next: Step 7.
