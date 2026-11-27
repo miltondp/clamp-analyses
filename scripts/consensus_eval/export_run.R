@@ -4,7 +4,6 @@
 # published model is byte-identical to its Z.csv and summary.csv. B is not exported.
 #
 #   Rscript export_run.R --rds <fit.rds> --model S123 --md5-file MD5SUM.txt --out-dir <dir>
-suppressPackageStartupMessages(library(jsonlite))
 script_dir <- dirname(normalizePath(sub("^--file=", "", commandArgs(FALSE)[grep("^--file=", commandArgs(FALSE))])))
 source(file.path(script_dir, "..", "archs4", "common.R"))
 args <- parse_cli()
@@ -21,9 +20,8 @@ if (length(md5) != 1L) stop("No unique md5 entry for ", basename(rds), " in ", m
 res <- readRDS(rds)
 Z <- res$Z
 S <- res$summary
-if (!is.data.frame(Z) || is.null(rownames(Z)) || anyDuplicated(rownames(Z))) {
-  stop("Z must be a data.frame with unique gene rownames")
-}
+# data.frame row names are always unique; negative info means automatic 1..n names.
+if (!is.data.frame(Z) || .row_names_info(Z) < 0) stop("Z must be a data.frame with gene rownames")
 if (!identical(colnames(Z), paste0("LV", seq_len(ncol(Z))))) stop("Z columns are not LV1..LV", ncol(Z))
 if (!all(vapply(Z, function(x) all(is.finite(x)), logical(1)))) stop("Z contains missing or non-finite values")
 if (!identical(nrow(res$B), ncol(Z))) stop("B has ", nrow(res$B), " rows but Z has ", ncol(Z), " LVs")
