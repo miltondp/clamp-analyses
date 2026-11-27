@@ -40,7 +40,7 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
   - Drop `iq` and `silhouette`.
   - Write a headline table.
   - Details are in Implementation, "Step 2.2b".
-- [ ] 2.2c **(prioritized)** Hierarchical clustering on top-gene overlap: distance = 1 − Jaccard of each LV's top-185 positive genes, instead of cosine on raw loadings. Same grid machinery and the same evaluation. Details are in Implementation, "Step 2.2c".
+- [ ] 2.2c **(prioritized)** Hierarchical clustering on top-gene overlap: distance = 1 − Jaccard of each LV's top-185 positive genes, instead of cosine on raw loadings. Same grid machinery and the same evaluation. Grid `min_jac` [0.05, 0.1, 0.15, 0.2, 0.3] × both linkages × `min_frac` [0.3–0.6] (40 sets). The full spec, ready to run, is in Implementation, "Step 2.2c".
 - [ ] 2.3 Biological metrics: ORA, member pathway coherence, technical leakage.
 - [ ] 2.4 Robustness: split-half and LORO for the hierarchical sets, plus both nulls.
 - [ ] 2.5 Semi-synthetic benchmark.
@@ -373,19 +373,59 @@ What to reuse:
 
 ### Step 2.2c: hierarchical clustering on top-gene overlap (prioritized)
 
-- **Distance:** 1 − Jaccard of the top-185 positive-gene sets (`cev.top_genes`, the `run_ora.R` selection).
-  - `cev.condensed_jaccard_distance(B)` uses the same 256-row blocks as the cosine version: intersections come from a float32 boolean matmul, and union = |a| + |b| − intersection.
-  - Memory and time should be about the same as cosine (measured about 12 s per build at n = 15k; not yet measured for Jaccard).
-- **Linkage cache:** linkages gain a distance dimension, `linkage/r{r2}/{dist}_{linkage}/{subset}.npz` with `dist` ∈ {cos, jac}. Migrate the existing cosine paths, accepting the cheap rerun.
-- **Grid:** `grids.topj`, with names like `topj_{linkage}_j{min_jac*100:03d}_f{min_frac*10:02d}_r{r2*100:03d}_{combine}`. `hier-set` reads the whole set definition from its `--params` JSON, so the new keys (e.g. `min_jac`) need no new flags.
-  - Consensus = median of raw loadings, as before.
-  - Choose `min_jac` *first*, from data: the distribution of reciprocal best-hit Jaccard among cos ≥ 0.5 hits (observed best-hit median 0.114, p75 0.221; null max 0.031). Also pick cuts whose set sizes bracket the cosine grid's (about 300–1,700 LVs). A starting guess is [0.1, 0.15, 0.2, 0.3].
-- **Evaluation:** same rules, no new metrics. Circularity flips here: overlap metrics become partly circular for these sets, and cosine metrics (`cos_to_consensus`, member cosine) become the independent check. Read the 2.2c sets against the cosine sets at matched `n_lvs`.
-- **Questions to answer:**
-  - Do the topj sets reduce single-gene-dominated consensus LVs? Report the share with top-gene share > 0.5.
-  - Do they lower `frac_redundant_c0.5` at equal size?
-  - Do they change `recall_c0.9`?
-  - Split-half (2.4) and biology (2.3) then apply to them like every other set.
+Ready to run. The plan below was written 2026-11-27, after 2.2b. Follow the working style: dry-run, run, then review the results with the user before ticking the box.
+
+**Idea.** Use the same hierarchical machinery as the `hier_*` sets, with one change to the distance: 1 − Jaccard of the LVs' top-185 positive-gene sets (`cev.top_genes`, the `run_ora.R` selection), instead of 1 − cosine of raw loadings. The consensus is still the median of raw loadings, and the evaluation rules are unchanged.
+
+**Grid** (`grids.topj` in `consensus_eval.yaml`, 40 sets):
+```yaml
+topj: {linkage: [complete, average], min_jac: [0.05, 0.1, 0.15, 0.2, 0.3],
+       min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
+```
+- Why these values (2.2b, Key facts "Single-gene-dominated LVs"):
+  - The null maximum is 0.036, so 0.05 is the loosest cut that is still above chance.
+  - Reciprocal cos ≥ 0.5 hits have Jaccard p25 0.14, p50 0.25 and p75 0.40.
+  - Even cos ≥ 0.9 pairs have a median Jaccard of only 0.42. Complete linkage requires *every* pair to clear the cut, so complete at 0.2–0.3 will probably give very small sets. Average linkage is more forgiving.
+- After the run, keep the cuts whose set sizes fall in the cosine grid's range (about 300–1,700 LVs). Drop the cuts that give tiny sets from the grid, and record that in the Log. Don't tune beyond that.
+- Name: `topj_{linkage}_j{min_jac*100:03d}_f{min_frac*10:02d}_r{r2*100:03d}_{combine}`, e.g. `topj_average_j010_f04_r015_median`. Add `cev_topj_name()` next to `cev_hier_name()` with the same assert on min_frac, and expand `grids.topj` into `CEV_SETS` in the same loop.
+
+**Code changes:**
+- `cev.py`:
+  - `condensed_jaccard_distance(B)`: same layout and 256-row blocks as `condensed_cosine_distance`.
+    - Intersections come from a float32 matmul of the boolean rows; float32 is exact for counts up to 185.
+    - union = |a| + |b| − intersection.
+    - The distance is 1 − inter/union, and **1 when union = 0** (an LV with no positive loadings). Check how many pool LVs have fewer than 185 positive genes, or none, and log it.
+    - Use a sparse `B @ B[block].T` if the dense version is slow. B has about 185 nonzeros per row out of 18,423.
+  - `hier_linkage(X, method)` is unchanged. Add `hier_linkage_jac(B, method)` and keep the cosine path untouched, so the two reproduce sets stay bit-identical.
+  - `hier_partition(L, min_sim)`: rename the argument only. It is still `fcluster(t=1 − min_sim)`.
+- `run.py`:
+  - `linkage` gains `--dist {cos,jac}` and `--top-n`. For `jac`, it builds `B = top_genes(pool.X, top_n)` and stores `dist` in the npz.
+  - `hier-set` takes the cut from `p["min_cos"]` or `p["min_jac"]` according to `p.get("dist", "cos")`. It asserts that the linkage npz's `dist` matches.
+  - `HEADLINE_PARAMS` gains `dist` and `min_jac`.
+- `consensus_eval.smk`:
+  - Every set definition in `CEV_SETS` gets a `dist` key: `cos` for the reproduce and `hier` sets, `jac` for `topj`. Existing set names don't change.
+  - The linkage path becomes `linkage/r{r2}/{dist}_{linkage}/{subset}.npz`, with a `dist` wildcard constrained to `cos|jac`. `cev_linkage` passes `--dist {wildcards.dist} --top-n {A4_CRISPERCAS_CFG[top_n]}`, and `cev_hier_set` builds the path from `CEV_SETS[wc.set]["dist"]`.
+  - The cosine linkages move to `cos_*`, so the whole chain reruns (about 2 min). Delete the old `linkage/r*/{complete,average}/` dirs after the run.
+- No rule edits are needed for evaluation or aggregation: `cev_evaluate` and `cev_aggregate` expand over `CEV_SETS`, so the topj sets join `metrics_all.csv` and `headline.csv` automatically.
+
+**Tests** (`scripts/consensus_eval/tests/test_cev.py`):
+- `condensed_jaccard_distance` equals `pdist(B, "jaccard")` on boolean toys. The toys need several blocks (set `BLOCK` small or use n > 256) and include one all-False row, where we expect 1. Note that scipy gives 0 there, so compare that row separately.
+- A planted-module toy: the jac linkage recovers the modules at a cut between the within-module and between-module Jaccard.
+
+**Run:**
+- Dry run `consensus_evaluation`. Expect only `cev_*` jobs: 5 linkages (3 cos at their new paths, 2 jac), 74 `cev_hier_set`, 74 `cev_evaluate`, plus the checks and the aggregate.
+- Do the real run. Record the time and peak memory of a jac linkage in Pitfalls, next to the cosine figure of about 12 s.
+
+**Review with the user (and record in the Log):**
+- Set sizes over the grid, and which cuts land in 300–1,700.
+- Compare at matched `n_lvs` against the `hier_*` sets: pair each topj set with the hier set of the same linkage closest in size, or plot each headline metric against `n_lvs` by family. Look at:
+  - `frac_single_gene`: is it lower than the cosine sets' 0.44–0.63? This is the main question.
+  - `frac_redundant_c0.5`: is it lower at equal size?
+  - `recall_c0.9`: does it change? It is cosine-based, so it is the independent check here.
+  - `median_cos_to_consensus` and `median_mean_cos`: the non-circular cohesion check for Jaccard-built sets. `median_overlap_to_consensus` is now partly circular.
+- Informativeness: Spearman ρ of the headline metrics within the topj family, and whether overlap and cosine cohesion come apart there (they had ρ 0.99 for the cosine sets).
+- How many of Z_4reps' consensus LVs have a close topj counterpart (cos ≥ 0.9) in the size-matched topj set, and what the unmatched ones look like (`top1_share`).
+- Then tick 2.2c, add a Log line, and update Key facts. Split-half (2.4) and biology (2.3) then apply to the topj sets like every other set.
 
 ### Config: `workflow/config/consensus_eval.yaml` (sketch)
 
@@ -420,6 +460,8 @@ consensus_eval:
                min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
     ensemble: {ensemble: [km_full, km_pca256], k: [auto], min_frac: [0.4], noise_r2: [0.15],   # not in the yaml yet
                min_member_cos: [0.3], combine: [median, run_median, mean_l2, medoid, rank1]}
+    topj:     {linkage: [complete, average], min_jac: [0.05, 0.1, 0.15, 0.2, 0.3],   # 2.2c, not in the yaml yet
+               min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
   ensembles:   # pure k-means; hierarchical cuts are merged in cev_eac from the CPU linkages
     km_full:   {pca: null, k: [250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2500, 3000],
                 seeds: 5, base_seed: 20261125, max_iter: 300, feature_fraction: 1.0}
@@ -427,7 +469,6 @@ consensus_eval:
                 seeds: 5, base_seed: 20261125, max_iter: 300, feature_fraction: 1.0}
   hier_cuts: {linkage: [complete, average], min_cos: [0.3, 0.4, 0.5, 0.6, 0.7]}   # added to ensembles in eac
   consensus: {method: eac_average, k: [600, 800, 1000, ..., 3000], select: ari_median}
-  # 2.2c adds e.g. topj: {linkage: [complete, average], min_jac: [tbd], min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
   eval: {pool_r2: 0.15, cos_thresholds: [0.5, 0.7, 0.9], match_cos: 0.9,
          reproducible: {cos: 0.5, min_frac: 0.4, jac_null_q: 0.999, null_pairs: 3, null_seed: 3},
          headline: [n_lvs, median_overlap_to_consensus, frac_redundant_c0.5, recall_c0.9],
@@ -451,7 +492,7 @@ cev_zcache_check              Z_all.npz keys vs ancient(legacy noise_flags.csv) 
 cev_flags                     ancient(legacy noise_flags.csv) -> noise/flags_r{r2}.csv  (re-threshold technical_joint)
 cev_reproduce_set             Z_all + flags -> reproduce/{set}/{metaZ.csv, cluster_summary.csv, ...}
                               (unchanged cluster_metalv.py cluster; the reference that cev_hier_set must match)
-cev_linkage                   Z_all + flags -> linkage/r{r2}/{linkage}/{subset}.npy  (one dendrogram, shared by all cuts)
+cev_linkage                   Z_all + flags -> linkage/r{r2}/{dist}_{linkage}/{subset}.npz  (dist cos|jac from 2.2c; one dendrogram, shared by all cuts)
 cev_hier_set                  linkage + Z_all -> sets/{set}/{subset}/{Z.npy, lvs.csv, members.csv, meta.json}
 cev_reproduction              reproduce/{set} vs ancient(external Z, legacy members) -> report/reproduction/{set}.csv
                               (fails unless max|ΔZ| < 1e-6, names equal and member sets equal)
