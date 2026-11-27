@@ -42,8 +42,12 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
   - Details are in Implementation, "Step 2.2b".
 - [x] 2.2c Hierarchical clustering on top-gene overlap (`topj_*` sets): distance = 1 − Jaccard of each LV's top-185 positive genes, instead of cosine on raw loadings. Same grid machinery and the same evaluation. Grid `min_jac` [0.05, 0.1, 0.15, 0.2, 0.3] × both linkages × `min_frac` [0.3–0.6] (40 sets). Also added `recall_multi_c0.9` to the headline. Results are in the Log and Key facts.
 - [x] 2.2d Wrap `CEV_SCRIPT` / `CEV_LIB` (`run.py`, `cev.py`) in `ancient()`, so code edits no longer rerun the cev area (166 jobs today, about 2k after 2.4). Results are in the Log and Key facts.
-- [ ] 2.4 **(next; runs before 2.3)** Robustness: split-half and LORO for the hierarchical sets (both `hier_*` and `topj_*`), plus both nulls. Why first, and what to settle before running: Implementation, "Step 2.4". Numbering is kept, so older references to "2.4" still mean split-half.
-- [ ] 2.3 Biological metrics: ORA, member pathway coherence, technical leakage. Run it on the candidates that 2.4 leaves, not the whole grid.
+- [x] 2.4 Robustness: split-half and LORO for the hierarchical sets (both `hier_*` and `topj_*`), plus both nulls. Why first, and the decisions taken (2026-11-27): Implementation, "Step 2.4". Numbering is kept, so older references to "2.4" still mean split-half.
+- [ ] 2.3 **(next)** Biological metrics: ORA, member pathway coherence, technical leakage, on the 2.4 shortlist only (user, 2026-11-27):
+  - `hier_complete_c070_f04`, `hier_complete_c060_f05`, `hier_average_c070_f04`, `hier_average_c060_f05`;
+  - `topj_complete_j020_f05`, `topj_average_j030_f04`, `topj_average_j020_f04` (all `_r015_median`);
+  - plus Z_4reps and Z_6reps (their twins) as references.
+  - Biology has to break the tie: on reproducibility the two families are level for multi-gene modules (see Log).
 - [ ] 2.5 Semi-synthetic benchmark.
 - [ ] 2.6 Notebooks `02_computational` and `03_biological`.
 
@@ -133,6 +137,48 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
   - Informativeness within topj: overlap and cosine cohesion still move together (ρ 0.98). `frac_redundant_c0.5` now follows cohesion (ρ 0.6) rather than size (−0.04), and `recall_c0.9` depends less on size (0.52 vs 0.87 for hier).
   - Decisions (user, 2026-11-27): tick 2.2c, keep `recall_multi_c0.9` in the headline, and **run 2.4 (split-half/LORO) before 2.3**. The rationale is in Implementation, "Step 2.4". Not run yet.
 - 2026-11-27: Step 2.2d done. Wrapped `CEV_SCRIPT` / `CEV_LIB` in `ancient()` at their definitions (one edit; all 13 uses are `{input.script}` / `{input.lib}`, so shell commands are unchanged). Checks: the dry run said "Nothing to be done" before the edit and again after `touch scripts/consensus_eval/{run,cev}.py`. `--forcerun cev_evaluate` lists only 74 `cev_evaluate` + `cev_aggregate` + the target (76 jobs), with no linkage, set or pool-hits builds. Rendered commands still show `scripts/consensus_eval/run.py`.
+- 2026-11-27: Step 2.4 done. Changes:
+  - `cev.load_pool(runs=, gene_perm_seed=)`; `hungarian_match`, `split_half_scores`, `loro_recovery`, `label_perm_null`, `unit_cols` (an all-zero consensus LV gets cosine 0, so it never matches).
+  - `run.py hier-sets` (batched; shares `build_hier_set` with `hier-set`), `compare`, `label-null`; `aggregate --robust` writes `report/robustness.csv` and adds `sh_share_c0.9_{all,multi}` and `loro_recovery_c0.9_all` to the headline.
+  - smk: `cev_run_subsets` (`report/subsets.json`), `cev_subset_sets`, `cev_null_label`, `cev_compare`. A grid entry may now be a list of grids, which is how the Z_6reps twin is added. `CEV_CHECK_REF` set-checks the twins.
+  - Config: `nulls:` (not `null:`, which YAML reads as None).
+  - 18 tests, all pass.
+  - Run: 395 jobs in 15.5 min (4.8 GB peak). The 4 `topj_average_j005` compares failed: in `half4a` that cut chains 205 LVs into one cluster whose median is all zeros. After the `unit_cols` fix, all 73 compares were rerun (`--forcerun cev_compare`, 2.5 min).
+  - All 4 set checks pass: both twins are bit-identical to Z_4reps / Z_6reps.
+  - **Disk: `subsets/` is 133 GB.**
+  - Results (`report/robustness.csv`):
+    - **Precision is enough on ARCHS4.** Split-to-split SD of `sh_share_c0.9_all` has median 0.010 (max 0.016), against a range of 0.11–0.54 across sets and about 0.1 between families. The 10 splits overlap, so the SD understates sampling error, but the gaps are about 10 SD.
+    - **Cosine wins split-half at matched size, in every pair.** topj − hier medians: `sh_share_c0.9_all` −0.115, multi −0.144, single −0.076. But the matched top-gene Jaccard favors topj in 60% of pairs (median +0.04; +0.06 to +0.18 at j ≥ 0.2), and LORO is about tied (−0.02; topj is ahead at j0.2–0.3). The split-half score matches on cosine, so it leans toward the cosine family, just as overlap leans toward topj. The tie is only half broken.
+    - **The single-gene worry did not hold.** In hier sets at strict cuts, multi-gene LVs reproduce *better* than single-gene ones (c070: 0.58–0.59 vs 0.49–0.50), and hier's lead is largest in the multi stratum.
+    - **Gene-permutation null:** 0 consensus LVs for every topj set. Cosine sets get chance clusters at f0.3 (c040 102–125, c050 48–64, c060 21–26, c070 10–11) and at c040–c050 f0.4 (2–7). Shuffled single-gene LVs collide on a hub gene. So min_frac ≥ 0.4 for cosine sets.
+    - **Run-label null is weak:** the shuffled-label count is 48–95% of the observed count at the set's m. It shows that run span is mostly a size filter, and it does not calibrate min_frac. Don't headline it.
+    - **Prune topj j0.05 and j0.10:** split-half 0.11–0.33, LORO 0.72–0.86, plus the degenerate chain cluster.
+    - **Z_4reps is dominated.** hier_complete_c070_f03 (1,023) and hier_average_c070_f03 (1,040) score split-half 0.44–0.45 vs 0.357, multi 0.43–0.44 vs 0.30, and LORO 0.91 vs 0.89, though at f0.3 they carry 10–11 null clusters. Z_6reps' twin (618): 0.496 / 0.488 / 0.839; hier_complete_c060_f05 (598): 0.507 / 0.516 / 0.865 with 0 null clusters.
+    - LORO rises as min_frac falls (looser thresholds survive losing a run), so LORO alone can't choose min_frac.
+  - Follow-up, as the user chose: a **Jaccard-matched** split-half (Hungarian on top-gene Jaccard, share at Jaccard ≥ `eval.match_jac` 0.25: `jshare_*`) and LORO (`loro_recovery_j0.25_*`). Only `cev_compare` was rerun (4.8 min). Its split SD is 0.009 (range 0.23–0.72).
+    - Size-matched topj (j ≥ 0.15) − hier (f ≥ 0.4), 24 pairs:
+
+      | Metric | Median | topj wins |
+      |---|---|---|
+      | `sh_share_c0.9_all` | −0.107 | 0% |
+      | `sh_jshare_j0.25_all` | +0.081 | 100% |
+      | `sh_jshare_j0.25_multi` | +0.011 | 75% |
+      | `loro_recovery_c0.9_all` | +0.029 | 79% |
+      | `loro_recovery_j0.25_all` | +0.046 | 96% |
+
+    - So **each family wins split-half in its own metric**, and for multi-gene LVs the Jaccard-matched gap is about 0. topj's overall Jaccard lead comes from hier's single-gene LVs, whose top-185 tails don't reproduce. LORO slightly favors topj at strict cuts. Reproducibility does not separate the families, so biology (2.3) decides.
+    - Shortlist, as `n_lvs`, then sh cos / sh jac / LORO cos (multi-gene in brackets):
+
+      | Set | n_lvs | sh cos | sh jac | LORO cos |
+      |---|---|---|---|---|
+      | hier_complete_c060_f05 | 598 | 0.51 (0.52) | 0.61 (0.76) | 0.87 |
+      | hier_average_c060_f05 | 747 | 0.50 (0.51) | 0.62 (0.78) | 0.87 |
+      | topj_complete_j020_f05 | 464 | 0.43 (0.42) | 0.70 (0.78) | 0.86 |
+      | topj_average_j030_f04 | 451 | 0.41 (0.39) | 0.69 (0.77) | 0.91 |
+      | Z_4reps | 1,058 | 0.36 (0.30) | 0.49 (0.67) | 0.89 |
+      | Z_6reps | 618 | 0.50 (0.49) | 0.62 (0.79) | 0.84 |
+
+  - Decisions (user, 2026-11-27): the 2.3 shortlist is in Status. **Phase 5 (GTEx) is deferred:** 5-vs-5 ranks methods with gaps of about 10 SD, so it is needed only later, as a generalization check. Keep the 133 GB of subset sets until Phase 3 is done.
 ---
 
 ## Context
@@ -259,6 +305,7 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
     Even near-identical-cosine pairs share less than half of their top-185 genes. Over all reciprocal hits, Jaccard quantiles are p25 0.079, p50 0.167, p75 0.321; over those with cos ≥ 0.5, p25 0.138, p50 0.25, p75 0.40.
   - So the legacy method (cosine on raw loadings) partly clusters by top gene. This motivates 2.2c, and it is why the fidelity metric uses top-gene overlap rather than cosine.
 - **Top-gene (topj) vs cosine sets (2.2c).** Clustering on 1 − top-185 Jaccard cuts single-gene consensus LVs a lot at matched size (median −0.14 `frac_single_gene`), at no gain in redundancy. Strict cuts (j0.15–0.2, f0.5–0.6, about 450–650 LVs) keep multi-gene recall and cosine cohesion close to the hier sets. At about 1,000 LVs, topj loses multi-gene recall too (0.25–0.29 vs 0.36–0.38). `recall_c0.9` rewards recovering single-gene LVs, so read it with `recall_multi_c0.9` (headline). No 2.2 metric breaks the tie between the families; split-half (2.4) is meant to.
+- **Robustness (2.4).** Split-half on ARCHS4 is precise (split SD ≈ 0.01) but metric-dependent: cosine matching favors hier, top-gene matching favors topj, and for multi-gene LVs they tie. Use both `sh_share_c0.9_*` and `sh_jshare_j0.25_*` and compare at matched size. In 5-run halves min_frac collapses (0.3/0.4 → 2, 0.5/0.6 → 3). The gene-permutation null rules out cosine sets at f0.3 (10–125 chance LVs), and topj sets are null-clean. The run-label null is uninformative. A loose average top-gene cut (j0.05) can chain hundreds of LVs into one cluster whose median is all zeros (`unit_cols` handles it).
 - **Builder exactness.** Set Z is float32. Compare it to CSVs in float32 (exact equality), not with an absolute float64 tolerance: loadings reach about 350, so the float32→float64 rounding is about 1e-5.
 - **Code inputs are `ancient()` (2.2d).** `CEV_SCRIPT` (`run.py`) and `CEV_LIB` (`cev.py`) are wrapped once at their definitions in `consensus_eval.smk`, so new rules inherit it. Editing either file no longer reruns anything. After a real logic change, rerun the affected rule with `--forcerun <rule>`; its downstream jobs follow because their inputs become newer. `export_run.R` and `CEV_METALV_SCRIPT` stay plain inputs on purpose: they change rarely (see "Do not edit `cluster_metalv.py`").
 - **PhenoPLIER code to port** (`/home/miltondp/projects/phenoplier/phenoplier/libs/clustering/`):
@@ -473,6 +520,15 @@ Moved ahead of 2.3 on 2026-11-27, after the 2.2c review. Not run yet. Present a 
 - **Stratify by single-gene.** A single-gene LV probably reproduces easily, because the same hub gene recurs in every run, so split-half could favor the cosine sets for the reason 2.2c set out to fix. Report split-half separately for single-gene and multi-gene consensus LVs (`top1_share > eval.single_gene`), in the same way as `recall_multi_c0.9`.
 - **Size.** Match rates depend on set size, so compare at matched `n_lvs` as in 2.2c.
 
+**Decisions (user, 2026-11-27).**
+- **10 splits, batched builds.** 30 subsets (`half{0..9}{a,b}`, `loro_{model}`) plus a `geneperm0` pseudo-subset. Halves are seeded draws of 5-run combinations that contain the first model, so no split is drawn twice. Subset sets are built by one `cev_subset_sets` job per (r2, dist, linkage, subset), which loads the cache once and writes every cut of that dendrogram to `subsets/r{r2}/{dist}_{linkage}/{subset}/{set}/`. `cev_hier_set` stays `full`-only and unchanged.
+- **Reproduce sets** are not rebuilt on subsets. Z_6reps gets a grid twin instead, `hier_complete_c050_f06_r025_median` (a second `grids.hier` entry). `cev_set_check` checks each reproduce set's twin (`hier_complete_c050_f04_r015_median` too) against the `cluster_metalv.py` output.
+- **Gene-permutation null: 1 permutation** (`geneperm0`: all runs, gene order shuffled within every pool LV, through the same linkage and set rules; expect about 0 kept clusters). The run-label null (`eval.null`) does the calibration. It shuffles run labels over the full dendrogram's cut and counts clusters that span ≥ m runs.
+- **Scores** (`cev_compare` → `sets/{set}/eval/{split_half,loro,robust}.csv`):
+  - **Split-half.** Hungarian match on cosine. `sh_share_c0.9` = the share of LVs in both halves whose partner has cos ≥ `match_cos` (= matched pairs / mean size). Also the median paired cosine and top-gene Jaccard. Each of these is reported for all, single-gene and multi-gene LVs (the LV's own `top1_share`), as mean and SD over the 10 splits.
+  - **LORO.** Each full-set LV's share of the 10 leave-one-out sets with a best cos ≥ `match_cos`.
+- **min_frac collapses in 5-run halves.** `resolve_min_models` gives 2, 2, 3, 3 for min_frac 0.3, 0.4, 0.5, 0.6, so in split-half f03 = f04 and f05 = f06. LORO (9 runs) gives 3, 4, 5, 6, the same as full. So split-half ranks (linkage, cut) at 2 or 3 runs, and LORO is what separates min_frac.
+
 ### Config: `workflow/config/consensus_eval.yaml` (sketch)
 
 Only what is genuinely new goes here. The rules derive the rest:
@@ -582,6 +638,7 @@ Split-half and LORO procedure:
   - One cosine-distance-plus-linkage build takes about 12 s at n = 15k (8 s distance, 3 s linkage, measured alone), which is why linkages are cached per (r2, dist, linkage, subset). With 5 linkages running at once (2.2c run) cosine took about 67 s and top-gene Jaccard 30 s (average) / 44 s (complete), including `top_genes`; the jac linkage stays within the 16 GB linkage request.
   - k-means on 18k dimensions takes about 1 s per iteration at k = 3000 on CPU, so use cuML on the GPU; PCA-256 is about 70× cheaper.
   - AMI with thousands of clusters is slow, so use ARI as the main criterion.
+  - Split-half / LORO (2.4): 155 subset linkages + 155 batched subset builds + 73 compares took about 18 min locally (4.8 GB peak). The subset sets take 133 GB, because halves keep clusters at 2–3 of 5 runs. Only the compare outputs are needed downstream, so the subset `Z.npy` files can be deleted (Snakemake would rebuild them if asked).
 - **Rescaling.** `mean_l2`, `medoid` and `rank1` change the loading scale. ORA uses ranks only, but projection uses L2 from the reference, so rescale to the median member norm.
 - **Size.** Set sizes differ (618 vs 1,058 vs the ensemble sets), and ORA % and coverage depend on size. Report size-matched results: top-N by n_models, plus random subsets (via `run_ora.R --lv-subset` / lookups into the shared ORA results).
 - **GTEx notebooks.** Decide before Phase 5 whether GTEx gets sibling notebooks under `nbs/03_model_biology/01_gtex/` or executed-notebook names that include `{compendium}`.
