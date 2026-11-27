@@ -31,7 +31,11 @@ consensus_eval:
   eval:
     pool_r2: 0.15          # coverage/recall pool, the same for every set whatever its build noise_r2
     cos_thresholds: [0.5, 0.7, 0.9]
-    reproducible: {cos: 0.5, min_frac: 0.4}   # best hit >= cos in runs spanning >= ceil(min_frac x runs)
+    # Reproducible pool LV: a reciprocal best hit with cosine >= cos and top-gene Jaccard above the
+    # jac_null_q quantile of a gene-shuffled null (null_pairs run pairs, null_seed) in enough other
+    # runs that, with its own run, they span >= ceil(min_frac x runs).
+    reproducible: {cos: 0.5, min_frac: 0.4, jac_null_q: 0.999, null_pairs: 3, null_seed: 3}
+    headline: [n_lvs, median_overlap_to_consensus, frac_redundant_c0.5, recall_c0.9]
   resources:
     export: {mem_mb: 16000, runtime: 30}   # readRDS peaks at ~12 GB
     zcache: {mem_mb: 16000, runtime: 30}

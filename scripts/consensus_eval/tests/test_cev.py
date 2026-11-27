@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy.spatial.distance import pdist
-from sklearn.metrics import silhouette_samples
 
 HERE = Path(__file__).resolve().parent
 
@@ -83,23 +82,6 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(B[0].nonzero()[0].tolist(), [1, 3])
         self.assertEqual(B[1].nonzero()[0].tolist(), [2])
 
-    def test_iq_silhouette_brute_force_and_sklearn(self):
-        rng = np.random.default_rng(1)
-        Xm = cev.l2norm(np.abs(rng.normal(size=(9, 6))).astype(np.float32))
-        labels = np.array([0, 0, 0, 1, 1, 2, 2, 2, 3])  # cluster 3 is a singleton
-        cev.BLOCK, old = 4, cev.BLOCK  # exercise several blocks
-        try:
-            iq, sil = cev.iq_silhouette(Xm, labels)
-        finally:
-            cev.BLOCK = old
-        S = Xm @ Xm.T
-        for c in range(3):
-            i, o = labels == c, labels != c
-            intra = S[np.ix_(i, i)][~np.eye(i.sum(), dtype=bool)].mean()
-            self.assertAlmostEqual(iq[c], intra - S[np.ix_(i, o)].mean(), places=5)
-        self.assertTrue(np.isnan(iq[3]))
-        np.testing.assert_allclose(sil, silhouette_samples(Xm, labels, metric="cosine"), atol=1e-5)
-
     def test_redundancy(self):
         Zn = cev.l2norm(np.array([[1, 0, 0], [1, 0, 0], [0, 1, 1]], dtype=np.float32))
         B = cev.top_genes(Zn, 2)
@@ -110,10 +92,14 @@ class MetricsTest(unittest.TestCase):
     def test_pool_best_hits_reproducible_coverage(self):
         Xn = cev.l2norm(np.array([[1, 0], [1, 0.1], [0, 1], [1, 0.05], [0.7, 0.7]], dtype=np.float32))
         models = np.array(["A", "A", "B", "C", "C"])
-        hits = cev.pool_best_hits(Xn, models, ["A", "B", "C"])
+        B = cev.top_genes(Xn, 1)
+        hits, arg, jac = cev.pool_best_hits(Xn, B, models, ["A", "B", "C"])
         self.assertTrue(np.isnan(hits[0, 0]) and np.isnan(hits[2, 1]) and np.isnan(hits[4, 2]))
+        self.assertEqual(arg[0].tolist(), [-1, 2, 3])
         self.assertAlmostEqual(hits[0, 2], 1, places=2)       # LV0 ~ LV3
         self.assertAlmostEqual(hits[2, 2], np.sqrt(0.5), places=5)
+        self.assertEqual(jac[0, 2], 1)                        # both top gene 0
+        self.assertEqual(jac[0, 1], 0)
         repro = cev.reproducible(hits, 0.9, 2)
         self.assertEqual(repro.tolist(), [True, True, False, True, False])
         best = cev.best_cos(Xn, cev.l2norm(np.array([[1, 0]], dtype=np.float32)))
@@ -127,15 +113,73 @@ class MetricsTest(unittest.TestCase):
         rows = np.array([0, 1, 3, 2])          # two members of run 1 in cluster 0
         codes = np.array([0, 0, 0, 1])
         Z = np.stack([np.median(X[rows[:3]], 0), X[2]], axis=1)
-        per, sil = cev.cluster_metrics(cache, rows, codes, Z, top_n=10)
+        per = cev.cluster_metrics(cache, rows, codes, Z, top_n=10)
         n_runs_c0 = len(set(models[rows[:3]]))
         self.assertAlmostEqual(per.purity[0], n_runs_c0 / 3)
         self.assertEqual(per.n_lvs.tolist(), [3, 1])
         self.assertTrue(np.isnan(per.mean_cos[1]))
         self.assertAlmostEqual(per.cos_to_consensus[1], 1, places=5)
+        self.assertAlmostEqual(per.overlap_to_consensus[1], 1)
         C = cache.Xn[rows[:3]] @ cache.Xn[rows[:3]].T
         self.assertAlmostEqual(per.min_cos[0], C[np.triu_indices(3, 1)].min(), places=6)
-        self.assertEqual(sil[3], 0)
+        self.assertNotIn("iq", per.columns)
+
+    def test_overlap_and_top1_share(self):
+        Bm = np.array([[1, 1, 0, 0], [1, 0, 1, 1], [0, 0, 0, 0]], dtype=bool)
+        bz = np.array([1, 1, 1, 0], dtype=bool)
+        got = cev.overlap(Bm, bz)
+        np.testing.assert_allclose(got[:2], [1.0, 2 / 3])
+        self.assertTrue(np.isnan(got[2]))               # member with no positive genes
+        M = np.array([[3, 4, 0], [1, 1, 1]], dtype=np.float32)
+        np.testing.assert_allclose(cev.top1_share(M), [16 / 25, 1 / 3])
+
+
+class ReproducibleTest(unittest.TestCase):
+    def test_broad_lv_is_non_reciprocal_hit(self):
+        # Run A has two specific LVs (genes 0 and 1); run B has a broad LV (genes 0+1, leaning to
+        # gene 1) and a gene-0 LV. First every best hit is reciprocal; then B's second LV moves
+        # towards gene 1, so A0's best hit becomes the broad LV, whose own best hit is A1.
+        X = np.array([[1, 0, 0, 0],      # A0: gene 0
+                      [0, 1, 0, 0],      # A1: gene 1
+                      [1, 1.2, 0, 0],    # B0: broad, closer to A1
+                      [0.9, 0, 0.1, 0]], dtype=np.float32)  # B1: gene 0
+        models = np.array(["A", "A", "B", "B"])
+        runs = ["A", "B"]
+        Xn = cev.l2norm(X)
+        hits, arg, jac = cev.pool_best_hits(Xn, cev.top_genes(X, 2), models, runs)
+        self.assertEqual(arg[:, 1].tolist(), [3, 2, -1, -1])   # A0 -> B1, A1 -> B0
+        self.assertEqual(arg[:, 0].tolist(), [-1, -1, 1, 0])   # B0 -> A1, B1 -> A0
+        recip = cev.reciprocal(arg, models, runs)
+        self.assertEqual(recip[:, 1].tolist(), [True, True, False, False])
+        # Make B1 broad too, so that A0's best hit is B0, which reciprocates A1 instead.
+        X[3] = [0.5, 1.4, 0, 0]
+        hits, arg, jac = cev.pool_best_hits(cev.l2norm(X), cev.top_genes(X, 2), models, runs)
+        recip = cev.reciprocal(arg, models, runs)
+        self.assertEqual(arg[0, 1], 2)
+        self.assertEqual(arg[2, 0], 1)
+        self.assertFalse(recip[0, 1])
+        self.assertEqual(cev.reproducible(hits, 0.5, 2).tolist()[0], True)
+        self.assertEqual(cev.reproducible(hits, 0.5, 2, recip).tolist()[0], False)
+        # Jaccard guard: a threshold at the pair's Jaccard removes the hit.
+        self.assertFalse(cev.reproducible(hits, 0.5, 2, None, jac, jac[0, 1])[0])
+
+    def test_jaccard_null(self):
+        rng = np.random.default_rng(0)
+        n_genes, size, n_lvs = 1000, 20, 30
+        modules = [rng.choice(n_genes, size, replace=False) for _ in range(n_lvs)]
+        B = np.zeros((2 * n_lvs, n_genes), dtype=bool)
+        for r in range(2):
+            for i, m in enumerate(modules):
+                keep = m[rng.random(size) < 0.8]        # shared module, ~80% of genes kept
+                B[r * n_lvs + i, keep] = True
+        models = np.repeat(["A", "B"], n_lvs)
+        thr, quant, pairs = cev.jaccard_null(B, models, ["A", "B"], 2, seed=5, q=0.999)
+        observed = np.diag(cev.jaccard(B[:n_lvs], B[n_lvs:]))
+        self.assertLess(thr, 0.15)
+        self.assertGreater(observed.min(), 2 * thr)
+        self.assertEqual(sorted(map(tuple, pairs)), [("A", "B"), ("B", "A")])
+        self.assertEqual(cev.jaccard_null(B, models, ["A", "B"], 2, seed=5, q=0.999)[0], thr)
+        self.assertLessEqual(quant["p99.9"], quant["max"])
 
 
 if __name__ == "__main__":

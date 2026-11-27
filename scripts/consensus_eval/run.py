@@ -15,6 +15,9 @@ from cluster_metalv import COLS  # noqa: E402
 import cev  # noqa: E402  (same directory as this script)
 
 MAX_SHOW = 20  # differing metaLVs listed in a failed reproduction
+# Set-definition columns that lead the headline table (those absent from every set are skipped).
+HEADLINE_PARAMS = ["set", "subset", "linkage", "min_cos", "min_frac", "min_models", "min_models_resolved",
+                   "noise_r2", "combine"]
 
 
 def rethreshold(d, r2):
@@ -212,14 +215,43 @@ def pool_hits_main(args):
     ap = argparse.ArgumentParser(prog="run.py pool-hits")
     ap.add_argument("--z-cache", required=True)
     ap.add_argument("--flags", required=True)
+    ap.add_argument("--top-n", type=int, required=True)
+    ap.add_argument("--reproducible-cos", type=float, required=True)
+    ap.add_argument("--reproducible-frac", type=float, required=True)
+    ap.add_argument("--jac-null-q", type=float, required=True)
+    ap.add_argument("--null-pairs", type=int, required=True)
+    ap.add_argument("--null-seed", type=int, required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--null-out", required=True)
     a = ap.parse_args(args)
 
     pool = cev.load_pool(a.z_cache, a.flags)
     runs = list(pd.unique(pool.models))
-    hits = cev.pool_best_hits(pool.Xn, pool.models, runs)
-    np.savez(a.out, hits=hits, runs=np.asarray(runs), models=pool.models, lvs=pool.lvs)
-    print(f"best hits for {len(pool.lvs)} pool LVs x {len(runs)} runs -> {a.out}")
+    B = cev.top_genes(pool.X, a.top_n)
+    hits, arg, jac = cev.pool_best_hits(pool.Xn, B, pool.models, runs)
+    recip = cev.reciprocal(arg, pool.models, runs)
+    thr, quant, pairs = cev.jaccard_null(B, pool.models, runs, a.null_pairs, a.null_seed, a.jac_null_q)
+
+    # Reproducible LV: a reciprocal best hit with cos >= c and Jaccard > the null threshold in
+    # >= min_runs - 1 other runs. Counts at each stage show what each condition removes.
+    min_runs = cev.resolve_min_models(a.reproducible_frac, len(runs))
+    stages = {"cos": cev.reproducible(hits, a.reproducible_cos, min_runs),
+              "cos_reciprocal": cev.reproducible(hits, a.reproducible_cos, min_runs, recip)}
+    repro = stages["cos_reciprocal_jaccard"] = cev.reproducible(
+        hits, a.reproducible_cos, min_runs, recip, jac, thr)
+    np.savez(a.out, hits=hits, arg=arg, jac=jac, recip=recip, repro=repro,
+             runs=np.asarray(runs), models=pool.models, lvs=pool.lvs)
+    real = recip & (np.nan_to_num(hits, nan=-1) >= a.reproducible_cos)
+    info = {"n_pool": len(pool.lvs), "n_runs": len(runs), "top_n": a.top_n,
+            "cos": a.reproducible_cos, "min_frac": a.reproducible_frac, "min_runs": min_runs,
+            "jac_null": {"q": a.jac_null_q, "threshold": thr, "seed": a.null_seed, "pairs": pairs, **quant},
+            "observed_jac_reciprocal_cos": {k: float(np.quantile(jac[real], p))
+                                            for k, p in [("p01", 0.01), ("p10", 0.1), ("p25", 0.25),
+                                                         ("p50", 0.5), ("p75", 0.75), ("p90", 0.9)]},
+            "frac_reciprocal_cos_within_null": float((jac[real] <= thr).mean()),
+            "n_reproducible": {k: int(v.sum()) for k, v in stages.items()}}
+    Path(a.null_out).write_text(json.dumps(info, indent=2) + "\n")
+    print(json.dumps(info, indent=2))
 
 
 def evaluate_main(args):
@@ -230,8 +262,6 @@ def evaluate_main(args):
     ap.add_argument("--pool-r2", type=float, required=True)
     ap.add_argument("--top-n", type=int, required=True)
     ap.add_argument("--cos-thresholds", type=float, nargs="+", required=True)
-    ap.add_argument("--reproducible-cos", type=float, required=True)
-    ap.add_argument("--reproducible-frac", type=float, required=True)
     ap.add_argument("--out-dir", required=True)
     a = ap.parse_args(args)
 
@@ -245,20 +275,19 @@ def evaluate_main(args):
     member_rows = np.array([row_of[k] for k in cev.lv_keys(members.model, members.LV)])
     codes = pd.Categorical(members.metaLV, categories=lvs.metaLV).codes
     assert (codes >= 0).all()
-    per, sil = cev.cluster_metrics(cache, member_rows, codes, Z, a.top_n)
+    per = cev.cluster_metrics(cache, member_rows, codes, Z, a.top_n)
     assert (per.n_lvs.to_numpy() == lvs.n_lvs.to_numpy()).all() and (per.n_models.to_numpy() == lvs.n_models.to_numpy()).all()
     per.insert(0, "metaLV", lvs.metaLV)
 
     h = np.load(a.best_hits, allow_pickle=True)
     pool_rows = np.array([row_of[k] for k in cev.lv_keys(h["models"], h["lvs"])])
     runs = list(h["runs"])
-    repro = cev.reproducible(h["hits"], a.reproducible_cos, cev.resolve_min_models(a.reproducible_frac, len(runs)))
     best = cev.best_cos(cache.Xn[pool_rows], cev.l2norm(Z.T))
-    cov = cev.coverage(best, h["models"], runs, repro, a.cos_thresholds)
+    cov = cev.coverage(best, h["models"], runs, h["repro"], a.cos_thresholds)
 
     params = {k: meta[k] for k in meta if k not in ("n_metalvs", "n_members")}
     row = {**params, "pool_r2": a.pool_r2, "n_pool_eval": len(pool_rows),
-           **cev.summarize(per, sil, cov, a.cos_thresholds)}
+           **cev.summarize(per, cov, a.cos_thresholds)}
     per.to_csv(out / "per_cluster.csv", index=False)
     cov.to_csv(out / "coverage.csv", index=False)
     pd.DataFrame([row]).to_csv(out / "metrics.csv", index=False)
@@ -268,11 +297,16 @@ def evaluate_main(args):
 def aggregate_main(args):
     ap = argparse.ArgumentParser(prog="run.py aggregate")
     ap.add_argument("--metrics", nargs="+", required=True)
+    ap.add_argument("--headline", nargs="+", required=True, help="metric columns of the headline table")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--headline-out", required=True)
     a = ap.parse_args(args)
     d = pd.concat([pd.read_csv(p) for p in a.metrics], ignore_index=True)
     d.to_csv(a.out, index=False)
-    print(f"{len(d)} sets -> {a.out}")
+    params = [c for c in HEADLINE_PARAMS if c in d.columns]
+    d[params + a.headline].to_csv(a.headline_out, index=False)
+    print(f"{len(d)} sets -> {a.out}, {a.headline_out}")
+    print(d[params + a.headline].to_string(index=False))
 
 
 def main():

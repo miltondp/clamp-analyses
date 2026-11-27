@@ -170,50 +170,6 @@ def offdiag(C):
     return C[~np.eye(len(C), dtype=bool)]
 
 
-def indicator(labels, k):
-    H = np.zeros((len(labels), k), dtype=np.float32)
-    H[np.arange(len(labels)), labels] = 1
-    return H
-
-
-def iq_silhouette(Xm, labels):
-    """Icasso Iq per cluster and cosine silhouette per member, over the set's members only.
-
-    labels are 0..k-1. Iq = mean intra-cluster similarity (pairs, no self) minus mean
-    similarity of the cluster's members to all other members. Silhouette uses distance
-    1 - cos, b = the nearest other cluster; members of singleton clusters get 0.
-    """
-    m, k = len(labels), labels.max() + 1
-    H = indicator(labels, k)
-    size = H.sum(0)
-    intra = np.zeros(k)
-    extra = np.zeros(k)
-    sil = np.zeros(m)
-    for s in range(0, m, BLOCK):
-        e = min(s + BLOCK, m)
-        S = (Xm[s:e] @ Xm.T).astype(np.float64)
-        sums = S @ H
-        rows = np.arange(e - s)
-        lab = labels[s:e]
-        self_sim = S[rows, rows + s]
-        own = sums[rows, lab] - self_sim
-        np.add.at(intra, lab, own)
-        np.add.at(extra, lab, S.sum(1) - sums[rows, lab])
-        n_own = size[lab] - 1
-        with np.errstate(invalid="ignore", divide="ignore"):
-            a = 1 - own / n_own
-            dist_other = 1 - sums / size[None, :]
-        dist_other[rows, lab] = np.inf
-        b = dist_other.min(1)
-        with np.errstate(invalid="ignore", divide="ignore"):
-            si = (b - a) / np.maximum(a, b)
-        si[n_own == 0] = 0
-        sil[s:e] = si
-    with np.errstate(invalid="ignore", divide="ignore"):
-        iq = intra / (size * (size - 1)) - extra / (size * (m - size))
-    return iq, sil
-
-
 def redundancy(Zn, B):
     """Per consensus LV: max cosine and max top-gene Jaccard to any other consensus LV."""
     if len(Zn) < 2:
@@ -233,22 +189,73 @@ def best_cos(A, Bn):
     return out
 
 
-def pool_best_hits(Xn, models, runs):
-    """n_pool x n_runs: best cosine of each LV to any LV of each run; NaN for its own run."""
+def pool_best_hits(Xn, B, models, runs):
+    """Best hit of each pool LV in each run. Returns n_pool x n_runs arrays: hits (cosine), arg
+    (pool row of the hit, -1 for the LV's own run) and jac (top-gene Jaccard of the pair; B is
+    top_genes of the pool). Own run: hits and jac NaN."""
     cols = {r: np.flatnonzero(models == r) for r in runs}
-    out = np.empty((len(Xn), len(runs)), dtype=np.float32)
+    size = B.sum(1)
+    hits = np.full((len(Xn), len(runs)), np.nan, dtype=np.float32)
+    arg = np.full((len(Xn), len(runs)), -1, dtype=np.int64)
+    jac = np.full((len(Xn), len(runs)), np.nan, dtype=np.float32)
     for s in range(0, len(Xn), BLOCK):
-        S = Xn[s:s + BLOCK] @ Xn.T
+        e = min(s + BLOCK, len(Xn))
+        S = Xn[s:e] @ Xn.T
         for j, r in enumerate(runs):
-            out[s:s + BLOCK, j] = S[:, cols[r]].max(1) if len(cols[r]) else np.nan
+            if not len(cols[r]):
+                continue
+            sub = S[:, cols[r]]
+            best = sub.argmax(1)
+            hits[s:e, j] = sub[np.arange(e - s), best]
+            arg[s:e, j] = a = cols[r][best]
+            inter = (B[s:e] & B[a]).sum(1)
+            union = size[s:e] + size[a] - inter
+            with np.errstate(invalid="ignore", divide="ignore"):
+                jac[s:e, j] = np.where(union > 0, inter / union, np.nan)
     own = models[:, None] == np.asarray(runs)[None, :]
-    out[own] = np.nan
+    hits[own], jac[own], arg[own] = np.nan, np.nan, -1
+    return hits, arg, jac
+
+
+def reciprocal(arg, models, runs):
+    """n_pool x n_runs: LV i's best hit in run r has i as its own best hit in i's run."""
+    own = pd.Index(runs).get_indexer(models)
+    assert (own >= 0).all(), "a pool LV's run is not in runs"
+    valid = arg >= 0
+    i, j = np.nonzero(valid)
+    out = np.zeros(arg.shape, dtype=bool)
+    out[i, j] = arg[arg[i, j], own[i]] == i
     return out
 
 
-def reproducible(best_hits, cos, min_runs):
-    """LV whose hits at >= cos, plus its own run, span >= min_runs runs."""
-    return (np.nan_to_num(best_hits, nan=-1) >= cos).sum(1) + 1 >= min_runs
+def jaccard_null(B, models, runs, n_pairs, seed, q):
+    """Best-hit top-gene Jaccard of each run-a LV against run b with gene order shuffled within
+    every row (same set sizes), over n_pairs ordered run pairs drawn with seed. Returns the q
+    quantile, summary quantiles and the pairs."""
+    rng = np.random.default_rng(seed)
+    pairs = [(a, b) for a in runs for b in runs if a != b]
+    pairs = [pairs[i] for i in sorted(rng.choice(len(pairs), n_pairs, replace=False))]
+    vals = []
+    for a, b in pairs:
+        Bb = rng.permuted(B[models == b], axis=1)
+        J = jaccard(B[models == a], Bb)
+        vals.append(np.where(np.isnan(J), -np.inf, J).max(1))
+    v = np.concatenate(vals)
+    v = v[np.isfinite(v)]
+    quant = {k: float(np.quantile(v, p)) for k, p in [("p50", 0.5), ("p99", 0.99), ("p99.9", 0.999)]}
+    quant.update(max=float(v.max()), n=int(len(v)))
+    return float(np.quantile(v, q)), quant, [[str(a), str(b)] for a, b in pairs]
+
+
+def reproducible(hits, cos, min_runs, recip=None, jac=None, jac_thr=None):
+    """LV whose qualifying hits, plus its own run, span >= min_runs runs. A hit qualifies at
+    cosine >= cos and, when given, if reciprocal (recip) and with top-gene Jaccard > jac_thr."""
+    ok = np.nan_to_num(hits, nan=-1) >= cos
+    if recip is not None:
+        ok &= recip
+    if jac_thr is not None:
+        ok &= np.nan_to_num(jac, nan=-1) > jac_thr
+    return ok.sum(1) + 1 >= min_runs
 
 
 def coverage(best, models, runs, repro, thresholds):
@@ -265,6 +272,22 @@ def coverage(best, models, runs, repro, thresholds):
     return pd.DataFrame(rows)
 
 
+def top1_share(M):
+    """Per row: largest squared value / squared norm (single-gene dominance)."""
+    sq = M.astype(np.float64) ** 2
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return sq.max(1) / sq.sum(1)
+
+
+def overlap(Bm, bz):
+    """|top(member) ∩ top(consensus)| / |top(member)| for each row of Bm (NaN if empty)."""
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return (Bm & bz).sum(1) / Bm.sum(1)
+
+
+SINGLE_GENE = 0.5  # top1_share above which a consensus LV counts as single-gene dominated
+
+
 def cluster_metrics(cache, member_rows, codes, Z, top_n):
     """Per consensus LV metrics. member_rows index cache rows; codes are 0..k-1 metaLV codes."""
     Zn = l2norm(Z.T)
@@ -272,8 +295,8 @@ def cluster_metrics(cache, member_rows, codes, Z, top_n):
     Bm = top_genes(cache.X[member_rows], top_n)
     Bz = top_genes(Z.T, top_n)
     models = cache.models[member_rows]
-    iq, sil = iq_silhouette(Xm, codes)
     max_cos, max_jac = redundancy(Zn, Bz)
+    share = top1_share(Z.T)
     rows = []
     for c in range(len(Zn)):
         idx = np.flatnonzero(codes == c)
@@ -285,21 +308,21 @@ def cluster_metrics(cache, member_rows, codes, Z, top_n):
                      "min_cos": offdiag(C).min() if multi else np.nan,
                      "cos_to_consensus": (Xm[idx] @ Zn[c]).mean(),
                      "jac_members": np.nanmean(offdiag(J)) if multi else np.nan,
-                     "jac_to_consensus": np.nanmean(jaccard(Bm[idx], Bz[c:c + 1])),
-                     "iq": iq[c], "silhouette": sil[idx].mean(),
+                     "overlap_to_consensus": np.nanmean(overlap(Bm[idx], Bz[c])),
+                     "top1_share": share[c],
                      "max_cos_other": max_cos[c], "max_jac_other": max_jac[c]})
     d = pd.DataFrame(rows)
     d.insert(2, "purity", d.n_models / d.n_lvs)
-    return d, sil
+    return d
 
 
-def summarize(per, sil, cov, thresholds):
+def summarize(per, cov, thresholds):
     row = {"n_lvs": len(per), "n_members": int(per.n_lvs.sum()),
            "median_n_models": per.n_models.median(), "mean_purity": per.purity.mean()}
-    for c in ["mean_cos", "min_cos", "cos_to_consensus", "jac_members", "jac_to_consensus", "iq",
+    for c in ["mean_cos", "min_cos", "cos_to_consensus", "jac_members", "overlap_to_consensus",
               "max_cos_other", "max_jac_other"]:
         row[f"median_{c}"] = per[c].median()
-    row["mean_silhouette"] = sil.mean() if len(sil) else np.nan
+    row["frac_single_gene"] = (per.top1_share > SINGLE_GENE).mean()
     runs = cov[~cov.scope.isin(["all", "reproducible"])]
     for t in thresholds:
         row[f"frac_redundant_c{t}"] = (per.max_cos_other >= t).mean()

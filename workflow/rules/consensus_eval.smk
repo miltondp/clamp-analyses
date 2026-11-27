@@ -277,14 +277,17 @@ rule cev_set_check:
 
 
 rule cev_pool_hits:
-    """Best cosine of every evaluation-pool LV to each other run (defines reproducible LVs)."""
+    """Best hit of every evaluation-pool LV in each other run, its Jaccard null and the reproducible LVs."""
     input:
         z=rules.cev_zcache.output,
         flags=f"{CEV_A4}/noise/flags_r{{r2}}.csv",
         script=CEV_SCRIPT,
         lib=CEV_LIB,
     output:
-        f"{CEV_A4}/pool/r{{r2}}/best_hits.npz",
+        hits=f"{CEV_A4}/pool/r{{r2}}/best_hits.npz",
+        null=f"{CEV_A4}/pool/r{{r2}}/null.json",
+    params:
+        repro=CEV_EVAL["reproducible"],
     log:
         f"{CEV_A4}/pool/r{{r2}}/best_hits.log",
     wildcard_constraints:
@@ -296,7 +299,10 @@ rule cev_pool_hits:
     conda: "clamp-analyses"
     shell:
         "OPENBLAS_NUM_THREADS={threads} OMP_NUM_THREADS={threads} python {input.script} pool-hits "
-        "--z-cache {input.z} --flags {input.flags} --out {output} > {log} 2>&1"
+        "--z-cache {input.z} --flags {input.flags} --top-n {A4_CRISPERCAS_CFG[top_n]} "
+        "--reproducible-cos {params.repro[cos]} --reproducible-frac {params.repro[min_frac]} "
+        "--jac-null-q {params.repro[jac_null_q]} --null-pairs {params.repro[null_pairs]} "
+        "--null-seed {params.repro[null_seed]} --out {output.hits} --null-out {output.null} > {log} 2>&1"
 
 
 rule cev_evaluate:
@@ -327,7 +333,6 @@ rule cev_evaluate:
         "OPENBLAS_NUM_THREADS={threads} OMP_NUM_THREADS={threads} python {input.script} evaluate "
         "--set-dir {params.set_dir} --z-cache {input.z} --best-hits {input.hits} "
         "--pool-r2 {CEV_EVAL[pool_r2]} --top-n {A4_CRISPERCAS_CFG[top_n]} --cos-thresholds {params.thresholds} "
-        "--reproducible-cos {CEV_EVAL[reproducible][cos]} --reproducible-frac {CEV_EVAL[reproducible][min_frac]} "
         "--out-dir {params.out} > {log} 2>&1"
 
 
@@ -336,10 +341,14 @@ rule cev_aggregate:
         metrics=expand(rules.cev_evaluate.output.metrics, set=CEV_SETS),
         script=CEV_SCRIPT,
     output:
-        f"{CEV_A4}/report/metrics_all.csv",
+        all=f"{CEV_A4}/report/metrics_all.csv",
+        headline=f"{CEV_A4}/report/headline.csv",
+    params:
+        headline=" ".join(CEV_EVAL["headline"]),
     conda: "clamp-analyses"
     shell:
-        "python {input.script} aggregate --metrics {input.metrics} --out {output}"
+        "python {input.script} aggregate --metrics {input.metrics} --headline {params.headline} "
+        "--out {output.all} --headline-out {output.headline}"
 
 
 rule cev_report_00:
