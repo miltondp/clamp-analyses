@@ -100,7 +100,7 @@ class MetricsTest(unittest.TestCase):
         self.assertAlmostEqual(hits[2, 2], np.sqrt(0.5), places=5)
         self.assertEqual(jac[0, 2], 1)                        # both top gene 0
         self.assertEqual(jac[0, 1], 0)
-        repro = cev.reproducible(hits, 0.9, 2)
+        repro = cev.reproducible(hits >= 0.9, 2)
         self.assertEqual(repro.tolist(), [True, True, False, True, False])
         best = cev.best_cos(Xn, cev.l2norm(np.array([[1, 0]], dtype=np.float32)))
         cov = cev.coverage(best, models, ["A", "B", "C"], repro, [0.9])
@@ -122,7 +122,6 @@ class MetricsTest(unittest.TestCase):
         self.assertAlmostEqual(per.overlap_to_consensus[1], 1)
         C = cache.Xn[rows[:3]] @ cache.Xn[rows[:3]].T
         self.assertAlmostEqual(per.min_cos[0], C[np.triu_indices(3, 1)].min(), places=6)
-        self.assertNotIn("iq", per.columns)
 
     def test_overlap_and_top1_share(self):
         Bm = np.array([[1, 1, 0, 0], [1, 0, 1, 1], [0, 0, 0, 0]], dtype=bool)
@@ -158,10 +157,10 @@ class ReproducibleTest(unittest.TestCase):
         self.assertEqual(arg[0, 1], 2)
         self.assertEqual(arg[2, 0], 1)
         self.assertFalse(recip[0, 1])
-        self.assertEqual(cev.reproducible(hits, 0.5, 2).tolist()[0], True)
-        self.assertEqual(cev.reproducible(hits, 0.5, 2, recip).tolist()[0], False)
         # Jaccard guard: a threshold at the pair's Jaccard removes the hit.
-        self.assertFalse(cev.reproducible(hits, 0.5, 2, None, jac, jac[0, 1])[0])
+        stages = cev.hit_stages(hits, recip, jac, 0.5, jac[0, 1])
+        self.assertEqual([cev.reproducible(m, 2)[0] for m in stages.values()], [True, False, False])
+        self.assertFalse(stages["cos"][0, 0])                  # own run (NaN) never qualifies
 
     def test_jaccard_null(self):
         rng = np.random.default_rng(0)
@@ -180,6 +179,11 @@ class ReproducibleTest(unittest.TestCase):
         self.assertEqual(sorted(map(tuple, pairs)), [("A", "B"), ("B", "A")])
         self.assertEqual(cev.jaccard_null(B, models, ["A", "B"], 2, seed=5, q=0.999)[0], thr)
         self.assertLessEqual(quant["p99.9"], quant["max"])
+
+    def test_quantiles_labels(self):
+        q = cev.quantiles(np.arange(101), [0.01, 0.5, 0.999])
+        self.assertEqual(list(q), ["p01", "p50", "p99.9"])
+        self.assertAlmostEqual(q["p50"], 50)
 
 
 if __name__ == "__main__":

@@ -40,6 +40,8 @@ for _vals in itertools.product(*_grid.values()):
     _name = cev_hier_name(_p)
     assert _name not in CEV_SETS, f"duplicate set name {_name}"
     CEV_SETS[_name] = _p
+# Set-definition columns of metrics.csv (meta.json keys), in first-seen order: they lead headline.csv.
+CEV_SET_PARAMS = ["set", "subset", *dict.fromkeys(k for v in CEV_SETS.values() for k in v), "min_models_resolved"]
 CEV_A4_R2 = sorted({str(v["noise_r2"]) for v in CEV_SETS.values()} | {str(CEV_EVAL["pool_r2"])})
 
 
@@ -333,7 +335,7 @@ rule cev_evaluate:
         "OPENBLAS_NUM_THREADS={threads} OMP_NUM_THREADS={threads} python {input.script} evaluate "
         "--set-dir {params.set_dir} --z-cache {input.z} --best-hits {input.hits} "
         "--pool-r2 {CEV_EVAL[pool_r2]} --top-n {A4_CRISPERCAS_CFG[top_n]} --cos-thresholds {params.thresholds} "
-        "--out-dir {params.out} > {log} 2>&1"
+        "--single-gene {CEV_EVAL[single_gene]} --out-dir {params.out} > {log} 2>&1"
 
 
 rule cev_aggregate:
@@ -344,10 +346,12 @@ rule cev_aggregate:
         all=f"{CEV_A4}/report/metrics_all.csv",
         headline=f"{CEV_A4}/report/headline.csv",
     params:
+        set_params=" ".join(CEV_SET_PARAMS),
         headline=" ".join(CEV_EVAL["headline"]),
     conda: "clamp-analyses"
     shell:
-        "python {input.script} aggregate --metrics {input.metrics} --headline {params.headline} "
+        "python {input.script} aggregate --metrics {input.metrics} --params {params.set_params} "
+        "--headline {params.headline} "
         "--out {output.all} --headline-out {output.headline}"
 
 

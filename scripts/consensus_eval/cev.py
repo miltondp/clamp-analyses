@@ -166,6 +166,19 @@ def jaccard(A, B):
         return np.where(union > 0, inter / union, np.nan)
 
 
+def jaccard_rows(A, B):
+    """Jaccard of paired boolean rows A[i], B[i] (same NaN-on-empty rule as jaccard)."""
+    inter = (A & B).sum(1)
+    union = A.sum(1) + B.sum(1) - inter
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return np.where(union > 0, inter / union, np.nan)
+
+
+def quantiles(v, ps):
+    """{'p50': ..., 'p99.9': ...} for probabilities ps (labels zero-padded: 0.01 -> 'p01')."""
+    return {f"p{100 * p:02g}": float(x) for p, x in zip(ps, np.quantile(v, ps))}
+
+
 def offdiag(C):
     return C[~np.eye(len(C), dtype=bool)]
 
@@ -194,7 +207,6 @@ def pool_best_hits(Xn, B, models, runs):
     (pool row of the hit, -1 for the LV's own run) and jac (top-gene Jaccard of the pair; B is
     top_genes of the pool). Own run: hits and jac NaN."""
     cols = {r: np.flatnonzero(models == r) for r in runs}
-    size = B.sum(1)
     hits = np.full((len(Xn), len(runs)), np.nan, dtype=np.float32)
     arg = np.full((len(Xn), len(runs)), -1, dtype=np.int64)
     jac = np.full((len(Xn), len(runs)), np.nan, dtype=np.float32)
@@ -202,16 +214,11 @@ def pool_best_hits(Xn, B, models, runs):
         e = min(s + BLOCK, len(Xn))
         S = Xn[s:e] @ Xn.T
         for j, r in enumerate(runs):
-            if not len(cols[r]):
-                continue
             sub = S[:, cols[r]]
             best = sub.argmax(1)
             hits[s:e, j] = sub[np.arange(e - s), best]
             arg[s:e, j] = a = cols[r][best]
-            inter = (B[s:e] & B[a]).sum(1)
-            union = size[s:e] + size[a] - inter
-            with np.errstate(invalid="ignore", divide="ignore"):
-                jac[s:e, j] = np.where(union > 0, inter / union, np.nan)
+            jac[s:e, j] = jaccard_rows(B[s:e], B[a])
     own = models[:, None] == np.asarray(runs)[None, :]
     hits[own], jac[own], arg[own] = np.nan, np.nan, -1
     return hits, arg, jac
@@ -242,19 +249,21 @@ def jaccard_null(B, models, runs, n_pairs, seed, q):
         vals.append(np.where(np.isnan(J), -np.inf, J).max(1))
     v = np.concatenate(vals)
     v = v[np.isfinite(v)]
-    quant = {k: float(np.quantile(v, p)) for k, p in [("p50", 0.5), ("p99", 0.99), ("p99.9", 0.999)]}
-    quant.update(max=float(v.max()), n=int(len(v)))
+    quant = {**quantiles(v, [0.5, 0.99, 0.999]), "max": float(v.max()), "n": int(len(v))}
     return float(np.quantile(v, q)), quant, [[str(a), str(b)] for a, b in pairs]
 
 
-def reproducible(hits, cos, min_runs, recip=None, jac=None, jac_thr=None):
-    """LV whose qualifying hits, plus its own run, span >= min_runs runs. A hit qualifies at
-    cosine >= cos and, when given, if reciprocal (recip) and with top-gene Jaccard > jac_thr."""
-    ok = np.nan_to_num(hits, nan=-1) >= cos
-    if recip is not None:
-        ok &= recip
-    if jac_thr is not None:
-        ok &= np.nan_to_num(jac, nan=-1) > jac_thr
+def hit_stages(hits, recip, jac, cos, jac_thr):
+    """Qualifying-hit masks (n_pool x n_runs), each adding one condition: cosine >= cos, then
+    reciprocal, then top-gene Jaccard > jac_thr. NaN entries (own run) never qualify."""
+    stages = {"cos": hits >= cos}
+    stages["cos_reciprocal"] = stages["cos"] & recip
+    stages["cos_reciprocal_jaccard"] = stages["cos_reciprocal"] & (jac > jac_thr)
+    return stages
+
+
+def reproducible(ok, min_runs):
+    """LV whose qualifying hits (ok, n_pool x n_runs), plus its own run, span >= min_runs runs."""
     return ok.sum(1) + 1 >= min_runs
 
 
@@ -274,18 +283,14 @@ def coverage(best, models, runs, repro, thresholds):
 
 def top1_share(M):
     """Per row: largest squared value / squared norm (single-gene dominance)."""
-    sq = M.astype(np.float64) ** 2
     with np.errstate(invalid="ignore", divide="ignore"):
-        return sq.max(1) / sq.sum(1)
+        return np.abs(M).max(1).astype(np.float64) ** 2 / np.einsum("ij,ij->i", M, M, dtype=np.float64)
 
 
 def overlap(Bm, bz):
     """|top(member) ∩ top(consensus)| / |top(member)| for each row of Bm (NaN if empty)."""
     with np.errstate(invalid="ignore", divide="ignore"):
         return (Bm & bz).sum(1) / Bm.sum(1)
-
-
-SINGLE_GENE = 0.5  # top1_share above which a consensus LV counts as single-gene dominated
 
 
 def cluster_metrics(cache, member_rows, codes, Z, top_n):
@@ -316,13 +321,14 @@ def cluster_metrics(cache, member_rows, codes, Z, top_n):
     return d
 
 
-def summarize(per, cov, thresholds):
+def summarize(per, cov, thresholds, single_gene):
+    """One metrics row; single_gene is the top1_share above which a consensus LV is single-gene dominated."""
     row = {"n_lvs": len(per), "n_members": int(per.n_lvs.sum()),
            "median_n_models": per.n_models.median(), "mean_purity": per.purity.mean()}
     for c in ["mean_cos", "min_cos", "cos_to_consensus", "jac_members", "overlap_to_consensus",
               "max_cos_other", "max_jac_other"]:
         row[f"median_{c}"] = per[c].median()
-    row["frac_single_gene"] = (per.top1_share > SINGLE_GENE).mean()
+    row["frac_single_gene"] = (per.top1_share > single_gene).mean()
     runs = cov[~cov.scope.isin(["all", "reproducible"])]
     for t in thresholds:
         row[f"frac_redundant_c{t}"] = (per.max_cos_other >= t).mean()

@@ -35,6 +35,7 @@ consensus_eval:
     # jac_null_q quantile of a gene-shuffled null (null_pairs run pairs, null_seed) in enough other
     # runs that, with its own run, they span >= ceil(min_frac x runs).
     reproducible: {cos: 0.5, min_frac: 0.4, jac_null_q: 0.999, null_pairs: 3, null_seed: 3}
+    single_gene: 0.5       # top1_share above which a consensus LV counts as single-gene dominated
     headline: [n_lvs, median_overlap_to_consensus, frac_redundant_c0.5, recall_c0.9]
   resources:
     export: {mem_mb: 16000, runtime: 30}   # readRDS peaks at ~12 GB

@@ -91,9 +91,9 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
   - Adopt the new reproducible-LV definition (7,981 LVs vs 8,727).
   - Added step 2.2b (metric revision) and step 2.2c (clustering on top-gene overlap, which the user wants prioritized, before 2.3).
 - 2026-11-26: Step 2.2b done. Changes:
-  - `cev.pool_best_hits` now also returns the best hit's pool row (`arg`) and its top-gene Jaccard. New functions: `reciprocal`, `jaccard_null` (`rng.permuted` within each top-gene row of run b), `overlap`, and `top1_share`. `reproducible` takes optional `recip` / `jac` / `jac_thr`.
+  - `cev.pool_best_hits` now also returns the best hit's pool row (`arg`) and its top-gene Jaccard. New functions: `reciprocal`, `jaccard_null` (`rng.permuted` within each top-gene row of run b), `overlap`, `top1_share`, `jaccard_rows` and `quantiles`. `hit_stages` builds the cos / +reciprocal / +Jaccard qualifying-hit masks and `reproducible(ok, min_runs)` counts runs over one mask. The single-gene cutoff is `eval.single_gene` in the config (`--single-gene`).
   - Dropped `iq_silhouette`, `indicator`, `jac_to_consensus`, `iq` and `silhouette`.
-  - `cev_pool_hits` now computes the reproducible mask once and writes `best_hits.npz` (`hits, arg, jac, recip, repro, …`) plus `null.json` (null quantiles, observed Jaccard quantiles, counts at each stage). `cev_evaluate` reads `repro` from that file. `cev_aggregate` also writes `report/headline.csv`.
+  - `cev_pool_hits` now computes the reproducible mask once and writes `best_hits.npz` (`hits, arg, jac, repro, …`; `recip` is `cev.reciprocal(arg, models, runs)`) plus `null.json` (null quantiles, observed Jaccard quantiles, counts at each stage). `cev_evaluate` reads `repro` from that file. `cev_aggregate` also writes `report/headline.csv`; its leading set-definition columns are `CEV_SET_PARAMS` in the smk (derived from the `CEV_SETS` keys).
   - Config: `eval.reproducible` gained `jac_null_q 0.999, null_pairs 3, null_seed 3`, and there is a new `eval.headline`.
   - Ran 10 unit tests (all pass), then the whole chain (84 cev jobs, 1 min 53 s, 4.6 GB peak).
   - Results:
@@ -361,7 +361,7 @@ What to reuse:
 - **`cev.pool_best_hits`** also returns the best-hit index for each (LV, other run), so reciprocity can be checked: LV a's best hit b in run B has a as its best hit in run A. It also returns the top-gene Jaccard of each best-hit pair.
 - **`cev.jaccard_null(B, runs, pairs, seed)`** shuffles the gene order within every top-gene row of run b and takes the best-hit Jaccard of each run-a LV, over `null_pairs` run pairs chosen by `null_seed`. It returns the `jac_null_q` quantile.
 - **Outputs:** `cev_pool_hits` writes `hits`, `arg`, `jac`, `runs` and pool keys to `best_hits.npz`, plus `null.json` (threshold, quantiles, pairs, seed).
-- **`cev.reproducible(...)`** = ≥ m − 1 other runs where the hit is reciprocal, cos ≥ `cos`, and Jaccard > the null threshold. m = `ceil(min_frac × n_runs)`.
+- **`cev.reproducible(hit_stages(...)["cos_reciprocal_jaccard"], m)`** = ≥ m − 1 other runs where the hit is reciprocal, cos ≥ `cos`, and Jaccard > the null threshold. m = `ceil(min_frac × n_runs)`.
 - **Per-cluster metrics:**
   - Add `overlap_to_consensus`: |top(member) ∩ top(consensus)| / |top(member)|, the mean over members per consensus LV. Members with fewer than 185 positive genes use their own size.
   - Drop `jac_to_consensus`, `iq` and `silhouette`, and remove `iq_silhouette` and its test.
@@ -401,7 +401,7 @@ topj: {linkage: [complete, average], min_jac: [0.05, 0.1, 0.15, 0.2, 0.3],
 - `run.py`:
   - `linkage` gains `--dist {cos,jac}` and `--top-n`. For `jac`, it builds `B = top_genes(pool.X, top_n)` and stores `dist` in the npz.
   - `hier-set` takes the cut from `p["min_cos"]` or `p["min_jac"]` according to `p.get("dist", "cos")`. It asserts that the linkage npz's `dist` matches.
-  - `HEADLINE_PARAMS` gains `dist` and `min_jac`.
+  - `headline.csv` picks up `dist` and `min_jac` automatically (`CEV_SET_PARAMS` is derived from the `CEV_SETS` keys).
 - `consensus_eval.smk`:
   - Every set definition in `CEV_SETS` gets a `dist` key: `cos` for the reproduce and `hier` sets, `jac` for `topj`. Existing set names don't change.
   - The linkage path becomes `linkage/r{r2}/{dist}_{linkage}/{subset}.npz`, with a `dist` wildcard constrained to `cos|jac`. `cev_linkage` passes `--dist {wildcards.dist} --top-n {A4_CRISPERCAS_CFG[top_n]}`, and `cev_hier_set` builds the path from `CEV_SETS[wc.set]["dist"]`.

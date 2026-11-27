@@ -15,9 +15,6 @@ from cluster_metalv import COLS  # noqa: E402
 import cev  # noqa: E402  (same directory as this script)
 
 MAX_SHOW = 20  # differing metaLVs listed in a failed reproduction
-# Set-definition columns that lead the headline table (those absent from every set are skipped).
-HEADLINE_PARAMS = ["set", "subset", "linkage", "min_cos", "min_frac", "min_models", "min_models_resolved",
-                   "noise_r2", "combine"]
 
 
 def rethreshold(d, r2):
@@ -235,21 +232,17 @@ def pool_hits_main(args):
     # Reproducible LV: a reciprocal best hit with cos >= c and Jaccard > the null threshold in
     # >= min_runs - 1 other runs. Counts at each stage show what each condition removes.
     min_runs = cev.resolve_min_models(a.reproducible_frac, len(runs))
-    stages = {"cos": cev.reproducible(hits, a.reproducible_cos, min_runs),
-              "cos_reciprocal": cev.reproducible(hits, a.reproducible_cos, min_runs, recip)}
-    repro = stages["cos_reciprocal_jaccard"] = cev.reproducible(
-        hits, a.reproducible_cos, min_runs, recip, jac, thr)
-    np.savez(a.out, hits=hits, arg=arg, jac=jac, recip=recip, repro=repro,
+    stages = cev.hit_stages(hits, recip, jac, a.reproducible_cos, thr)
+    repro = cev.reproducible(stages["cos_reciprocal_jaccard"], min_runs)
+    np.savez(a.out, hits=hits, arg=arg, jac=jac, repro=repro,
              runs=np.asarray(runs), models=pool.models, lvs=pool.lvs)
-    real = recip & (np.nan_to_num(hits, nan=-1) >= a.reproducible_cos)
+    real = stages["cos_reciprocal"]
     info = {"n_pool": len(pool.lvs), "n_runs": len(runs), "top_n": a.top_n,
             "cos": a.reproducible_cos, "min_frac": a.reproducible_frac, "min_runs": min_runs,
             "jac_null": {"q": a.jac_null_q, "threshold": thr, "seed": a.null_seed, "pairs": pairs, **quant},
-            "observed_jac_reciprocal_cos": {k: float(np.quantile(jac[real], p))
-                                            for k, p in [("p01", 0.01), ("p10", 0.1), ("p25", 0.25),
-                                                         ("p50", 0.5), ("p75", 0.75), ("p90", 0.9)]},
+            "observed_jac_reciprocal_cos": cev.quantiles(jac[real], [0.01, 0.1, 0.25, 0.5, 0.75, 0.9]),
             "frac_reciprocal_cos_within_null": float((jac[real] <= thr).mean()),
-            "n_reproducible": {k: int(v.sum()) for k, v in stages.items()}}
+            "n_reproducible": {k: int(cev.reproducible(v, min_runs).sum()) for k, v in stages.items()}}
     Path(a.null_out).write_text(json.dumps(info, indent=2) + "\n")
     print(json.dumps(info, indent=2))
 
@@ -262,6 +255,8 @@ def evaluate_main(args):
     ap.add_argument("--pool-r2", type=float, required=True)
     ap.add_argument("--top-n", type=int, required=True)
     ap.add_argument("--cos-thresholds", type=float, nargs="+", required=True)
+    ap.add_argument("--single-gene", type=float, required=True,
+                    help="top1_share above which a consensus LV counts as single-gene dominated")
     ap.add_argument("--out-dir", required=True)
     a = ap.parse_args(args)
 
@@ -287,7 +282,7 @@ def evaluate_main(args):
 
     params = {k: meta[k] for k in meta if k not in ("n_metalvs", "n_members")}
     row = {**params, "pool_r2": a.pool_r2, "n_pool_eval": len(pool_rows),
-           **cev.summarize(per, cov, a.cos_thresholds)}
+           **cev.summarize(per, cov, a.cos_thresholds, a.single_gene)}
     per.to_csv(out / "per_cluster.csv", index=False)
     cov.to_csv(out / "coverage.csv", index=False)
     pd.DataFrame([row]).to_csv(out / "metrics.csv", index=False)
@@ -297,16 +292,18 @@ def evaluate_main(args):
 def aggregate_main(args):
     ap = argparse.ArgumentParser(prog="run.py aggregate")
     ap.add_argument("--metrics", nargs="+", required=True)
+    ap.add_argument("--params", nargs="+", required=True,
+                    help="set-definition columns that lead the headline table (absent ones are skipped)")
     ap.add_argument("--headline", nargs="+", required=True, help="metric columns of the headline table")
     ap.add_argument("--out", required=True)
     ap.add_argument("--headline-out", required=True)
     a = ap.parse_args(args)
     d = pd.concat([pd.read_csv(p) for p in a.metrics], ignore_index=True)
     d.to_csv(a.out, index=False)
-    params = [c for c in HEADLINE_PARAMS if c in d.columns]
-    d[params + a.headline].to_csv(a.headline_out, index=False)
+    head = d[[c for c in a.params if c in d.columns] + a.headline]
+    head.to_csv(a.headline_out, index=False)
     print(f"{len(d)} sets -> {a.out}, {a.headline_out}")
-    print(d[params + a.headline].to_string(index=False))
+    print(head.to_string(index=False))
 
 
 def main():
