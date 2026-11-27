@@ -10,6 +10,7 @@ from functools import cached_property
 
 import numpy as np
 import pandas as pd
+from scipy import sparse
 from scipy.cluster.hierarchy import fcluster, linkage
 
 BLOCK = 1024  # rows per similarity block
@@ -82,12 +83,39 @@ def condensed_cosine_distance(Xn):
 # Hierarchical clustering and set building
 # ------------------------------------------------------------
 
+def condensed_jaccard_distance(B):
+    """1 - Jaccard between boolean rows of B (e.g. top_genes), in the condensed_cosine_distance layout.
+
+    Distance is 1 when both rows are empty (scipy's pdist gives 0 there). Sparse intersections,
+    since top-gene rows hold ~185 of ~18k genes."""
+    n = len(B)
+    S = sparse.csr_matrix(B, dtype=np.float32)
+    ST = S.T.tocsc()
+    size = np.asarray(B.sum(1), dtype=np.float64)
+    dist = np.empty(n * (n - 1) // 2, dtype=np.float64)
+    for start in range(0, n, 256):
+        stop = min(start + 256, n)
+        inter = (S[start:stop] @ ST).toarray().astype(np.float64)
+        union = size[start:stop, None] + size[None, :] - inter
+        with np.errstate(invalid="ignore", divide="ignore"):
+            d = np.where(union > 0, 1 - inter / union, 1.0)
+        for k, i in enumerate(range(start, stop)):
+            off = n * i - i * (i + 1) // 2
+            dist[off:off + n - i - 1] = d[k, i + 1:]
+    return dist
+
+
 def hier_linkage(Xn, method):
     return linkage(condensed_cosine_distance(Xn), method=method)
 
 
-def hier_partition(L, min_cos):
-    return fcluster(L, t=1 - min_cos, criterion="distance")
+def hier_linkage_jac(B, method):
+    return linkage(condensed_jaccard_distance(B), method=method)
+
+
+def hier_partition(L, min_sim):
+    """Cut at distance 1 - min_sim (min_cos for cosine linkages, min_jac for Jaccard ones)."""
+    return fcluster(L, t=1 - min_sim, criterion="distance")
 
 
 def resolve_min_models(min_frac, n_runs):
@@ -267,11 +295,17 @@ def reproducible(ok, min_runs):
     return ok.sum(1) + 1 >= min_runs
 
 
-def coverage(best, models, runs, repro, thresholds):
+POOL_SCOPES = ["all", "reproducible", "reproducible_multi"]
+
+
+def coverage(best, models, runs, repro, thresholds, multi=None):
     """Long table: share of each run's pool LVs (and of all / reproducible pool LVs) with
-    best cosine to the set >= t."""
+    best cosine to the set >= t. With multi (pool mask of LVs that are not single-gene dominated),
+    also the reproducible_multi scope: reproducible and multi-gene."""
     rows = []
     scopes = [(r, models == r) for r in runs] + [("all", np.ones(len(best), bool)), ("reproducible", repro)]
+    if multi is not None:
+        scopes.append(("reproducible_multi", repro & multi))
     for t in thresholds:
         hit = best >= t
         for scope, mask in scopes:
@@ -329,11 +363,16 @@ def summarize(per, cov, thresholds, single_gene):
               "max_cos_other", "max_jac_other"]:
         row[f"median_{c}"] = per[c].median()
     row["frac_single_gene"] = (per.top1_share > single_gene).mean()
-    runs = cov[~cov.scope.isin(["all", "reproducible"])]
+    runs = cov[~cov.scope.isin(POOL_SCOPES)]
+    has_multi = (cov.scope == "reproducible_multi").any()
     for t in thresholds:
         row[f"frac_redundant_c{t}"] = (per.max_cos_other >= t).mean()
         row[f"coverage_c{t}"] = runs[runs.t == t].share.mean()
         row[f"pool_coverage_c{t}"] = cov[(cov.t == t) & (cov.scope == "all")].share.iloc[0]
         row[f"recall_c{t}"] = cov[(cov.t == t) & (cov.scope == "reproducible")].share.iloc[0]
+        if has_multi:   # recall of the reproducible LVs that are not single-gene dominated
+            row[f"recall_multi_c{t}"] = cov[(cov.t == t) & (cov.scope == "reproducible_multi")].share.iloc[0]
     row["n_reproducible"] = int(cov[cov.scope == "reproducible"].n.iloc[0])
+    if has_multi:
+        row["n_reproducible_multi"] = int(cov[cov.scope == "reproducible_multi"].n.iloc[0])
     return row

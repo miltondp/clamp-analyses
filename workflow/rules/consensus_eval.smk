@@ -24,22 +24,32 @@ CEV_METALV_SCRIPT = "scripts/archs4/crispercas/cluster_metalv.py"
 assert all(v["linkage"] == "complete" for v in CEV_REPRO.values()), "cluster_metalv.py only does complete linkage"
 
 
-def cev_hier_name(p):
-    name = (f"hier_{p['linkage']}_c{round(p['min_cos'] * 100):03d}_f{round(p['min_frac'] * 10):02d}"
+def _cev_grid_name(prefix, p, sim_key, sim_tag):
+    name = (f"{prefix}_{p['linkage']}_{sim_tag}{round(p[sim_key] * 100):03d}_f{round(p['min_frac'] * 10):02d}"
             f"_r{round(p['noise_r2'] * 100):03d}_{p['combine']}")
     assert round(p["min_frac"] * 10) == p["min_frac"] * 10, f"min_frac {p['min_frac']} does not fit the set name"
     return name
 
 
-# Every hierarchical set: the frozen reproduce sets (absolute min_models) plus the grid (min_frac).
-CEV_SETS = {s: {"linkage": v["linkage"], "min_cos": v["min_cos"], "min_models": v["min_models"],
+def cev_hier_name(p):
+    return _cev_grid_name("hier", p, "min_cos", "c")
+
+
+def cev_topj_name(p):
+    return _cev_grid_name("topj", p, "min_jac", "j")
+
+
+# Every hierarchical set: the frozen reproduce sets (absolute min_models) plus the grids (min_frac).
+# dist picks the linkage: cos (1 - cosine of raw loadings) or jac (1 - top-gene Jaccard).
+CEV_SETS = {s: {"dist": "cos", "linkage": v["linkage"], "min_cos": v["min_cos"], "min_models": v["min_models"],
                 "noise_r2": v["noise_r2"], "combine": "median"} for s, v in CEV_REPRO.items()}
-_grid = CEV_CFG["grids"]["hier"]
-for _vals in itertools.product(*_grid.values()):
-    _p = dict(zip(_grid, _vals))
-    _name = cev_hier_name(_p)
-    assert _name not in CEV_SETS, f"duplicate set name {_name}"
-    CEV_SETS[_name] = _p
+for _grid_key, _dist, _namer in [("hier", "cos", cev_hier_name), ("topj", "jac", cev_topj_name)]:
+    _grid = CEV_CFG["grids"][_grid_key]
+    for _vals in itertools.product(*_grid.values()):
+        _p = {"dist": _dist, **dict(zip(_grid, _vals))}
+        _name = _namer(_p)
+        assert _name not in CEV_SETS, f"duplicate set name {_name}"
+        CEV_SETS[_name] = _p
 # Set-definition columns of metrics.csv (meta.json keys), in first-seen order: they lead headline.csv.
 CEV_SET_PARAMS = ["set", "subset", *dict.fromkeys(k for v in CEV_SETS.values() for k in v), "min_models_resolved"]
 CEV_A4_R2 = sorted({str(v["noise_r2"]) for v in CEV_SETS.values()} | {str(CEV_EVAL["pool_r2"])})
@@ -200,7 +210,7 @@ rule cev_reproduction:
 # ============================================================
 
 rule cev_linkage:
-    """One dendrogram per (noise_r2, linkage, subset), shared by every min_cos / min_frac cut."""
+    """One dendrogram per (noise_r2, dist, linkage, subset), shared by every similarity / min_frac cut."""
     input:
         z=rules.cev_zcache.output,
         flags=f"{CEV_A4}/noise/flags_r{{r2}}.csv",
@@ -208,11 +218,12 @@ rule cev_linkage:
         script=CEV_SCRIPT,
         lib=CEV_LIB,
     output:
-        f"{CEV_A4}/linkage/r{{r2}}/{{linkage}}/{{subset}}.npz",
+        f"{CEV_A4}/linkage/r{{r2}}/{{dist}}_{{linkage}}/{{subset}}.npz",
     log:
-        f"{CEV_A4}/linkage/r{{r2}}/{{linkage}}/{{subset}}.log",
+        f"{CEV_A4}/linkage/r{{r2}}/{{dist}}_{{linkage}}/{{subset}}.log",
     wildcard_constraints:
         r2="|".join(re.escape(r) for r in CEV_A4_R2),
+        dist="cos|jac",
         linkage="|".join(sorted({v["linkage"] for v in CEV_SETS.values()})),
         subset="|".join(CEV_SUBSETS),
     threads: CEV_RES["linkage"]["threads"]
@@ -222,7 +233,8 @@ rule cev_linkage:
     conda: "clamp-analyses"
     shell:
         "OPENBLAS_NUM_THREADS={threads} OMP_NUM_THREADS={threads} python {input.script} linkage "
-        "--z-cache {input.z} --flags {input.flags} --method {wildcards.linkage} --out {output} > {log} 2>&1"
+        "--z-cache {input.z} --flags {input.flags} --method {wildcards.linkage} --dist {wildcards.dist} "
+        "--top-n {A4_CRISPERCAS_CFG[top_n]} --out {output} > {log} 2>&1"
 
 
 rule cev_hier_set:
@@ -230,7 +242,7 @@ rule cev_hier_set:
         z=rules.cev_zcache.output,
         flags=lambda wc: f"{CEV_A4}/noise/flags_r{CEV_SETS[wc.set]['noise_r2']}.csv",
         linkage=lambda wc: (f"{CEV_A4}/linkage/r{CEV_SETS[wc.set]['noise_r2']}/"
-                            f"{CEV_SETS[wc.set]['linkage']}/{wc.subset}.npz"),
+                            f"{CEV_SETS[wc.set]['dist']}_{CEV_SETS[wc.set]['linkage']}/{wc.subset}.npz"),
         script=CEV_SCRIPT,
         lib=CEV_LIB,
     output:

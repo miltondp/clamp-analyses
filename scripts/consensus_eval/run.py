@@ -5,6 +5,7 @@ import argparse
 import filecmp
 import json
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -138,13 +139,25 @@ def linkage_main(args):
     ap.add_argument("--z-cache", required=True)
     ap.add_argument("--flags", required=True)
     ap.add_argument("--method", required=True, choices=["complete", "average"])
+    ap.add_argument("--dist", default="cos", choices=["cos", "jac"],
+                    help="cos: 1 - cosine of raw loadings; jac: 1 - Jaccard of the top-n positive genes")
+    ap.add_argument("--top-n", type=int, help="top genes per LV (required for --dist jac)")
     ap.add_argument("--out", required=True)
     a = ap.parse_args(args)
 
     pool = cev.load_pool(a.z_cache, a.flags)
-    L = cev.hier_linkage(pool.Xn, a.method)
-    np.savez(a.out, L=L, models=pool.models, lvs=pool.lvs)
-    print(f"{a.method} linkage on {len(pool.lvs)} LVs -> {a.out}")
+    t0 = time.time()
+    if a.dist == "cos":
+        L = cev.hier_linkage(pool.Xn, a.method)
+    else:
+        assert a.top_n, "--dist jac needs --top-n"
+        B = cev.top_genes(pool.X, a.top_n)
+        size = B.sum(1)
+        print(f"top-{a.top_n} sets: {(size < a.top_n).sum()} LVs with fewer genes, {(size == 0).sum()} empty; "
+              f"size median {np.median(size):.0f}, min {size.min()}")
+        L = cev.hier_linkage_jac(B, a.method)
+    np.savez(a.out, L=L, models=pool.models, lvs=pool.lvs, dist=a.dist)
+    print(f"{a.dist} {a.method} linkage on {len(pool.lvs)} LVs in {time.time() - t0:.1f} s -> {a.out}")
 
 
 def write_set(out_dir, Z, lvs, members, meta):
@@ -170,7 +183,7 @@ def hier_set_main(args):
     ap.add_argument("--flags", required=True)
     ap.add_argument("--linkage", required=True)
     ap.add_argument("--params", required=True,
-                    help="JSON set definition (min_cos, min_models or min_frac, combine, ...), copied to meta.json")
+                    help="JSON set definition (dist, min_cos or min_jac, min_models or min_frac, combine, ...), copied to meta.json")
     ap.add_argument("--out-dir", required=True)
     a = ap.parse_args(args)
     p = json.loads(a.params)
@@ -180,7 +193,9 @@ def hier_set_main(args):
     assert (d["models"] == pool.models).all() and (d["lvs"] == pool.lvs).all(), "linkage keys differ from the pool"
     n_runs = len(pd.unique(pool.models))
     min_models = p["min_models"] if "min_models" in p else cev.resolve_min_models(p["min_frac"], n_runs)
-    labels = cev.hier_partition(d["L"], p["min_cos"])
+    dist = p.get("dist", "cos")
+    assert str(d["dist"]) == dist, f"linkage dist {d['dist']} differs from the set's {dist}"
+    labels = cev.hier_partition(d["L"], p["min_jac" if dist == "jac" else "min_cos"])
     Z, lvs, members, n_clusters = cev.build_set(pool, labels, min_models, p["combine"])
     meta = {"set": a.set, "subset": a.subset, **p, "n_runs": n_runs,
             "min_models_resolved": min_models, "n_pool": len(pool.lvs), "n_clusters": n_clusters,
@@ -256,7 +271,7 @@ def evaluate_main(args):
     ap.add_argument("--top-n", type=int, required=True)
     ap.add_argument("--cos-thresholds", type=float, nargs="+", required=True)
     ap.add_argument("--single-gene", type=float, required=True,
-                    help="top1_share above which a consensus LV counts as single-gene dominated")
+                    help="top1_share above which an LV (consensus or pool) counts as single-gene dominated")
     ap.add_argument("--out-dir", required=True)
     a = ap.parse_args(args)
 
@@ -278,7 +293,8 @@ def evaluate_main(args):
     pool_rows = np.array([row_of[k] for k in cev.lv_keys(h["models"], h["lvs"])])
     runs = list(h["runs"])
     best = cev.best_cos(cache.Xn[pool_rows], cev.l2norm(Z.T))
-    cov = cev.coverage(best, h["models"], runs, h["repro"], a.cos_thresholds)
+    multi = cev.top1_share(cache.X[pool_rows]) <= a.single_gene   # pool LVs not single-gene dominated
+    cov = cev.coverage(best, h["models"], runs, h["repro"], a.cos_thresholds, multi=multi)
 
     params = {k: meta[k] for k in meta if k not in ("n_metalvs", "n_members")}
     row = {**params, "pool_r2": a.pool_r2, "n_pool_eval": len(pool_rows),
