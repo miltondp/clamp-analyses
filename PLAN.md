@@ -102,6 +102,8 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
 - **Stratification:**
   - Split the LVs into those assigned to a cell type (CLAMPfull, from
     `clampfull_lv_assignments.csv`) and the rest. This separates composition from regulation.
+  - `clampfull_lv_assignments.csv` comes from `benchmark_pseudobulk`, which needs all 6 datasets.
+    Use a OneK1K-only assignment rule instead (see Step 7).
   - Report how much the regulons overlap the GO BP prior (Jaccard).
 
 ## Steps (one per session)
@@ -111,13 +113,15 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     `perturbseq-benchmark`, created from `origin/main` (not from `consensus-lvs`).
   - `CLAUDE.md` was copied in from the main checkout. This `PLAN.md` lives only in this worktree;
     the main checkout's `PLAN.md` belongs to another project.
-- [ ] **Step 2: fit OneK1K models locally.**
-  - Dry-run first:
-    `snakemake --profile workflow/profiles/local --dry-run output/01_model_building/00_pseudobulk/PBMC_1k1k/models/{CLAMPfull,CLAMPbase,PLIER,PCA,NMF,ICA,flashier,MOFA_FLEX_PRIOR,GSS,CoGAPS}/Z.csv output/01_model_building/00_pseudobulk/donor_bulk/PBMC_1k1k/models/CLAMPfull/Z.csv output/03_model_biology/00_pseudobulk/00_benchmark/benchmark_long.csv`.
-  - Review the job list and data downloads with the user, then run (CoGAPS is slow; donor bulk
-    needs the raw CELLxGENE h5ad).
-  - Done when every Z.csv exists and the OneK1K mean r roughly reproduces the recorded values
-    (CLAMPfull ≈ 0.753, PLIER ≈ 0.716).
+- [x] **Step 2: fit OneK1K models locally.**
+  - Target list (dry-run first):
+    `snakemake --profile workflow/profiles/local output/01_model_building/00_pseudobulk/PBMC_1k1k/models/{CLAMPfull,CLAMPbase,PLIER,PCA,NMF,ICA,flashier,MOFA_FLEX_PRIOR,GSS,CoGAPS}/Z.csv output/01_model_building/00_pseudobulk/donor_bulk/PBMC_1k1k/models/CLAMPfull/Z.csv`
+    (16 jobs).
+  - `benchmark_long.csv` was **dropped** from the targets: `benchmark_pseudobulk` expands over all
+    6 datasets (about 45 GB of raw data, Heart's manual download, days of fits). OneK1K mean r was
+    instead checked with a scratch R script that reuses `score_per_ct()` from
+    `scripts/pseudobulk/common.R`.
+  - Done: every Z.csv exists and all 10 methods reproduce the recorded OneK1K mean r (see Log).
 - [ ] **Step 3: Perturb-seq input.**
   - Compute the sha256 of the local zip and add an asset to `workflow/config/reference_inputs.json`.
   - Add rule `ota2025_k562gw` in a new `workflow/rules/perturbseq.smk`. It extracts only the logFC,
@@ -146,6 +150,10 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     `perturbseq_report`. It shows per-method observed − null for both metrics, next to the
     cell-type mean r, plus the top CLAMPfull LV↔regulon hits with their cell-type assignment.
   - Add aggregate `perturbseq_pseudobulk` and hook it into `biology_pseudobulk`.
+  - The stratification needs OneK1K CLAMPfull LV↔cell-type assignments. Add a small OneK1K-only
+    rule that reuses `assign_with_margins()` from `scripts/pseudobulk/common.R` on
+    `PBMC_1k1k/models/CLAMPfull/B.csv` and `PBMC_1k1k/pseudobulk/truthFrac_v0.csv`. Don't depend
+    on `benchmark_pseudobulk`, which expands over all 6 datasets.
   - Sanity checks:
     - The null hit rate is about the FDR level.
     - Known K562 programs (ribosome/mito, GATA1/TAL1) map to interpretable LVs.
@@ -160,3 +168,30 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
 ## Log
 - 2026-11-25/26: Explored both repos and agreed the decisions above. Created the worktree from
   `origin/main`, copied `CLAUDE.md` and wrote this plan. No analysis run. Next: Step 2.
+- 2026-11-26: **Step 2 done.**
+  - Envs (created by another session) pass `scripts/check_setup.py`.
+  - All 16 jobs succeeded in 2 h 15 min of wall time. The slowest were CoGAPS (1 h 10 min),
+    MOFA-FLEX (1 h 04 min), PLIER (44 min), flashier (23 min), CLAMP (8 min) and donor-bulk
+    CLAMPfull (4.6 min).
+  - Z shapes (genes × LVs), all with symbol row names:
+    - Main pseudobulk: 13,488 genes. LVs: 130 for most methods, CoGAPS 106, GSS 32,
+      MOFA-FLEX 662.
+    - Donor bulk CLAMPfull: 13,733 × 130.
+  - The built `truthFrac_v0.csv` is identical to `references/pseudobulk/PBMC_1k1k/`.
+  - OneK1K mean r (9 cell types), observed vs recorded:
+
+    | Method | Observed | Recorded |
+    |---|---|---|
+    | CLAMPfull | 0.7533 | 0.7533 |
+    | CLAMPbase | 0.7374 | 0.7374 |
+    | PLIER | 0.7170 | 0.7164 |
+    | CoGAPS | 0.7020 | 0.7020 |
+    | Flashier | 0.6628 | 0.6628 |
+    | NMF | 0.5935 | 0.5934 |
+    | PCA | 0.3900 | 0.3900 |
+    | ICA | 0.3162 | 0.3134 |
+    | GSSig | 0.2728 | 0.2728 |
+    | MOFA-FLEX | 0.2099 | 0.2099 |
+
+  - Every method is within 0.003 of its recorded value.
+  - Next: Step 3.
