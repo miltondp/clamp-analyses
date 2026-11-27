@@ -88,7 +88,8 @@ rule cev_zcache_check:
     output:
         f"{CEV_A4}/checks/zcache.ok",
     resources:
-        mem_mb=CEV_RES["zcache"]["mem_mb"],
+        mem_mb=CEV_RES["check"]["mem_mb"],
+        runtime=CEV_RES["check"]["runtime"],
     conda: "clamp-analyses"
     shell:
         "python {input.script} zcache-check --z-cache {input.z} --flags {input.flags} "
@@ -106,7 +107,7 @@ rule cev_flags:
         r2="|".join(re.escape(r) for r in CEV_A4_R2),
     conda: "clamp-analyses"
     shell:
-        "python {input.script} flags --legacy {input.legacy} --r2 {wildcards.r2} --out {output}"
+        "python {input.script} flags --legacy {input.legacy} --legacy-r2 {CEV_A4_CFG[legacy_flags_r2]} --r2 {wildcards.r2} --out {output}"
 
 
 # ============================================================
@@ -145,7 +146,7 @@ rule cev_reproduce_set:
 
 
 rule cev_reproduction:
-    """Fails unless names match, max|dZ| < 1e-6 and every metaLV has the legacy members."""
+    """Fails unless names match, max|dZ| < reproduce_tol and every metaLV has the legacy members."""
     input:
         metaz=rules.cev_reproduce_set.output.metaz,
         summary=rules.cev_reproduce_set.output.summary,
@@ -159,11 +160,13 @@ rule cev_reproduction:
     wildcard_constraints:
         set="|".join(CEV_REPRO),
     resources:
-        mem_mb=CEV_RES["set"]["mem_mb"],
+        mem_mb=CEV_RES["check"]["mem_mb"],
+        runtime=CEV_RES["check"]["runtime"],
     conda: "clamp-analyses"
     shell:
         "python {input.script} reproduction --set {wildcards.set} --metaz {input.metaz} "
         "--summary {input.summary} --external {input.external} --members {input.members} "
+        "--tol {CEV_CFG[reproduce_tol]} "
         "--out {output} > {log} 2>&1"
 
 
@@ -181,8 +184,8 @@ rule cev_report_00:
         sets=list(CEV_REPRO),
         min_models=[CEV_REPRO[s]["min_models"] for s in CEV_REPRO],
     resources:
-        mem_mb=4000,
-        runtime=30,
+        mem_mb=CEV_RES["check"]["mem_mb"],
+        runtime=CEV_RES["check"]["runtime"],
     conda: "clamp-analyses"
     notebook:
         f"{CEV_NB}/00_reproduction.ipynb"

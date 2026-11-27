@@ -2,22 +2,20 @@
 """Consensus-LV evaluation CLI (see PLAN.md). Subcommands: flags, zcache-check, reproduction."""
 import argparse
 import filecmp
-import importlib.util
 import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-_spec = importlib.util.spec_from_file_location(
-    "cluster_metalv", Path(__file__).resolve().parents[1] / "archs4/crispercas/cluster_metalv.py")
-cluster_metalv = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(cluster_metalv)
-COLS = cluster_metalv.COLS
-LEGACY_R2 = 0.25  # threshold the legacy noise_flags.csv was written at
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "archs4/crispercas"))
+from cluster_metalv import COLS  # noqa: E402
+
+MAX_SHOW = 20  # differing metaLVs listed in a failed reproduction
 
 
 def rethreshold(d, r2):
+    # Same rule as cluster_metalv.flags(), applied to an already-merged flags table.
     d = d.copy()
     d["sample_flag"] = d.technical_joint.notna() & (d.technical_joint >= r2)
     d["any_flag"] = d.gene_flag | d.sample_flag
@@ -27,6 +25,7 @@ def rethreshold(d, r2):
 def flags_main(args):
     ap = argparse.ArgumentParser(prog="run.py flags")
     ap.add_argument("--legacy", required=True)
+    ap.add_argument("--legacy-r2", type=float, required=True, help="noise_r2 the legacy flags were written at")
     ap.add_argument("--r2", type=float, required=True)
     ap.add_argument("--out", required=True)
     a = ap.parse_args(args)
@@ -34,9 +33,9 @@ def flags_main(args):
     legacy = pd.read_csv(a.legacy)
     assert list(legacy.columns) == COLS, legacy.columns
     assert legacy.technical_joint.notna().all(), "technical_joint has NAs"
-    again = rethreshold(legacy, LEGACY_R2)
+    again = rethreshold(legacy, a.legacy_r2)
     for c in ["sample_flag", "any_flag"]:
-        assert (again[c] == legacy[c]).all(), f"legacy {c} is not technical_joint >= {LEGACY_R2}"
+        assert (again[c] == legacy[c]).all(), f"legacy {c} is not technical_joint >= {a.legacy_r2}"
     out = rethreshold(legacy, a.r2)
     out.to_csv(a.out, index=False)
     print(out.groupby("model", sort=False)[["gene_flag", "sample_flag", "any_flag"]].sum())
@@ -86,8 +85,7 @@ def reproduction_main(args):
     ap.add_argument("--summary", required=True)
     ap.add_argument("--external", required=True)
     ap.add_argument("--members", required=True)
-    ap.add_argument("--tol", type=float, default=1e-6)
-    ap.add_argument("--max-show", type=int, default=20)
+    ap.add_argument("--tol", type=float, required=True)
     ap.add_argument("--out", required=True)
     a = ap.parse_args(args)
 
@@ -95,7 +93,7 @@ def reproduction_main(args):
     names_equal = list(ours.columns) == list(ext.columns)
     genes_equal = list(ours.index) == list(ext.index)
     max_dz = float(np.abs(ours.to_numpy() - ext.to_numpy()).max()) if names_equal and genes_equal else np.nan
-    z_ok = names_equal and genes_equal and max_dz < a.tol
+    z_ok = max_dz < a.tol  # False when max_dz is NaN
     print(f"Z: ours {ours.shape}, external {ext.shape}; names equal {names_equal}, genes equal {genes_equal}, "
           f"max|dZ| {max_dz}")
     if not names_equal:
@@ -103,7 +101,7 @@ def reproduction_main(args):
               f"only external: {len(set(ext.columns) - set(ours.columns))}")
     elif genes_equal and not z_ok:
         bad = (np.abs(ours - ext) >= a.tol).any()
-        print(f"  {int(bad.sum())} metaLVs differ, first: {list(bad[bad].index[:a.max_show])}")
+        print(f"  {int(bad.sum())} metaLVs differ, first: {list(bad[bad].index[:MAX_SHOW])}")
     byte_identical = filecmp.cmp(a.metaz, a.external, shallow=False)
     print(f"metaZ.csv byte-identical to external: {byte_identical}")
 
@@ -116,7 +114,7 @@ def reproduction_main(args):
             or not (counts_ours.loc[k] == counts_leg.loc[k]).all()]
     members_ok = set(m_ours) == set(m_leg) and not diff
     print(f"members: ours {len(m_ours)} metaLVs, legacy {len(m_leg)}; {len(diff)} of {len(common)} common differ")
-    for k in diff[:a.max_show]:
+    for k in diff[:MAX_SHOW]:
         print(f"  {k}: only ours {sorted(m_ours[k] - m_leg[k])}; only legacy {sorted(m_leg[k] - m_ours[k])}")
     # Same clusters under different numbering?
     if diff or set(m_ours) != set(m_leg):
