@@ -143,7 +143,7 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     `logfc.tsv.gz` subset, cluster map, sizes, `report.json`). It is tsv.gz rather than parquet
     because `clamp-analyses` has no pyarrow.
   - Review the regulon size distribution and the ID overlap with the user.
-- [ ] **Step 5: regulon ORA.**
+- [x] **Step 5: regulon ORA.**
   - Write `scripts/perturbseq/signed_z.py` and add rules `perturbseq_signed_z` and
     `perturbseq_ora`, which call `run_ora.R` per method, tail and strategy.
   - Add a permutation-null ORA on shuffled Z.
@@ -245,3 +245,53 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
   - **Note for Step 6:** `logfc.tsv.gz` keeps each perturbation's own row. Decide there whether to
     mask it before computing correlations.
   - Next: Step 5.
+- 2026-11-27: **Step 5 done.**
+  - `scripts/perturbseq/signed_z.py` restricts Z to the regulon universe and writes Z (`pos`), −Z
+    (`neg`) and a `samples` manifest. That's needed because `run_ora.R` uses every Z row as its
+    universe.
+  - `scripts/perturbseq/ora_null.py` reimplements clusterProfiler's enricher, vectorized over LVs
+    (decision 2026-11-27). The background is the annotated universe; only regulons with k ≥ 1 are
+    tested, and BH runs over those, within each LV. Unpermuted, it must reproduce `run_ora.R`'s
+    hits and p-values (rtol 1e-6) or the job fails. **All 11 models pass on both tails.**
+  - The null is 100 label permutations from seed 123, shared across LVs, tails and models.
+  - Tests: 10 new, in `scripts/perturbseq/tests/`, including an end-to-end comparison against the
+    real `run_ora.R`. 20 pass.
+  - Rules: `perturbseq_signed_z`, `perturbseq_ora` (`run_ora.R`), `perturbseq_ora_null` and
+    `perturbseq_ora_summary`, which writes `07_perturbseq/ora_summary.csv`. There are 45 jobs. The
+    slowest `run_ora.R` job took 10 min; the nulls take under 1.5 min each.
+  - Two snags:
+    - `projections.smk` constrains `{model}` globally, so the new rules set their own `model`
+      constraint.
+    - `run_ora.R` writes a **truncated header-only gzip** when no LV has hits, because data.table's
+      `fwrite(compress="gzip")` leaves it unterminated. `ora_null.py` therefore uses `summary.csv`'s
+      `result_rows == 0` instead of reading the file, and Step 7 readers must do the same.
+      `run_ora.R` itself is unchanged, since ARCHS4 shares it.
+  - **The negative tail is empty for CLAMPfull, CLAMPbase, PLIER, NMF and CoGAPS** (nonnegative Z).
+    It has hits only for ICA, PCA, flashier, MOFA-FLEX and GSS.
+  - The null is well calibrated: about 2.5–3% of LVs hit ≥ 1 regulon per tail (about 5% for either
+    tail). Every method beats its null at perm p = 1/101, the floor.
+  - Main pseudobulk, % of LVs enriched in either tail, observed vs null mean (Δ):
+
+    | Method | Observed | Null mean | Δ |
+    |---|---|---|---|
+    | ICA | 59.2 | 5.2 | 54.0 |
+    | PLIER | 38.5 | 3.1 | 35.4 |
+    | CLAMPbase | 31.5 | 3.0 | 28.6 |
+    | GSSig | 31.3 | 5.5 | 25.8 |
+    | CoGAPS | 28.3 | 2.8 | 25.5 |
+    | CLAMPfull | 27.7 | 2.6 | 25.1 |
+    | NMF | 26.2 | 2.7 | 23.5 |
+    | MOFA-FLEX | 26.1 | 5.2 | 20.9 |
+    | PCA | 23.8 | 5.2 | 18.7 |
+    | flashier | 23.1 | 5.2 | 17.9 |
+
+    Donor-bulk CLAMPfull: 35.4, null 2.5, Δ 32.9. That's higher than main CLAMPfull.
+  - **The "% of regulons recovered" metric is saturated** at 74–97% for every method, against a null
+    of 1–10%. It doesn't discriminate between methods.
+    - The cause is a few promiscuous LVs. CLAMPfull LV37 hits 1,915 of 2,685 regulons and LV119
+      hits 1,857. They likely capture K562's shared knockdown response (erythroid, proliferation).
+    - LV37 is also the top LV for GATA1 (p.adj 1.6e-78), TAL1, LMO2, LDB1 and MYB, which is
+      interpretable but not specific.
+    - **For Step 7:** add a specificity view, such as hits per LV, a regulon's best LV, or a hub-LV
+      exclusion, before reading regulon recovery.
+  - Next: Step 6.
