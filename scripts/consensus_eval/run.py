@@ -170,10 +170,14 @@ def linkage_main(args):
     print(f"{a.dist} {a.method} linkage on {len(pool.lvs)} LVs in {time.time() - t0:.1f} s -> {a.out}")
 
 
-def write_set(out_dir, Z, lvs, members, meta):
+def write_set(out_dir, Z, lvs, members, meta, z_link=None):
+    """z_link: an identical set's Z.npy to symlink instead of writing Z again."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    np.save(out / "Z.npy", Z)
+    if z_link is None:
+        np.save(out / "Z.npy", Z)
+    else:
+        (out / "Z.npy").symlink_to(Path("..") / Path(z_link).parent.name / "Z.npy")
     lvs.to_csv(out / "lvs.csv", index=False)
     members.to_csv(out / "members.csv", index=False)
     (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
@@ -191,18 +195,28 @@ def load_linkage(path, pool):
     return d
 
 
-def build_hier_set(pool, d, name, subset, p, out_dir):
-    """Cut the linkage d at the set's min_<dist>, keep clusters spanning enough runs, write the set."""
+def build_hier_set(pool, d, name, subset, p, out_dir, built=None):
+    """Cut the linkage d at the set's min_<dist>, keep clusters spanning enough runs, write the set.
+
+    built: {(cut, min_models, combine): (out_dir, set)} shared across the sets of one linkage. In 5-run
+    halves min_frac 0.3/0.4 (and 0.5/0.6) resolve to the same min_models, so such a set is built once
+    and its Z.npy symlinked."""
     n_runs = len(pd.unique(pool.models))
     min_models = p["min_models"] if "min_models" in p else cev.resolve_min_models(p["min_frac"], n_runs)
     dist = p["dist"]
     assert str(d["dist"]) == dist, f"linkage dist {d['dist']} differs from the set's {dist}"
-    labels = cev.hier_partition(d["L"], p[f"min_{dist}"])
-    Z, lvs, members, n_clusters = cev.build_set(pool, labels, min_models, p["combine"])
+    key = (p[f"min_{dist}"], min_models, p["combine"])
+    if built is not None and key in built:
+        z_dir, (Z, lvs, members, n_clusters) = built[key]
+    else:
+        labels = cev.hier_partition(d["L"], p[f"min_{dist}"])
+        z_dir, (Z, lvs, members, n_clusters) = None, cev.build_set(pool, labels, min_models, p["combine"])
+        if built is not None:
+            built[key] = (out_dir, (Z, lvs, members, n_clusters))
     meta = {"set": name, "subset": subset, **p, "n_runs": n_runs,
             "min_models_resolved": min_models, "n_pool": len(pool.lvs), "n_clusters": n_clusters,
             "n_metalvs": len(lvs), "n_members": len(members)}
-    write_set(out_dir, Z, lvs, members, meta)
+    write_set(out_dir, Z, lvs, members, meta, z_link=None if z_dir is None else Path(z_dir) / "Z.npy")
     return meta
 
 
@@ -232,8 +246,9 @@ def hier_sets_main(args):
     a = ap.parse_args(args)
     pool = subset_pool(a)
     d = load_linkage(a.linkage, pool)
+    built = {}
     for name, p in json.loads(a.params).items():
-        meta = build_hier_set(pool, d, name, a.subset, p, Path(a.out_dir) / name)
+        meta = build_hier_set(pool, d, name, a.subset, p, Path(a.out_dir) / name, built)
         print(json.dumps(meta))
 
 
@@ -371,32 +386,35 @@ def compare_main(args):
     sh = pd.DataFrame(rows)
     sh.to_csv(out / "split_half.csv", index=False)
 
-    subs = [read_set(d) for d in a.loro]
-    best, best_j = cev.loro_recovery(Z, [x[0] for x in subs], a.top_n)
     loro = lvs[["metaLV", "n_lvs", "n_models"]].copy()
     loro["top1_share"] = cev.top1_share(Z.T)
-    for j, x in enumerate(subs):
-        loro[x[3]["subset"]] = best[:, j]
-    loro["recovery"] = (best >= a.match_cos).mean(1)
-    loro["recovery_jac"] = (best_j >= a.match_jac).mean(1)
+    best, best_j, loro_sizes = [], [], []
+    for d in a.loro:   # one subset set in memory at a time
+        Zs, _, _, ms = read_set(d)
+        c, j = cev.loro_recovery(Z, Zs, a.top_n)
+        loro[ms["subset"]] = c
+        best.append(c)
+        best_j.append(j)
+        loro_sizes.append(ms["n_metalvs"])
+    loro["recovery"] = (np.column_stack(best) >= a.match_cos).mean(1)
+    loro["recovery_jac"] = (np.column_stack(best_j) >= a.match_jac).mean(1)
     loro.to_csv(out / "loro.csv", index=False)
 
-    row = {"set": meta["set"], "sh_n_splits": len(sh), "sh_n_empty": int(sh.n_empty.sum()), "sh_min_models": int(sh.min_models.iloc[0]),
-           "sh_n_lvs": float(sh[["n_a", "n_b"]].to_numpy().mean())}
-    for prefix, thr in [("", t), ("j", tj)]:
+    row = {"set": meta["set"], "sh_n_splits": len(sh), "sh_n_empty": int(sh.n_empty.sum()),
+           "sh_min_models": int(sh.min_models.iloc[0]), "sh_n_lvs": float(sh[["n_a", "n_b"]].to_numpy().mean())}
+    mask = cev.strata(Z, a.single_gene)
+    for prefix, rec_col, thr in [("", "recovery", t), ("j", "recovery_jac", tj)]:
         for st in cev.STRATA:
             row[f"sh_{prefix}share_{thr}_{st}"] = sh[f"{prefix}share_{st}"].mean()
             row[f"sh_{prefix}share_{thr}_{st}_sd"] = sh[f"{prefix}share_{st}"].std()
             row[f"sh_{prefix}pair_cos_{st}"] = sh[f"{prefix}pair_cos_{st}"].mean()
             row[f"sh_{prefix}pair_jac_{st}"] = sh[f"{prefix}pair_jac_{st}"].mean()
-    mask = cev.strata(Z, a.single_gene)
-    for col, thr in [("recovery", t), ("recovery_jac", tj)]:
-        for st in cev.STRATA:
-            rec = loro[col][mask[st]]
+            rec = loro[rec_col][mask[st]]
             row[f"loro_recovery_{thr}_{st}"] = rec.mean() if len(rec) else np.nan
             row[f"loro_frac_stable_{thr}_{st}"] = (rec == 1).mean() if len(rec) else np.nan
-    row["loro_n_lvs"] = float(np.mean([len(x[1]) for x in subs]))
-    row["geneperm_n_lvs"] = float(np.mean([len(read_set(d)[1]) for d in a.geneperm]))
+    row["loro_n_lvs"] = float(np.mean(loro_sizes))
+    row["geneperm_n_lvs"] = float(np.mean([json.loads((Path(d) / "meta.json").read_text())["n_metalvs"]
+                                           for d in a.geneperm]))
 
     ln = pd.read_csv(a.label_null)
     cut = meta[f"min_{meta['dist']}"]
@@ -446,9 +464,9 @@ def aggregate_main(args):
     d.to_csv(a.out, index=False)
     if a.robust:
         rob = pd.concat([pd.read_csv(p) for p in a.robust], ignore_index=True)
-        rob = d[[c for c in a.params if c in d.columns] + ["n_lvs"]].merge(rob, on="set")
-        rob.to_csv(a.robust_out, index=False)
-        d = d.merge(rob[["set"] + [c for c in rob.columns if c not in d.columns]], on="set", how="left")
+        d = d.merge(rob, on="set", how="left")
+        d.loc[d.set.isin(rob.set), [c for c in a.params if c in d.columns] + ["n_lvs", *rob.columns[1:]]].to_csv(
+            a.robust_out, index=False)
     head = d[[c for c in a.params if c in d.columns] + a.headline]
     head.to_csv(a.headline_out, index=False)
     print(f"{len(d)} sets -> {a.out}, {a.headline_out}")

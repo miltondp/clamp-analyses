@@ -21,7 +21,10 @@ BLOCK = 1024  # rows per similarity block
 # ------------------------------------------------------------
 
 def l2norm(M):
-    return M / np.linalg.norm(M, axis=1, keepdims=True)
+    """Unit rows; an all-zero row stays zero (cosine 0 to everything). The median of a large, loose
+    cluster can be all zeros. Rows with a positive norm are divided exactly as before."""
+    n = np.linalg.norm(M, axis=1, keepdims=True)
+    return M / np.where(n > 0, n, 1)
 
 
 def lv_keys(models, lvs):
@@ -133,10 +136,15 @@ def resolve_min_models(min_frac, n_runs):
     return math.ceil(round(min_frac * n_runs, 9))
 
 
+def cluster_stats(labels, models):
+    """Per cluster (index, sorted): n_lvs and n_models (distinct runs spanned)."""
+    allc = pd.DataFrame({"model": models, "cluster": labels})
+    return allc.groupby("cluster").agg(n_lvs=("model", "size"), n_models=("model", "nunique"))
+
+
 def replicated(labels, models, min_models):
     """Clusters spanning >= min_models runs, ordered and named as cluster_metalv.py:121-126."""
-    allc = pd.DataFrame({"model": models, "cluster": labels})
-    stats = allc.groupby("cluster").agg(n_lvs=("model", "size"), n_models=("model", "nunique"))
+    stats = cluster_stats(labels, models)
     kept = stats[stats.n_models >= min_models].sort_values(["n_models", "n_lvs"], ascending=False).copy()
     kept["metaLV"] = [f"metaLV{i + 1}" for i in range(len(kept))]
     return kept, len(stats)
@@ -393,22 +401,18 @@ def summarize(per, cov, thresholds, single_gene):
 STRATA = ["all", "single", "multi"]
 
 
-def unit_cols(Z):
-    """Columns of a set (genes x k) as unit rows (k x genes). An all-zero consensus LV (the median of a
-    large, loose cluster can be all zeros) becomes a zero row: cosine 0 to everything, so it never matches."""
-    with np.errstate(invalid="ignore", divide="ignore"):
-        return np.nan_to_num(l2norm(Z.T))
+def pair_matrices(Za, Zb, top_n):
+    """Cosine and top-gene Jaccard (0 for an empty LV) between the columns of two sets (genes x k)."""
+    C = l2norm(Za.T) @ l2norm(Zb.T).T
+    J = np.nan_to_num(jaccard(top_genes(Za.T, top_n), top_genes(Zb.T, top_n)))
+    return C, J
 
 
-def hungarian_match(Za, Zb, top_n, by="cos"):
-    """One-to-one match of the columns of two sets (genes x k) maximizing total cosine (by="cos") or
-    total top-gene Jaccard (by="jac"). Returns ia, ib and the pairs' cosine and Jaccard (min(ka, kb) pairs)."""
+def hungarian_match(S):
+    """One-to-one match maximizing the total of similarity matrix S (min(ka, kb) pairs): ia, ib."""
     from scipy.optimize import linear_sum_assignment
 
-    C = unit_cols(Za) @ unit_cols(Zb).T
-    J = np.nan_to_num(jaccard(top_genes(Za.T, top_n), top_genes(Zb.T, top_n)))   # empty LV: 0
-    ia, ib = linear_sum_assignment(C if by == "cos" else J, maximize=True)
-    return ia, ib, C[ia, ib], J[ia, ib]
+    return linear_sum_assignment(S, maximize=True)
 
 
 def strata(Z, single_gene):
@@ -417,55 +421,40 @@ def strata(Z, single_gene):
     return {"all": np.ones(len(single), bool), "single": single, "multi": ~single}
 
 
-# split-half matching modes: column prefix, Hungarian objective, the paired value thresholded
-MATCH_MODES = {"": "cos", "j": "jac"}
-
-
 def split_half_scores(Za, Zb, top_n, match_cos, match_jac, single_gene):
     """Hungarian match of half a vs half b, once on cosine and once on top-gene Jaccard ('j' prefix).
     For each stratum (an LV's own top1_share): share of the LVs of both halves whose partner clears the
     threshold (cos >= match_cos, or Jaccard >= match_jac; unmatched LVs count as misses, so for 'all' it
     is matched pairs / mean set size), and the median cosine and Jaccard of their pairs."""
-    row = {"n_a": Za.shape[1], "n_b": Zb.shape[1], "n_pairs": min(Za.shape[1], Zb.shape[1]),
-           "n_empty": int((~Za.any(0)).sum() + (~Zb.any(0)).sum())}
+    C, J = pair_matrices(Za, Zb, top_n)
     masks = [strata(Za, single_gene), strata(Zb, single_gene)]
+    row = {"n_a": Za.shape[1], "n_b": Zb.shape[1], "n_empty": int((~Za.any(0)).sum() + (~Zb.any(0)).sum())}
     for s in STRATA:
         row[f"n_{s}"] = int(masks[0][s].sum() + masks[1][s].sum())
-    for prefix, by in MATCH_MODES.items():
-        ia, ib, cos, jac = hungarian_match(Za, Zb, top_n, by)
-        sides = []
-        for Z, idx in [(Za, ia), (Zb, ib)]:
-            pc = np.full(Z.shape[1], np.nan)
-            pj = np.full(Z.shape[1], np.nan)
-            pc[idx], pj[idx] = cos, jac
-            sides.append((pc, pj))
+    for prefix, S, by, thr in [("", C, "cos", match_cos), ("j", J, "jac", match_jac)]:
+        ia, ib = hungarian_match(S)
+        pair = {"cos": C[ia, ib], "jac": J[ia, ib]}
+        # each LV's pair values, NaN for the unmatched LVs of the larger half
+        sides = [{k: np.full(n, np.nan) for k in pair} for n in (Za.shape[1], Zb.shape[1])]
+        for side, idx in zip(sides, (ia, ib)):
+            for k, v in pair.items():
+                side[k][idx] = v
         for s in STRATA:
-            pc = np.concatenate([side[0][m[s]] for side, m in zip(sides, masks)])
-            pj = np.concatenate([side[1][m[s]] for side, m in zip(sides, masks)])
-            hit = pc >= match_cos if by == "cos" else pj >= match_jac
-            row[f"{prefix}share_{s}"] = hit.mean() if len(pc) else np.nan
-            row[f"{prefix}pair_cos_{s}"] = np.nanmedian(pc) if np.isfinite(pc).any() else np.nan
-            row[f"{prefix}pair_jac_{s}"] = np.nanmedian(pj) if np.isfinite(pj).any() else np.nan
+            v = {k: np.concatenate([side[k][m[s]] for side, m in zip(sides, masks)]) for k in pair}
+            n = len(v[by])
+            row[f"{prefix}share_{s}"] = (v[by] >= thr).mean() if n else np.nan
+            for k in pair:
+                row[f"{prefix}pair_{k}_{s}"] = np.nanmedian(v[k]) if np.isfinite(v[k]).any() else np.nan
     return row
 
 
-def loro_recovery(Z, Zsubs, top_n):
-    """genes x k full set vs a list of subset sets: k x len(Zsubs) best cosines and best top-gene
-    Jaccards (NaN for empty sets)."""
-    A = unit_cols(Z)
-    BA = top_genes(Z.T, top_n)
-    cos = np.full((Z.shape[1], len(Zsubs)), np.nan, dtype=np.float32)
-    jac = np.full((Z.shape[1], len(Zsubs)), np.nan, dtype=np.float32)
-    for j, Zs in enumerate(Zsubs):
-        if Zs.shape[1]:
-            cos[:, j] = best_cos(A, unit_cols(Zs))
-            jac[:, j] = np.nan_to_num(jaccard(BA, top_genes(Zs.T, top_n))).max(1)
-    return cos, jac
-
-
-def runs_spanned(labels, models):
-    """Number of distinct runs in each cluster (one value per cluster)."""
-    return pd.DataFrame({"c": labels, "m": models}).groupby("c").m.nunique().to_numpy()
+def loro_recovery(Z, Zs, top_n):
+    """Full set vs one subset set (both genes x k): each full LV's best cosine and best top-gene
+    Jaccard in the subset (NaN if the subset set is empty)."""
+    if not Zs.shape[1]:
+        return np.full(Z.shape[1], np.nan), np.full(Z.shape[1], np.nan)
+    C, J = pair_matrices(Z, Zs, top_n)
+    return C.max(1), J.max(1)
 
 
 def label_perm_null(labels, models, n_perm, seed):
@@ -473,9 +462,9 @@ def label_perm_null(labels, models, n_perm, seed):
     run sizes kept). Long table: m, observed, perm, null count."""
     rng = np.random.default_rng(seed)
     ms = np.arange(1, len(pd.unique(models)) + 1)
-    obs = runs_spanned(labels, models)
+    obs = cluster_stats(labels, models).n_models.to_numpy()
     rows = []
     for p in range(n_perm):
-        null = runs_spanned(labels, rng.permutation(models))
+        null = cluster_stats(labels, rng.permutation(models)).n_models.to_numpy()
         rows += [{"m": m, "observed": int((obs >= m).sum()), "perm": p, "null": int((null >= m).sum())} for m in ms]
     return pd.DataFrame(rows)

@@ -245,18 +245,19 @@ class RobustnessTest(unittest.TestCase):
         rng = np.random.default_rng(0)
         Za = (rng.gamma(1.0, 1.0, (200, 12)) * (rng.random((200, 12)) < 0.3)).astype(np.float32)
         perm = rng.permutation(12)
-        for by in ["cos", "jac"]:
-            ia, ib, cos, jac = cev.hungarian_match(Za, Za[:, perm], top_n=20, by=by)
+        C, J = cev.pair_matrices(Za, Za[:, perm], top_n=20)
+        for S in [C, J]:
+            ia, ib = cev.hungarian_match(S)
             np.testing.assert_array_equal(perm[ib], ia)
-            np.testing.assert_allclose(cos, 1, atol=1e-5)
-            np.testing.assert_allclose(jac, 1)
+            np.testing.assert_allclose(C[ia, ib], 1, atol=1e-5)
+            np.testing.assert_allclose(J[ia, ib], 1)
         # half b: the same 12 LVs permuted plus 4 unrelated ones -> 24 of 28 LVs matched
         extra = np.zeros((200, 4), dtype=np.float32)
         for j in range(4):
             extra[j * 50:(j + 1) * 50, j] = 1   # disjoint gene blocks: low cosine to everything in Za
         Zb = np.hstack([Za[:, perm], extra])
         row = cev.split_half_scores(Za, Zb, top_n=20, match_cos=0.9, match_jac=0.25, single_gene=0.5)
-        self.assertEqual((row["n_a"], row["n_b"], row["n_pairs"]), (12, 16, 12))
+        self.assertEqual((row["n_a"], row["n_b"]), (12, 16))
         self.assertAlmostEqual(row["share_all"], 24 / 28)
         self.assertAlmostEqual(row["jshare_all"], 24 / 28)
         self.assertAlmostEqual(row["jpair_cos_all"], 1, places=5)
@@ -271,16 +272,18 @@ class RobustnessTest(unittest.TestCase):
         self.assertEqual(row["n_empty"], 1)
         self.assertAlmostEqual(row["share_all"], 4 / 6)
         self.assertAlmostEqual(row["jshare_all"], 4 / 6)
-        best, best_j = cev.loro_recovery(Zb, [Za], top_n=2)
-        np.testing.assert_allclose(best[:, 0], [1, 1, 0], atol=1e-6)
-        np.testing.assert_allclose(best_j[:, 0], [1, 1, 0])
+        best, best_j = cev.loro_recovery(Zb, Za, top_n=2)
+        np.testing.assert_allclose(best, [1, 1, 0], atol=1e-6)
+        np.testing.assert_allclose(best_j, [1, 1, 0])
+        np.testing.assert_array_equal(cev.l2norm(Zb.T)[2], 0)   # zero-safe: no NaN
 
     def test_loro_recovery(self):
         Z = np.eye(4, 3, dtype=np.float32)
-        best, best_j = cev.loro_recovery(Z, [Z[:, :2], np.zeros((4, 0), np.float32)], top_n=1)
-        np.testing.assert_allclose(best[:, 0], [1, 1, 0], atol=1e-6)
-        np.testing.assert_allclose(best_j[:, 0], [1, 1, 0])
-        self.assertTrue(np.isnan(best[:, 1]).all() and np.isnan(best_j[:, 1]).all())
+        best, best_j = cev.loro_recovery(Z, Z[:, :2], top_n=1)
+        np.testing.assert_allclose(best, [1, 1, 0], atol=1e-6)
+        np.testing.assert_allclose(best_j, [1, 1, 0])
+        best, best_j = cev.loro_recovery(Z, np.zeros((4, 0), np.float32), top_n=1)
+        self.assertTrue(np.isnan(best).all() and np.isnan(best_j).all())
 
     def test_label_perm_null(self):
         # 6 clusters of one LV per run (span 3 runs) and 3 clusters drawn from one run (span 1)

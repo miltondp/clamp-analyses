@@ -66,45 +66,43 @@ for _r, _v in CEV_REPRO.items():
 
 
 def cev_run_subsets(models, n_splits, seed, loro):
-    """{subset: runs}. Halves: n_splits seeded draws of half the runs that contain models[0] (so half a
-    and half b are never swapped copies of another split), plus the complement. Runs keep model order."""
+    """({subset: runs}, [(half a, half b)], [LORO subsets]). Halves: n_splits seeded draws of half the
+    runs that contain models[0] (so half a and half b are never swapped copies of another split), plus
+    the complement. Runs keep model order."""
     combos = [c for c in itertools.combinations(models, len(models) // 2) if models[0] in c]
-    subsets = {}
+    subsets, halves = {}, []
     for i, a in enumerate(random.Random(seed).sample(combos, n_splits)):
+        halves.append((f"half{i}a", f"half{i}b"))
         subsets[f"half{i}a"] = list(a)
         subsets[f"half{i}b"] = [m for m in models if m not in a]
-    if loro:
-        subsets.update({f"loro_{m}": [x for x in models if x != m] for m in models})
-    return subsets
+    loro_subsets = [f"loro_{m}" for m in models] if loro else []
+    subsets.update({f"loro_{m}": [x for x in models if x != m] for m in models if loro})
+    return subsets, halves, loro_subsets
 
 
-CEV_SUBSET_RUNS = cev_run_subsets(A4_METALV_MODELS, CEV_EVAL["split_half"]["n_splits"],
-                                  CEV_EVAL["split_half"]["seed"], CEV_EVAL["loro"])
-CEV_HALVES = [(f"half{i}a", f"half{i}b") for i in range(CEV_EVAL["split_half"]["n_splits"])]
-CEV_LORO = [s for s in CEV_SUBSET_RUNS if s.startswith("loro_")]
+CEV_SUBSET_RUNS, CEV_HALVES, CEV_LORO = cev_run_subsets(
+    A4_METALV_MODELS, CEV_EVAL["split_half"]["n_splits"], CEV_EVAL["split_half"]["seed"], CEV_EVAL["loro"])
 _gp = CEV_EVAL["nulls"]["gene_perm"]
 CEV_GENEPERM = {f"geneperm{i}": _gp["seed"] + i for i in range(_gp["n_perm"])}   # all runs, genes shuffled
-CEV_SUBSETS = ["full", *CEV_SUBSET_RUNS, *CEV_GENEPERM]
+# run.py pool selection of every non-full subset: --runs (split-half / LORO) or --gene-perm-seed (null)
+CEV_SUBSET_POOL = {**{s: "--runs " + " ".join(r) for s, r in CEV_SUBSET_RUNS.items()},
+                   **{s: f"--gene-perm-seed {seed}" for s, seed in CEV_GENEPERM.items()}}
+CEV_SUBSETS = ["full", *CEV_SUBSET_POOL]
 
 
-def cev_pool_args(subset):
-    """run.py pool selection for a subset: none for full, --runs for split-half / LORO, --gene-perm-seed for nulls."""
-    if subset in CEV_GENEPERM:
-        return f"--gene-perm-seed {CEV_GENEPERM[subset]}"
-    if subset in CEV_SUBSET_RUNS:
-        return "--runs " + " ".join(CEV_SUBSET_RUNS[subset])
-    return ""
+def cev_dendrogram(r2, dist, linkage):
+    """r{r2}/{dist}_{linkage}: a linkage folder (and subset-set folder), relative to linkage/ or subsets/."""
+    return f"r{r2}/{dist}_{linkage}"
 
 
-def cev_dendrogram(p):
-    """r{r2}/{dist}_{linkage}: the linkage (and subset-set folder) a set is cut from."""
-    return f"r{p['noise_r2']}/{p['dist']}_{p['linkage']}"
+def cev_set_dendrogram(set_name):
+    p = CEV_SETS[set_name]
+    return cev_dendrogram(p["noise_r2"], p["dist"], p["linkage"])
 
 
-def cev_dendrogram_sets(r2, dist, linkage):
-    """Grid sets cut from one linkage, as {name: definition}."""
-    key = f"r{r2}/{dist}_{linkage}"
-    return {n: p for n, p in CEV_GRID_SETS.items() if cev_dendrogram(p) == key}
+CEV_DENDRO_SETS = {}   # dendrogram -> {grid set name: definition}, the sets cev_subset_sets cuts from it
+for _name, _p in CEV_GRID_SETS.items():
+    CEV_DENDRO_SETS.setdefault(cev_set_dendrogram(_name), {})[_name] = _p
 
 
 # ============================================================
@@ -274,7 +272,7 @@ rule cev_linkage:
     log:
         f"{CEV_A4}/linkage/r{{r2}}/{{dist}}_{{linkage}}/{{subset}}.log",
     params:
-        pool=lambda wc: cev_pool_args(wc.subset),
+        pool=lambda wc: CEV_SUBSET_POOL.get(wc.subset, ""),
     wildcard_constraints:
         r2="|".join(re.escape(r) for r in CEV_A4_R2),
         dist="|".join(sorted({v["dist"] for v in CEV_SETS.values()})),
@@ -295,29 +293,27 @@ rule cev_hier_set:
     input:
         z=rules.cev_zcache.output,
         flags=lambda wc: f"{CEV_A4}/noise/flags_r{CEV_SETS[wc.set]['noise_r2']}.csv",
-        linkage=lambda wc: (f"{CEV_A4}/linkage/r{CEV_SETS[wc.set]['noise_r2']}/"
-                            f"{CEV_SETS[wc.set]['dist']}_{CEV_SETS[wc.set]['linkage']}/{wc.subset}.npz"),
+        linkage=lambda wc: f"{CEV_A4}/linkage/{cev_set_dendrogram(wc.set)}/full.npz",
         script=CEV_SCRIPT,
         lib=CEV_LIB,
     output:
-        z=f"{CEV_A4}/sets/{{set}}/{{subset}}/Z.npy",
-        lvs=f"{CEV_A4}/sets/{{set}}/{{subset}}/lvs.csv",
-        members=f"{CEV_A4}/sets/{{set}}/{{subset}}/members.csv",
-        meta=f"{CEV_A4}/sets/{{set}}/{{subset}}/meta.json",
+        z=f"{CEV_A4}/sets/{{set}}/full/Z.npy",
+        lvs=f"{CEV_A4}/sets/{{set}}/full/lvs.csv",
+        members=f"{CEV_A4}/sets/{{set}}/full/members.csv",
+        meta=f"{CEV_A4}/sets/{{set}}/full/meta.json",
     log:
-        f"{CEV_A4}/sets/{{set}}/{{subset}}/build.log",
+        f"{CEV_A4}/sets/{{set}}/full/build.log",
     params:
         out=lambda wc, output: os.path.dirname(output.z),
         json=lambda wc: json.dumps(CEV_SETS[wc.set]),
     wildcard_constraints:
         set="|".join(CEV_SETS),
-        subset="full",   # subset sets: cev_subset_sets
     resources:
         mem_mb=CEV_RES["set"]["mem_mb"],
         runtime=CEV_RES["set"]["runtime"],
     conda: "clamp-analyses"
     shell:
-        "python {input.script} hier-set --set {wildcards.set} --subset {wildcards.subset} "
+        "python {input.script} hier-set --set {wildcards.set} --subset full "
         "--z-cache {input.z} --flags {input.flags} --linkage {input.linkage} "
         "--params '{params.json}' --out-dir {params.out} > {log} 2>&1"
 
@@ -325,7 +321,7 @@ rule cev_hier_set:
 rule cev_set_check:
     """cev.py builder on real data == unchanged cluster_metalv.py output (the reproduce sets and their grid twins)."""
     input:
-        set=lambda wc: expand(rules.cev_hier_set.output, set=wc.set, subset="full"),
+        set=lambda wc: expand(rules.cev_hier_set.output, set=wc.set),
         reproduce=lambda wc: expand(rules.cev_reproduce_set.output, set=CEV_CHECK_REF[wc.set]),
         script=CEV_SCRIPT,
     output:
@@ -375,7 +371,7 @@ rule cev_pool_hits:
 
 rule cev_evaluate:
     input:
-        set=lambda wc: expand(rules.cev_hier_set.output, set=wc.set, subset="full"),
+        set=lambda wc: expand(rules.cev_hier_set.output, set=wc.set),
         z=rules.cev_zcache.output,
         hits=f"{CEV_A4}/pool/r{CEV_EVAL['pool_r2']}/best_hits.npz",
         script=CEV_SCRIPT,
@@ -430,11 +426,11 @@ rule cev_subset_sets:
     log:
         f"{CEV_A4}/subsets/r{{r2}}/{{dist}}_{{linkage}}/{{subset}}.log",
     params:
-        json=lambda wc: json.dumps(cev_dendrogram_sets(wc.r2, wc.dist, wc.linkage)),
-        pool=lambda wc: cev_pool_args(wc.subset),
+        json=lambda wc: json.dumps(CEV_DENDRO_SETS[cev_dendrogram(wc.r2, wc.dist, wc.linkage)]),
+        pool=lambda wc: CEV_SUBSET_POOL[wc.subset],
     wildcard_constraints:
         r2="|".join(re.escape(r) for r in CEV_A4_R2),
-        subset="|".join(s for s in CEV_SUBSETS if s != "full"),
+        subset="|".join(CEV_SUBSET_POOL),
     resources:
         mem_mb=CEV_RES["set"]["mem_mb"],
         runtime=CEV_RES["set"]["runtime"],
@@ -456,7 +452,7 @@ rule cev_null_label:
         f"{CEV_A4}/null/label_perm/r{{r2}}/{{dist}}_{{linkage}}.log",
     params:
         cuts=lambda wc: " ".join(str(c) for c in sorted({p[f"min_{wc.dist}"] for p in
-                                                         cev_dendrogram_sets(wc.r2, wc.dist, wc.linkage).values()})),
+                                                         CEV_DENDRO_SETS[cev_dendrogram(wc.r2, wc.dist, wc.linkage)].values()})),
         null=CEV_EVAL["nulls"]["label_perm"],
     wildcard_constraints:
         r2="|".join(re.escape(r) for r in CEV_A4_R2),
@@ -469,17 +465,24 @@ rule cev_null_label:
         "--n-perm {params.null[n_perm]} --seed {params.null[seed]} --out {output} > {log} 2>&1"
 
 
-def cev_subset_set_dirs(wc, subsets):
-    return [f"{CEV_A4}/subsets/{cev_dendrogram(CEV_GRID_SETS[wc.set])}/{s}/{wc.set}" for s in subsets]
+def cev_subset_dirs(set_name, subsets):
+    """cev_subset_sets output folders holding set_name in each subset (one set folder per set inside)."""
+    return [f"{CEV_A4}/subsets/{cev_set_dendrogram(set_name)}/{s}" for s in subsets]
+
+
+def cev_set_dirs(wc, input_dirs):
+    return " ".join(f"{d}/{wc.set}" for d in input_dirs)
 
 
 rule cev_compare:
     """Split-half (Hungarian match of half a vs half b), LORO recovery and null counts of one grid set."""
     input:
-        full=lambda wc: expand(rules.cev_hier_set.output, set=wc.set, subset="full"),
-        subsets=lambda wc: [f"{CEV_A4}/subsets/{cev_dendrogram(CEV_GRID_SETS[wc.set])}/{s}"
-                            for s in [*CEV_SUBSET_RUNS, *CEV_GENEPERM]],
-        label_null=lambda wc: f"{CEV_A4}/null/label_perm/{cev_dendrogram(CEV_GRID_SETS[wc.set])}.csv",
+        full=lambda wc: expand(rules.cev_hier_set.output, set=wc.set),
+        half_a=lambda wc: cev_subset_dirs(wc.set, [a for a, _ in CEV_HALVES]),
+        half_b=lambda wc: cev_subset_dirs(wc.set, [b for _, b in CEV_HALVES]),
+        loro=lambda wc: cev_subset_dirs(wc.set, CEV_LORO),
+        geneperm=lambda wc: cev_subset_dirs(wc.set, CEV_GENEPERM),
+        label_null=lambda wc: f"{CEV_A4}/null/label_perm/{cev_set_dendrogram(wc.set)}.csv",
         script=CEV_SCRIPT,
         lib=CEV_LIB,
     output:
@@ -490,10 +493,10 @@ rule cev_compare:
         f"{CEV_A4}/sets/{{set}}/eval/compare.log",
     params:
         full=lambda wc, input: os.path.dirname(input.full[0]),
-        half_a=lambda wc: " ".join(cev_subset_set_dirs(wc, [a for a, _ in CEV_HALVES])),
-        half_b=lambda wc: " ".join(cev_subset_set_dirs(wc, [b for _, b in CEV_HALVES])),
-        loro=lambda wc: " ".join(cev_subset_set_dirs(wc, CEV_LORO)),
-        geneperm=lambda wc: " ".join(cev_subset_set_dirs(wc, CEV_GENEPERM)),
+        half_a=lambda wc, input: cev_set_dirs(wc, input.half_a),
+        half_b=lambda wc, input: cev_set_dirs(wc, input.half_b),
+        loro=lambda wc, input: cev_set_dirs(wc, input.loro),
+        geneperm=lambda wc, input: cev_set_dirs(wc, input.geneperm),
         out=lambda wc, output: os.path.dirname(output.robust),
     wildcard_constraints:
         set="|".join(CEV_GRID_SETS),
@@ -504,8 +507,8 @@ rule cev_compare:
     shell:
         "python {input.script} compare --full-dir {params.full} --half-a {params.half_a} --half-b {params.half_b} "
         "--loro {params.loro} --geneperm {params.geneperm} --label-null {input.label_null} "
-        "--top-n {A4_CRISPERCAS_CFG[top_n]} --match-cos {CEV_EVAL[match_cos]} --match-jac {CEV_EVAL[match_jac]} --single-gene {CEV_EVAL[single_gene]} "
-        "--out-dir {params.out} > {log} 2>&1"
+        "--top-n {A4_CRISPERCAS_CFG[top_n]} --match-cos {CEV_EVAL[match_cos]} --match-jac {CEV_EVAL[match_jac]} "
+        "--single-gene {CEV_EVAL[single_gene]} --out-dir {params.out} > {log} 2>&1"
 
 
 rule cev_aggregate:
