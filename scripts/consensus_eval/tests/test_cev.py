@@ -80,7 +80,6 @@ class JaccardLinkageTest(unittest.TestCase):
         empty = ~B.any(1)
         both = empty[i] & empty[j]
         np.testing.assert_allclose(d[~both], ref[~both], rtol=0, atol=1e-12)
-        self.assertTrue((d[both] == 1).all())
         self.assertTrue((d[empty[i] | empty[j]] == 1).all())
 
     def test_planted_modules_recovered(self):
@@ -139,15 +138,11 @@ class MetricsTest(unittest.TestCase):
         repro = cev.reproducible(hits >= 0.9, 2)
         self.assertEqual(repro.tolist(), [True, True, False, True, False])
         best = cev.best_cos(Xn, cev.l2norm(np.array([[1, 0]], dtype=np.float32)))
-        cov = cev.coverage(best, models, ["A", "B", "C"], repro, [0.9])
-        share = cov.set_index("scope").share
-        self.assertEqual(share[["A", "B", "C", "all", "reproducible"]].tolist(), [1.0, 0.0, 0.5, 0.6, 1.0])
         # reproducible_multi: reproducible LVs 0, 1, 3; only LV1 counted as multi-gene, and it is covered
         multi = np.array([False, True, True, False, True])
-        cov = cev.coverage(best, models, ["A", "B", "C"], repro, [0.9], multi=multi)
-        m = cov.set_index("scope").loc["reproducible_multi"]
-        self.assertEqual((m.n, m.covered), (1, 1))
-        self.assertFalse("reproducible_multi" in cev.coverage(best, models, ["A"], repro, [0.9]).scope.values)
+        cov = cev.coverage(best, models, ["A", "B", "C"], repro, multi, [0.9]).set_index("scope")
+        self.assertEqual(cov.share[["A", "B", "C", "all", "reproducible"]].tolist(), [1.0, 0.0, 0.5, 0.6, 1.0])
+        self.assertEqual((cov.n["reproducible_multi"], cov.covered["reproducible_multi"]), (1, 1))
 
     def test_cluster_metrics_purity_and_cohesion(self):
         X, models, lvs, genes = toy_runs(n_runs=3, n_modules=3, n_genes=60, n_noise=0)

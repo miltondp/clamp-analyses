@@ -22,16 +22,16 @@ consensus_eval:
     cl_c050_m6_r025: {linkage: complete, min_cos: 0.5, min_models: 6, noise_r2: 0.25,
                       external: data/clamp_archs4/consensus/Z_6reps.csv,
                       members: data/legacy_archs4/consensus_6reps/mgm_mapping.csv}
-  # Grids: the .smk expands each into set names (hier_{linkage}_c{min_cos}_f{min_frac}_r{noise_r2}_{combine})
-  # and resolves min_models = ceil(min_frac x runs in the subset). The reproduce sets above are also
+  # Grids: the .smk expands each into set names ({grid}_{linkage}_{dist initial}{min_<dist>}_f{min_frac}_r{noise_r2}_{combine},
+  # e.g. hier_complete_c050_f04_r015_median) and resolves min_models = ceil(min_frac x runs in the subset). The reproduce sets above are also
   # built by cev_hier_set (absolute min_models) and checked against the cluster_metalv.py output.
   # topj: the same machinery on 1 - Jaccard of each LV's top-n positive genes (crispercas.top_n),
   # named topj_{linkage}_j{min_jac}_f{min_frac}_r{noise_r2}_{combine}. 0.05 is the loosest cut above
   # the gene-shuffled null (max 0.036); reciprocal cos >= 0.5 hits have Jaccard p25/p50/p75 0.14/0.25/0.40.
   grids:
-    hier: {linkage: [complete, average], min_cos: [0.4, 0.5, 0.6, 0.7],
+    hier: {dist: [cos], linkage: [complete, average], min_cos: [0.4, 0.5, 0.6, 0.7],
            min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
-    topj: {linkage: [complete, average], min_jac: [0.05, 0.1, 0.15, 0.2, 0.3],
+    topj: {dist: [jac], linkage: [complete, average], min_jac: [0.05, 0.1, 0.15, 0.2, 0.3],
            min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
   eval:
     pool_r2: 0.15          # coverage/recall pool, the same for every set whatever its build noise_r2

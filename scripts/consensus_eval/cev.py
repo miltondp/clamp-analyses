@@ -90,12 +90,12 @@ def condensed_jaccard_distance(B):
     since top-gene rows hold ~185 of ~18k genes."""
     n = len(B)
     S = sparse.csr_matrix(B, dtype=np.float32)
-    ST = S.T.tocsc()
+    ST = S.T.tocsr()   # CSR @ CSR: a CSC right operand is converted back on every block
     size = np.asarray(B.sum(1), dtype=np.float64)
     dist = np.empty(n * (n - 1) // 2, dtype=np.float64)
     for start in range(0, n, 256):
         stop = min(start + 256, n)
-        inter = (S[start:stop] @ ST).toarray().astype(np.float64)
+        inter = (S[start:stop] @ ST).toarray()
         union = size[start:stop, None] + size[None, :] - inter
         with np.errstate(invalid="ignore", divide="ignore"):
             d = np.where(union > 0, 1 - inter / union, 1.0)
@@ -298,14 +298,13 @@ def reproducible(ok, min_runs):
 POOL_SCOPES = ["all", "reproducible", "reproducible_multi"]
 
 
-def coverage(best, models, runs, repro, thresholds, multi=None):
-    """Long table: share of each run's pool LVs (and of all / reproducible pool LVs) with
-    best cosine to the set >= t. With multi (pool mask of LVs that are not single-gene dominated),
-    also the reproducible_multi scope: reproducible and multi-gene."""
+def coverage(best, models, runs, repro, multi, thresholds):
+    """Long table: share of each run's pool LVs, and of the POOL_SCOPES pool LVs (all, reproducible,
+    reproducible and multi-gene), with best cosine to the set >= t. multi: pool mask of LVs that are
+    not single-gene dominated."""
     rows = []
-    scopes = [(r, models == r) for r in runs] + [("all", np.ones(len(best), bool)), ("reproducible", repro)]
-    if multi is not None:
-        scopes.append(("reproducible_multi", repro & multi))
+    pools = dict(zip(POOL_SCOPES, [np.ones(len(best), bool), repro, repro & multi]))
+    scopes = [(r, models == r) for r in runs] + list(pools.items())
     for t in thresholds:
         hit = best >= t
         for scope, mask in scopes:
@@ -364,15 +363,14 @@ def summarize(per, cov, thresholds, single_gene):
         row[f"median_{c}"] = per[c].median()
     row["frac_single_gene"] = (per.top1_share > single_gene).mean()
     runs = cov[~cov.scope.isin(POOL_SCOPES)]
-    has_multi = (cov.scope == "reproducible_multi").any()
+    by = cov.set_index(["scope", "t"])
+    # recall_multi: recall of the reproducible LVs that are not single-gene dominated
+    pooled = {"pool_coverage": "all", "recall": "reproducible", "recall_multi": "reproducible_multi"}
     for t in thresholds:
         row[f"frac_redundant_c{t}"] = (per.max_cos_other >= t).mean()
         row[f"coverage_c{t}"] = runs[runs.t == t].share.mean()
-        row[f"pool_coverage_c{t}"] = cov[(cov.t == t) & (cov.scope == "all")].share.iloc[0]
-        row[f"recall_c{t}"] = cov[(cov.t == t) & (cov.scope == "reproducible")].share.iloc[0]
-        if has_multi:   # recall of the reproducible LVs that are not single-gene dominated
-            row[f"recall_multi_c{t}"] = cov[(cov.t == t) & (cov.scope == "reproducible_multi")].share.iloc[0]
-    row["n_reproducible"] = int(cov[cov.scope == "reproducible"].n.iloc[0])
-    if has_multi:
-        row["n_reproducible_multi"] = int(cov[cov.scope == "reproducible_multi"].n.iloc[0])
+        for name, scope in pooled.items():
+            row[f"{name}_c{t}"] = by.share[scope, t]
+    for scope in ["reproducible", "reproducible_multi"]:
+        row[f"n_{scope}"] = int(by.n[scope, thresholds[0]])
     return row

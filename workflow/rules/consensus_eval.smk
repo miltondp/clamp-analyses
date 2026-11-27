@@ -24,30 +24,22 @@ CEV_METALV_SCRIPT = "scripts/archs4/crispercas/cluster_metalv.py"
 assert all(v["linkage"] == "complete" for v in CEV_REPRO.values()), "cluster_metalv.py only does complete linkage"
 
 
-def _cev_grid_name(prefix, p, sim_key, sim_tag):
-    name = (f"{prefix}_{p['linkage']}_{sim_tag}{round(p[sim_key] * 100):03d}_f{round(p['min_frac'] * 10):02d}"
-            f"_r{round(p['noise_r2'] * 100):03d}_{p['combine']}")
+def cev_grid_name(prefix, p):
+    """{prefix}_{linkage}_{dist initial}{min_<dist>}_f{min_frac}_r{noise_r2}_{combine}, e.g. hier_complete_c050_f04_r015_median."""
+    name = (f"{prefix}_{p['linkage']}_{p['dist'][0]}{round(p['min_' + p['dist']] * 100):03d}"
+            f"_f{round(p['min_frac'] * 10):02d}_r{round(p['noise_r2'] * 100):03d}_{p['combine']}")
     assert round(p["min_frac"] * 10) == p["min_frac"] * 10, f"min_frac {p['min_frac']} does not fit the set name"
     return name
 
 
-def cev_hier_name(p):
-    return _cev_grid_name("hier", p, "min_cos", "c")
-
-
-def cev_topj_name(p):
-    return _cev_grid_name("topj", p, "min_jac", "j")
-
-
 # Every hierarchical set: the frozen reproduce sets (absolute min_models) plus the grids (min_frac).
-# dist picks the linkage: cos (1 - cosine of raw loadings) or jac (1 - top-gene Jaccard).
+# dist picks the linkage: cos (1 - cosine of raw loadings) or jac (1 - top-gene Jaccard), cut at min_<dist>.
 CEV_SETS = {s: {"dist": "cos", "linkage": v["linkage"], "min_cos": v["min_cos"], "min_models": v["min_models"],
                 "noise_r2": v["noise_r2"], "combine": "median"} for s, v in CEV_REPRO.items()}
-for _grid_key, _dist, _namer in [("hier", "cos", cev_hier_name), ("topj", "jac", cev_topj_name)]:
-    _grid = CEV_CFG["grids"][_grid_key]
+for _prefix, _grid in CEV_CFG["grids"].items():
     for _vals in itertools.product(*_grid.values()):
-        _p = {"dist": _dist, **dict(zip(_grid, _vals))}
-        _name = _namer(_p)
+        _p = dict(zip(_grid, _vals))
+        _name = cev_grid_name(_prefix, _p)
         assert _name not in CEV_SETS, f"duplicate set name {_name}"
         CEV_SETS[_name] = _p
 # Set-definition columns of metrics.csv (meta.json keys), in first-seen order: they lead headline.csv.
@@ -223,7 +215,7 @@ rule cev_linkage:
         f"{CEV_A4}/linkage/r{{r2}}/{{dist}}_{{linkage}}/{{subset}}.log",
     wildcard_constraints:
         r2="|".join(re.escape(r) for r in CEV_A4_R2),
-        dist="cos|jac",
+        dist="|".join(sorted({v["dist"] for v in CEV_SETS.values()})),
         linkage="|".join(sorted({v["linkage"] for v in CEV_SETS.values()})),
         subset="|".join(CEV_SUBSETS),
     threads: CEV_RES["linkage"]["threads"]

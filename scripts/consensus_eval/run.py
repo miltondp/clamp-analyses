@@ -139,9 +139,9 @@ def linkage_main(args):
     ap.add_argument("--z-cache", required=True)
     ap.add_argument("--flags", required=True)
     ap.add_argument("--method", required=True, choices=["complete", "average"])
-    ap.add_argument("--dist", default="cos", choices=["cos", "jac"],
+    ap.add_argument("--dist", required=True, choices=["cos", "jac"],
                     help="cos: 1 - cosine of raw loadings; jac: 1 - Jaccard of the top-n positive genes")
-    ap.add_argument("--top-n", type=int, help="top genes per LV (required for --dist jac)")
+    ap.add_argument("--top-n", type=int, required=True, help="top genes per LV (used by --dist jac)")
     ap.add_argument("--out", required=True)
     a = ap.parse_args(args)
 
@@ -150,8 +150,7 @@ def linkage_main(args):
     if a.dist == "cos":
         L = cev.hier_linkage(pool.Xn, a.method)
     else:
-        assert a.top_n, "--dist jac needs --top-n"
-        B = cev.top_genes(pool.X, a.top_n)
+        B =cev.top_genes(pool.X, a.top_n)
         size = B.sum(1)
         print(f"top-{a.top_n} sets: {(size < a.top_n).sum()} LVs with fewer genes, {(size == 0).sum()} empty; "
               f"size median {np.median(size):.0f}, min {size.min()}")
@@ -193,9 +192,9 @@ def hier_set_main(args):
     assert (d["models"] == pool.models).all() and (d["lvs"] == pool.lvs).all(), "linkage keys differ from the pool"
     n_runs = len(pd.unique(pool.models))
     min_models = p["min_models"] if "min_models" in p else cev.resolve_min_models(p["min_frac"], n_runs)
-    dist = p.get("dist", "cos")
+    dist = p["dist"]
     assert str(d["dist"]) == dist, f"linkage dist {d['dist']} differs from the set's {dist}"
-    labels = cev.hier_partition(d["L"], p["min_jac" if dist == "jac" else "min_cos"])
+    labels = cev.hier_partition(d["L"], p[f"min_{dist}"])
     Z, lvs, members, n_clusters = cev.build_set(pool, labels, min_models, p["combine"])
     meta = {"set": a.set, "subset": a.subset, **p, "n_runs": n_runs,
             "min_models_resolved": min_models, "n_pool": len(pool.lvs), "n_clusters": n_clusters,
@@ -294,7 +293,7 @@ def evaluate_main(args):
     runs = list(h["runs"])
     best = cev.best_cos(cache.Xn[pool_rows], cev.l2norm(Z.T))
     multi = cev.top1_share(cache.X[pool_rows]) <= a.single_gene   # pool LVs not single-gene dominated
-    cov = cev.coverage(best, h["models"], runs, h["repro"], a.cos_thresholds, multi=multi)
+    cov = cev.coverage(best, h["models"], runs, h["repro"], multi, a.cos_thresholds)
 
     params = {k: meta[k] for k in meta if k not in ("n_metalvs", "n_members")}
     row = {**params, "pool_r2": a.pool_r2, "n_pool_eval": len(pool_rows),
