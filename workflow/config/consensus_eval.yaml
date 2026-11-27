@@ -8,5 +8,18 @@ consensus_eval:
       rds: data/clamp_archs4/CLAMPfull_canonical_seed{seed}.rds
       md5: data/clamp_archs4/MD5SUM.txt
       reference_dir: data/legacy_archs4/canonical_{model}   # staged copy of the con_ref model, for the export byte check
+      legacy_flags: data/legacy_archs4/consensus_6reps/noise_flags.csv   # written at noise_r2 0.25; re-thresholded by cev_flags
+      genes: 18423
+  # Frozen legacy sets, rebuilt with the unchanged cluster_metalv.py and checked against
+  # their external Z (max|dZ| < 1e-6, same names) and legacy member lists.
+  reproduce:
+    cl_c050_m4_r015: {linkage: complete, min_cos: 0.5, min_models: 4, noise_r2: 0.15,
+                      external: data/clamp_archs4/consensus/Z_4reps.csv,
+                      members: data/legacy_archs4/consensus_4reps/mgm_mapping.csv}
+    cl_c050_m6_r025: {linkage: complete, min_cos: 0.5, min_models: 6, noise_r2: 0.25,
+                      external: data/clamp_archs4/consensus/Z_6reps.csv,
+                      members: data/legacy_archs4/consensus_6reps/mgm_mapping.csv}
   resources:
     export: {mem_mb: 16000, runtime: 30}   # readRDS peaks at ~12 GB
+    zcache: {mem_mb: 16000, runtime: 30}
+    set: {mem_mb: 16000, runtime: 60}      # as crispercas_metalv_cluster
