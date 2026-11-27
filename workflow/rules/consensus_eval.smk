@@ -1,3 +1,5 @@
+import itertools
+import json
 import re
 
 # Evaluation of consensus LVs (metaLVs) and ensemble clustering (rule prefix cev_).
@@ -14,10 +16,32 @@ CEV_NB = os.path.join(REPO_ROOT, CEV_CFG["notebooks"])
 CEV_A4_REF = con_ref("archs4")
 CEV_A4_REF_DIR = CEV_A4_CFG["reference_dir"].format(model=CEV_A4_REF)
 CEV_REPRO = CEV_CFG["reproduce"]
-CEV_A4_R2 = sorted({str(v["noise_r2"]) for v in CEV_REPRO.values()})
+CEV_EVAL = CEV_CFG["eval"]
 CEV_SCRIPT = "scripts/consensus_eval/run.py"
+CEV_LIB = "scripts/consensus_eval/cev.py"
+CEV_SUBSETS = ["full"]   # split-half / LORO subsets arrive in PLAN 2.4
 CEV_METALV_SCRIPT = "scripts/archs4/crispercas/cluster_metalv.py"
 assert all(v["linkage"] == "complete" for v in CEV_REPRO.values()), "cluster_metalv.py only does complete linkage"
+
+
+def cev_hier_name(p):
+    name = (f"hier_{p['linkage']}_c{round(p['min_cos'] * 100):03d}_f{round(p['min_frac'] * 10):02d}"
+            f"_r{round(p['noise_r2'] * 100):03d}_{p['combine']}")
+    assert round(p["min_frac"] * 10) == p["min_frac"] * 10, f"min_frac {p['min_frac']} does not fit the set name"
+    return name
+
+
+# Every hierarchical set: the frozen reproduce sets (absolute min_models) plus the grid (min_frac).
+CEV_SETS = {s: {"linkage": v["linkage"], "min_cos": v["min_cos"], "min_models": v["min_models"],
+                "noise_r2": v["noise_r2"], "combine": "median"} for s, v in CEV_REPRO.items()}
+_grid = CEV_CFG["grids"]["hier"]
+for _vals in itertools.product(*_grid.values()):
+    _p = dict(zip(_grid, _vals))
+    _name = cev_hier_name(_p)
+    assert _name not in CEV_SETS, f"duplicate set name {_name}"
+    CEV_SETS[_name] = _p
+CEV_A4_R2 = sorted({str(v["noise_r2"]) for v in CEV_SETS.values()} | {str(CEV_EVAL["pool_r2"])})
+CEV_LINKAGES = sorted({(str(v["noise_r2"]), v["linkage"]) for v in CEV_SETS.values()})
 
 
 # ============================================================
@@ -170,6 +194,162 @@ rule cev_reproduction:
         "--out {output} > {log} 2>&1"
 
 
+# ============================================================
+# Step 3: hierarchical sets (cev.py builder) and computational metrics
+# ============================================================
+
+rule cev_linkage:
+    """One dendrogram per (noise_r2, linkage, subset), shared by every min_cos / min_frac cut."""
+    input:
+        z=rules.cev_zcache.output,
+        flags=f"{CEV_A4}/noise/flags_r{{r2}}.csv",
+        check=rules.cev_zcache_check.output,
+        script=CEV_SCRIPT,
+        lib=CEV_LIB,
+    output:
+        f"{CEV_A4}/linkage/r{{r2}}/{{linkage}}/{{subset}}.npz",
+    log:
+        f"{CEV_A4}/linkage/r{{r2}}/{{linkage}}/{{subset}}.log",
+    wildcard_constraints:
+        r2="|".join(re.escape(r) for r in CEV_A4_R2),
+        linkage="complete|average",
+        subset="|".join(CEV_SUBSETS),
+    threads: CEV_RES["linkage"]["threads"]
+    resources:
+        mem_mb=CEV_RES["linkage"]["mem_mb"],
+        runtime=CEV_RES["linkage"]["runtime"],
+    conda: "clamp-analyses"
+    shell:
+        "OPENBLAS_NUM_THREADS={threads} OMP_NUM_THREADS={threads} python {input.script} linkage "
+        "--z-cache {input.z} --flags {input.flags} --method {wildcards.linkage} --out {output} > {log} 2>&1"
+
+
+def cev_set_args(wc):
+    p = CEV_SETS[wc.set]
+    rep = f"--min-models {p['min_models']}" if "min_models" in p else f"--min-frac {p['min_frac']}"
+    return f"--min-cos {p['min_cos']} {rep} --combine {p['combine']}"
+
+
+rule cev_hier_set:
+    input:
+        z=rules.cev_zcache.output,
+        flags=lambda wc: f"{CEV_A4}/noise/flags_r{CEV_SETS[wc.set]['noise_r2']}.csv",
+        linkage=lambda wc: (f"{CEV_A4}/linkage/r{CEV_SETS[wc.set]['noise_r2']}/"
+                            f"{CEV_SETS[wc.set]['linkage']}/{wc.subset}.npz"),
+        script=CEV_SCRIPT,
+        lib=CEV_LIB,
+    output:
+        z=f"{CEV_A4}/sets/{{set}}/{{subset}}/Z.npy",
+        lvs=f"{CEV_A4}/sets/{{set}}/{{subset}}/lvs.csv",
+        members=f"{CEV_A4}/sets/{{set}}/{{subset}}/members.csv",
+        meta=f"{CEV_A4}/sets/{{set}}/{{subset}}/meta.json",
+    log:
+        f"{CEV_A4}/sets/{{set}}/{{subset}}/build.log",
+    params:
+        out=lambda wc, output: os.path.dirname(output.z),
+        args=cev_set_args,
+        json=lambda wc: json.dumps(CEV_SETS[wc.set]),
+    wildcard_constraints:
+        set="|".join(CEV_SETS),
+        subset="|".join(CEV_SUBSETS),
+    resources:
+        mem_mb=CEV_RES["set"]["mem_mb"],
+        runtime=CEV_RES["set"]["runtime"],
+    conda: "clamp-analyses"
+    shell:
+        "python {input.script} hier-set --set {wildcards.set} --subset {wildcards.subset} "
+        "--z-cache {input.z} --flags {input.flags} --linkage {input.linkage} {params.args} "
+        "--params '{params.json}' --out-dir {params.out} > {log} 2>&1"
+
+
+rule cev_set_check:
+    """cev.py builder on real data == unchanged cluster_metalv.py output (the reproduce sets)."""
+    input:
+        set=lambda wc: expand(rules.cev_hier_set.output, set=wc.set, subset="full"),
+        reproduce=rules.cev_reproduce_set.output,
+        script=CEV_SCRIPT,
+    output:
+        f"{CEV_A4}/checks/set_{{set}}.ok",
+    params:
+        set_dir=lambda wc: f"{CEV_A4}/sets/{wc.set}/full",
+        reproduce_dir=lambda wc: f"{CEV_A4}/reproduce/{wc.set}",
+    wildcard_constraints:
+        set="|".join(CEV_REPRO),
+    resources:
+        mem_mb=CEV_RES["check"]["mem_mb"],
+        runtime=CEV_RES["check"]["runtime"],
+    conda: "clamp-analyses"
+    shell:
+        "python {input.script} set-check --set-dir {params.set_dir} --reproduce-dir {params.reproduce_dir} "
+        "--out {output}"
+
+
+rule cev_pool_hits:
+    """Best cosine of every evaluation-pool LV to each other run (defines reproducible LVs)."""
+    input:
+        z=rules.cev_zcache.output,
+        flags=f"{CEV_A4}/noise/flags_r{{r2}}.csv",
+        script=CEV_SCRIPT,
+        lib=CEV_LIB,
+    output:
+        f"{CEV_A4}/pool/r{{r2}}/best_hits.npz",
+    log:
+        f"{CEV_A4}/pool/r{{r2}}/best_hits.log",
+    wildcard_constraints:
+        r2="|".join(re.escape(r) for r in CEV_A4_R2),
+    threads: CEV_RES["eval"]["threads"]
+    resources:
+        mem_mb=CEV_RES["eval"]["mem_mb"],
+        runtime=CEV_RES["eval"]["runtime"],
+    conda: "clamp-analyses"
+    shell:
+        "OPENBLAS_NUM_THREADS={threads} OMP_NUM_THREADS={threads} python {input.script} pool-hits "
+        "--z-cache {input.z} --flags {input.flags} --out {output} > {log} 2>&1"
+
+
+rule cev_evaluate:
+    input:
+        set=lambda wc: expand(rules.cev_hier_set.output, set=wc.set, subset="full"),
+        z=rules.cev_zcache.output,
+        hits=f"{CEV_A4}/pool/r{CEV_EVAL['pool_r2']}/best_hits.npz",
+        script=CEV_SCRIPT,
+        lib=CEV_LIB,
+    output:
+        metrics=f"{CEV_A4}/sets/{{set}}/eval/metrics.csv",
+        per_cluster=f"{CEV_A4}/sets/{{set}}/eval/per_cluster.csv",
+        coverage=f"{CEV_A4}/sets/{{set}}/eval/coverage.csv",
+    log:
+        f"{CEV_A4}/sets/{{set}}/eval/evaluate.log",
+    params:
+        set_dir=lambda wc: f"{CEV_A4}/sets/{wc.set}/full",
+        out=lambda wc, output: os.path.dirname(output.metrics),
+        thresholds=" ".join(str(t) for t in CEV_EVAL["cos_thresholds"]),
+    wildcard_constraints:
+        set="|".join(CEV_SETS),
+    threads: CEV_RES["eval"]["threads"]
+    resources:
+        mem_mb=CEV_RES["eval"]["mem_mb"],
+        runtime=CEV_RES["eval"]["runtime"],
+    conda: "clamp-analyses"
+    shell:
+        "OPENBLAS_NUM_THREADS={threads} OMP_NUM_THREADS={threads} python {input.script} evaluate "
+        "--set-dir {params.set_dir} --z-cache {input.z} --best-hits {input.hits} "
+        "--pool-r2 {CEV_EVAL[pool_r2]} --top-n {A4_CRISPERCAS_CFG[top_n]} --cos-thresholds {params.thresholds} "
+        "--reproducible-cos {CEV_EVAL[reproducible][cos]} --reproducible-frac {CEV_EVAL[reproducible][min_frac]} "
+        "--out-dir {params.out} > {log} 2>&1"
+
+
+rule cev_aggregate:
+    input:
+        metrics=expand(rules.cev_evaluate.output.metrics, set=CEV_SETS),
+        script=CEV_SCRIPT,
+    output:
+        f"{CEV_A4}/report/metrics_all.csv",
+    conda: "clamp-analyses"
+    shell:
+        "python {input.script} aggregate --metrics {input.metrics} --out {output}"
+
+
 rule cev_report_00:
     """Temporary internal check, removed in PLAN 4.3 (legacy cache/noise dirs were never found)."""
     input:
@@ -202,3 +382,5 @@ rule consensus_eval_archs4:
         rules.cev_zcache_check.output,
         expand(rules.cev_reproduction.output, set=CEV_REPRO),
         rules.cev_report_00.output,   # temporary, removed in PLAN 4.3
+        expand(rules.cev_set_check.output, set=CEV_REPRO),
+        rules.cev_aggregate.output,

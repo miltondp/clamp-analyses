@@ -1,7 +1,9 @@
 #!/usr/bin/env python
-"""Consensus-LV evaluation CLI (see PLAN.md). Subcommands: flags, zcache-check, reproduction."""
+"""Consensus-LV evaluation CLI (see PLAN.md). Subcommands: flags, zcache-check, reproduction,
+linkage, hier-set, set-check, pool-hits, evaluate, aggregate."""
 import argparse
 import filecmp
+import json
 import sys
 from pathlib import Path
 
@@ -10,6 +12,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "archs4/crispercas"))
 from cluster_metalv import COLS  # noqa: E402
+import cev  # noqa: E402  (same directory as this script)
 
 MAX_SHOW = 20  # differing metaLVs listed in a failed reproduction
 
@@ -131,8 +134,167 @@ def reproduction_main(args):
         sys.exit(1)
 
 
+def linkage_main(args):
+    ap = argparse.ArgumentParser(prog="run.py linkage")
+    ap.add_argument("--z-cache", required=True)
+    ap.add_argument("--flags", required=True)
+    ap.add_argument("--method", required=True, choices=["complete", "average"])
+    ap.add_argument("--out", required=True)
+    a = ap.parse_args(args)
+
+    pool = cev.load_pool(a.z_cache, a.flags)
+    L = cev.hier_linkage(pool.Xn, a.method)
+    np.savez(a.out, L=L, models=pool.models, lvs=pool.lvs)
+    print(f"{a.method} linkage on {len(pool.lvs)} LVs -> {a.out}")
+
+
+def write_set(out_dir, Z, lvs, members, meta):
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    np.save(out / "Z.npy", Z)
+    lvs.to_csv(out / "lvs.csv", index=False)
+    members.to_csv(out / "members.csv", index=False)
+    (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
+
+
+def hier_set_main(args):
+    ap = argparse.ArgumentParser(prog="run.py hier-set")
+    ap.add_argument("--set", required=True)
+    ap.add_argument("--subset", required=True)
+    ap.add_argument("--z-cache", required=True)
+    ap.add_argument("--flags", required=True)
+    ap.add_argument("--linkage", required=True)
+    ap.add_argument("--min-cos", type=float, required=True)
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--min-models", type=int)
+    g.add_argument("--min-frac", type=float)
+    ap.add_argument("--combine", default="median", choices=list(cev.COMBINE))
+    ap.add_argument("--params", required=True, help="JSON of the set definition, copied to meta.json")
+    ap.add_argument("--out-dir", required=True)
+    a = ap.parse_args(args)
+
+    pool = cev.load_pool(a.z_cache, a.flags)
+    d = np.load(a.linkage, allow_pickle=True)
+    assert (d["models"] == pool.models).all() and (d["lvs"] == pool.lvs).all(), "linkage keys differ from the pool"
+    n_runs = len(pd.unique(pool.models))
+    min_models = a.min_models if a.min_models is not None else cev.resolve_min_models(a.min_frac, n_runs)
+    labels = cev.hier_partition(d["L"], a.min_cos)
+    Z, lvs, members, n_clusters = cev.build_set(pool, labels, min_models, a.combine)
+    meta = {"set": a.set, "subset": a.subset, **json.loads(a.params), "n_runs": n_runs,
+            "min_models_resolved": min_models, "n_pool": len(pool.lvs), "n_clusters": n_clusters,
+            "n_metalvs": len(lvs), "n_members": len(members)}
+    write_set(a.out_dir, Z, lvs, members, meta)
+    print(json.dumps(meta))
+
+
+def set_check_main(args):
+    """Our builder vs the unchanged cluster_metalv.py output for the same set."""
+    ap = argparse.ArgumentParser(prog="run.py set-check")
+    ap.add_argument("--set-dir", required=True)
+    ap.add_argument("--reproduce-dir", required=True)
+    ap.add_argument("--out", required=True)
+    a = ap.parse_args(args)
+
+    sd, rd = Path(a.set_dir), Path(a.reproduce_dir)
+    Z, lvs, members = np.load(sd / "Z.npy"), pd.read_csv(sd / "lvs.csv"), pd.read_csv(sd / "members.csv")
+    ref_z, ref_s = pd.read_csv(rd / "metaZ.csv", index_col=0), pd.read_csv(rd / "cluster_summary.csv")
+    problems = []
+    if list(lvs.metaLV) != list(ref_z.columns):
+        problems.append("metaLV names/order differ")
+    elif Z.shape != ref_z.shape:
+        problems.append(f"Z shape {Z.shape} vs {ref_z.shape}")
+    else:
+        # metaZ.csv holds float32 values in shortest repr, so the round trip is exact; an absolute
+        # float64 tolerance would fail on large loadings (~1e-8 relative).
+        ref32 = ref_z.to_numpy().astype(Z.dtype)
+        if not (Z == ref32).all():
+            problems.append(f"{int((Z != ref32).sum())} values differ in {Z.dtype}, "
+                            f"max|dZ| {float(np.abs(Z.astype(np.float64) - ref_z.to_numpy()).max())}")
+    ours = members.assign(key=members.model + ":" + members.LV).groupby("metaLV", sort=False).key.apply(";".join)
+    ref = ref_s.set_index("metaLV")
+    if set(ours.index) != set(ref.index) or (ours.loc[ref.index] != ref.members).any():
+        problems.append("member lists differ")
+    if not (lvs.set_index("metaLV")[["n_lvs", "n_models"]].loc[ref.index] == ref[["n_lvs", "n_models"]]).all().all():
+        problems.append("n_lvs/n_models differ")
+    if problems:
+        sys.exit(f"set check failed for {sd}:\n  " + "\n  ".join(problems))
+    msg = f"{sd} equals {rd} exactly ({Z.dtype}): {len(lvs)} metaLVs, {len(members)} members"
+    print(msg)
+    Path(a.out).write_text(msg + "\n")
+
+
+def pool_hits_main(args):
+    ap = argparse.ArgumentParser(prog="run.py pool-hits")
+    ap.add_argument("--z-cache", required=True)
+    ap.add_argument("--flags", required=True)
+    ap.add_argument("--out", required=True)
+    a = ap.parse_args(args)
+
+    pool = cev.load_pool(a.z_cache, a.flags)
+    runs = list(pd.unique(pool.models))
+    hits = cev.pool_best_hits(pool.Xn, pool.models, runs)
+    np.savez(a.out, hits=hits, runs=np.asarray(runs), models=pool.models, lvs=pool.lvs)
+    print(f"best hits for {len(pool.lvs)} pool LVs x {len(runs)} runs -> {a.out}")
+
+
+def evaluate_main(args):
+    ap = argparse.ArgumentParser(prog="run.py evaluate")
+    ap.add_argument("--set-dir", required=True)
+    ap.add_argument("--z-cache", required=True)
+    ap.add_argument("--best-hits", required=True, help="pool-hits output; defines the evaluation pool")
+    ap.add_argument("--pool-r2", type=float, required=True)
+    ap.add_argument("--top-n", type=int, required=True)
+    ap.add_argument("--cos-thresholds", type=float, nargs="+", required=True)
+    ap.add_argument("--reproducible-cos", type=float, required=True)
+    ap.add_argument("--reproducible-frac", type=float, required=True)
+    ap.add_argument("--out-dir", required=True)
+    a = ap.parse_args(args)
+
+    sd, out = Path(a.set_dir), Path(a.out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    meta = json.loads((sd / "meta.json").read_text())
+    Z, lvs, members = np.load(sd / "Z.npy"), pd.read_csv(sd / "lvs.csv"), pd.read_csv(sd / "members.csv")
+    cache = cev.load_pool(a.z_cache)  # all LVs: a set may hold LVs flagged at pool_r2 (built at another r2)
+    assert Z.shape == (len(cache.genes), len(lvs)), (Z.shape, len(cache.genes), len(lvs))
+
+    row_of = {k: i for i, k in enumerate(cache.keys)}
+    member_rows = np.array([row_of[f"{m}:{l}"] for m, l in zip(members.model, members.LV)])
+    codes = pd.Categorical(members.metaLV, categories=lvs.metaLV).codes
+    assert (codes >= 0).all()
+    per, sil = cev.cluster_metrics(cache, member_rows, codes, Z, a.top_n)
+    assert (per.n_lvs.to_numpy() == lvs.n_lvs.to_numpy()).all() and (per.n_models.to_numpy() == lvs.n_models.to_numpy()).all()
+    per.insert(0, "metaLV", lvs.metaLV)
+
+    h = np.load(a.best_hits, allow_pickle=True)
+    pool_rows = np.array([row_of[f"{m}:{l}"] for m, l in zip(h["models"], h["lvs"])])
+    runs = list(h["runs"])
+    repro = cev.reproducible(h["hits"], a.reproducible_cos, cev.resolve_min_models(a.reproducible_frac, len(runs)))
+    best = cev.best_cos(cache.Xn[pool_rows], cev.l2norm(Z.T))
+    cov = cev.coverage(best, h["models"], runs, repro, a.cos_thresholds)
+
+    params = {k: meta[k] for k in meta if k not in ("n_metalvs", "n_members")}
+    row = {**params, "pool_r2": a.pool_r2, "n_pool_eval": len(pool_rows),
+           **cev.summarize(per, sil, cov, a.cos_thresholds)}
+    per.to_csv(out / "per_cluster.csv", index=False)
+    cov.to_csv(out / "coverage.csv", index=False)
+    pd.DataFrame([row]).to_csv(out / "metrics.csv", index=False)
+    print(pd.Series(row).to_string())
+
+
+def aggregate_main(args):
+    ap = argparse.ArgumentParser(prog="run.py aggregate")
+    ap.add_argument("--metrics", nargs="+", required=True)
+    ap.add_argument("--out", required=True)
+    a = ap.parse_args(args)
+    d = pd.concat([pd.read_csv(p) for p in a.metrics], ignore_index=True)
+    d.to_csv(a.out, index=False)
+    print(f"{len(d)} sets -> {a.out}")
+
+
 def main():
-    commands = {"flags": flags_main, "zcache-check": zcache_check_main, "reproduction": reproduction_main}
+    commands = {"flags": flags_main, "zcache-check": zcache_check_main, "reproduction": reproduction_main,
+                "linkage": linkage_main, "hier-set": hier_set_main, "set-check": set_check_main,
+                "pool-hits": pool_hits_main, "evaluate": evaluate_main, "aggregate": aggregate_main}
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=commands)
     args = parser.parse_args(sys.argv[1:2])

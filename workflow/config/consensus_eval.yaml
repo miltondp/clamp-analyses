@@ -22,8 +22,20 @@ consensus_eval:
     cl_c050_m6_r025: {linkage: complete, min_cos: 0.5, min_models: 6, noise_r2: 0.25,
                       external: data/clamp_archs4/consensus/Z_6reps.csv,
                       members: data/legacy_archs4/consensus_6reps/mgm_mapping.csv}
+  # Grids: the .smk expands each into set names (hier_{linkage}_c{min_cos}_f{min_frac}_r{noise_r2}_{combine})
+  # and resolves min_models = ceil(min_frac x runs in the subset). The reproduce sets above are also
+  # built by cev_hier_set (absolute min_models) and checked against the cluster_metalv.py output.
+  grids:
+    hier: {linkage: [complete, average], min_cos: [0.4, 0.5, 0.6, 0.7],
+           min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
+  eval:
+    pool_r2: 0.15          # coverage/recall pool, the same for every set whatever its build noise_r2
+    cos_thresholds: [0.5, 0.7, 0.9]
+    reproducible: {cos: 0.5, min_frac: 0.4}   # best hit >= cos in runs spanning >= ceil(min_frac x runs)
   resources:
     export: {mem_mb: 16000, runtime: 30}   # readRDS peaks at ~12 GB
     zcache: {mem_mb: 16000, runtime: 30}
-    set: {mem_mb: 16000, runtime: 60}      # as crispercas_metalv_cluster
+    set: {mem_mb: 16000, runtime: 60, threads: 4}       # as crispercas_metalv_cluster
+    linkage: {mem_mb: 16000, runtime: 30, threads: 4}   # condensed distance 0.9 GB + linkage copy
+    eval: {mem_mb: 16000, runtime: 60, threads: 4}
     check: {mem_mb: 4000, runtime: 30}     # zcache/reproduction checks and the report (peak ~2 GB)
