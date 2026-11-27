@@ -5,9 +5,17 @@ perturbseq:
   output_root: output/03_model_biology/00_pseudobulk/07_perturbseq
   dataset: PBMC_1k1k
   models: [CLAMPfull, CLAMPbase, PLIER, PCA, NMF, ICA, flashier, MOFA_FLEX_PRIOR, GSS, CoGAPS]
+  # Each pseudobulk strategy has its own gene universe, so regulons are built per strategy.
+  strategies:
+    main:
+      z_dir: output/01_model_building/00_pseudobulk/PBMC_1k1k/models
+      models: [CLAMPfull, CLAMPbase, PLIER, PCA, NMF, ICA, flashier, MOFA_FLEX_PRIOR, GSS, CoGAPS]
+    donor_bulk:
+      z_dir: output/01_model_building/00_pseudobulk/donor_bulk/PBMC_1k1k/models
+      models: [CLAMPfull]
   seed: 123
   n_perm: 100
-  regulons: {q: 0.05, min_size: 10, max_size: 500, jaccard: 0.5}
+  regulons: {q: 0.05, min_size: 10, max_size: 1000, jaccard: 0.5}
   response: {min_de: 20}
   # Same ORA settings as the ARCHS4 meta-LV ORA (archs4.yaml: archs4.ora).
   ora: {top_pct: 0.01, pvalue_cutoff: 0.05, qvalue_cutoff: 0.2, fdr: 0.05}
