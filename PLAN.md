@@ -147,7 +147,7 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
   - Write `scripts/perturbseq/signed_z.py` and add rules `perturbseq_signed_z` and
     `perturbseq_ora`, which call `run_ora.R` per method, tail and strategy.
   - Add a permutation-null ORA on shuffled Z.
-- [ ] **Step 6: response capture.**
+- [x] **Step 6: response capture.**
   - Write `scripts/perturbseq/response_capture.py` (observed values plus permutation null, with
     `--seed`), with tests.
   - Add rule `perturbseq_response`.
@@ -295,3 +295,45 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     - **For Step 7:** add a specificity view, such as hits per LV, a regulon's best LV, or a hub-LV
       exclusion, before reading regulon recovery.
   - Next: Step 6.
+- 2026-11-27: **Step 6 done.**
+  - `scripts/perturbseq/response_capture.py` (10 new tests; 30 pass in `scripts/perturbseq/tests/`)
+    and rules `perturbseq_response` (11 jobs, about 40 s in total) and `perturbseq_response_summary`
+    (`07_perturbseq/response_summary.csv`). `ora_null.summarize()` now takes a statistic list.
+  - Each perturbation's own gene is left out of its correlations, exactly (2,003 of 2,353 main
+    perturbations; 2,122 of 2,417 donor-bulk). The null uses the same Z row permutations as the ORA
+    (seed 123, 100 perms). A perturbation is captured when its perm p ≤ 0.05. The null capture rate
+    is 4.0%, not 5%, because the observed value sits in each null member's reference set.
+  - Median max |r| over LVs, observed vs null mean (Δ):
+
+    | Method | k | Observed | Null | Δ |
+    |---|---|---|---|---|
+    | PLIER | 130 | 0.183 | 0.032 | 0.151 |
+    | CLAMPfull | 130 | 0.169 | 0.035 | 0.134 |
+    | CLAMPbase | 130 | 0.158 | 0.032 | 0.126 |
+    | NMF | 130 | 0.155 | 0.031 | 0.124 |
+    | flashier | 130 | 0.149 | 0.033 | 0.117 |
+    | ICA | 130 | 0.128 | 0.031 | 0.097 |
+    | CoGAPS | 106 | 0.128 | 0.031 | 0.097 |
+    | PCA | 130 | 0.127 | 0.032 | 0.095 |
+    | MOFA-FLEX | 662 | 0.127 | 0.043 | 0.084 |
+    | GSSig | 32 | 0.085 | 0.027 | 0.058 |
+
+    Donor-bulk CLAMPfull: 0.180, null 0.035, Δ 0.144. As in the ORA, that's higher than main
+    CLAMPfull.
+  - The ranking differs from the ORA's. ICA leads the ORA (Δ 54) but is mid-pack here, while PLIER
+    and CLAMP lead here.
+  - **"% captured" is saturated** at 92–100% for every method (null 4%). The gene-label null only
+    tests "any correlation at all", which r ≈ 0.03 over 7.5k genes makes easy.
+  - **A common knockdown response dominates.** The first PC of the logFC matrix explains 22.7% of
+    its variance. In most methods one hub LV is the best LV for 50–62% of perturbations: CLAMPfull
+    LV37 (60%), CLAMPbase LV8, PLIER LV128, PCA PC1, NMF LV16, flashier LV1. Those hubs correlate
+    0.29–0.54 with logFC PC1. ICA (IC66, 17%; 86 distinct best LVs) and MOFA-FLEX (26%) spread
+    more.
+  - Sanity regulators in CLAMPfull: GATA1 (r −0.46), LDB1 (−0.42), MYB, TAL1, LMO2 and MYC all
+    pick LV37. SPI1 is barely above null (0.058 vs p95 0.046). That is the same LV37 story as the
+    ORA: interpretable, but not specific.
+  - **Open decision for Step 7:** remove the shared response before reading this metric. Options:
+    regress the top logFC PCs out of the responses, or use a peer-perturbation null, which is what
+    `lv-qtl-exploration`'s `07_module_mapping.py` found necessary. Otherwise report a hub-excluded
+    view. Median max |r| is usable as is; "% captured" is not.
+  - Next: Step 7.
