@@ -292,7 +292,7 @@ consensus_eval:
       legacy_members_6reps: data/legacy_archs4/consensus_6reps/mgm_mapping.csv
       legacy_members_4reps: data/legacy_archs4/consensus_4reps/mgm_mapping.csv
       gene_properties: data/legacy_archs4/noise_inputs/gene_properties.csv
-      reference_dir: data/legacy_archs4/canonical_S123   # export check (consensus.yaml reference)
+      reference_dir: data/legacy_archs4/canonical_{model}   # export check (staged con_ref model)
   reproduce:   # frozen legacy sets: absolute min_models, checked against the external Z
     cl_c050_m4_r015: {linkage: complete, min_cos: 0.5, min_models: 4, noise_r2: 0.15,
                       external: data/clamp_archs4/consensus/Z_4reps.csv}

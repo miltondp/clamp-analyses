@@ -9,6 +9,7 @@ CEV_A4_CFG = CEV_CFG["compendia"]["archs4"]
 CEV_A4 = f"{CEV_CFG['root']}/archs4"
 CEV_A4_RUNS = f"{CEV_A4}/runs"
 CEV_A4_REF = con_ref("archs4")
+CEV_A4_REF_DIR = CEV_A4_CFG["reference_dir"].format(model=CEV_A4_REF)
 
 
 # ============================================================
@@ -42,13 +43,13 @@ rule cev_export_check:
     input:
         z=f"{CEV_A4_RUNS}/{CEV_A4_REF}/Z.csv",
         summary=f"{CEV_A4_RUNS}/{CEV_A4_REF}/summary.csv",
-        ref_z=ancient(f"{CEV_A4_CFG['reference_dir']}/Z.csv"),
-        ref_summary=ancient(f"{CEV_A4_CFG['reference_dir']}/summary.csv"),
+        ref_z=ancient(f"{CEV_A4_REF_DIR}/Z.csv"),
+        ref_summary=ancient(f"{CEV_A4_REF_DIR}/summary.csv"),
     output:
         f"{CEV_A4}/checks/export_{CEV_A4_REF}.ok",
     shell:
         "cmp {input.z} {input.ref_z} && cmp {input.summary} {input.ref_summary} && "
-        "echo '{CEV_A4_REF} Z.csv and summary.csv match {CEV_A4_CFG[reference_dir]}' > {output}"
+        "echo '{CEV_A4_REF} Z.csv and summary.csv match {CEV_A4_REF_DIR}' > {output}"
 
 
 # ============================================================

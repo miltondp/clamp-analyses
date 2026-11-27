@@ -8,6 +8,6 @@ consensus_eval:
     archs4:
       rds: data/clamp_archs4/CLAMPfull_canonical_seed{seed}.rds
       md5: data/clamp_archs4/MD5SUM.txt
-      reference_dir: data/legacy_archs4/canonical_S123   # published reference model (consensus.yaml) for the export byte check
+      reference_dir: data/legacy_archs4/canonical_{model}   # staged copy of the con_ref model, for the export byte check
   resources:
     export: {mem_mb: 16000, runtime: 30}   # readRDS peaks at ~12 GB
