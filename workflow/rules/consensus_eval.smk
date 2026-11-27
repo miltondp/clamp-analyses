@@ -1,5 +1,5 @@
 # Evaluation of consensus LVs (metaLVs) and ensemble clustering (rule prefix cev_).
-# Included after consensus.smk / archs4_crispercas.smk: reuses A4_METALV_MODELS.
+# Included after consensus.smk / archs4_crispercas.smk: reuses A4_METALV_MODELS and con_ref.
 # All outputs live under consensus_eval.root, never in the canonical/stability model
 # folders (see the completeness gating in archs4_canonical.smk).
 
@@ -8,6 +8,7 @@ CEV_RES = CEV_CFG["resources"]
 CEV_A4_CFG = CEV_CFG["compendia"]["archs4"]
 CEV_A4 = f"{CEV_CFG['root']}/archs4"
 CEV_A4_RUNS = f"{CEV_A4}/runs"
+CEV_A4_REF = con_ref("archs4")
 
 
 # ============================================================
@@ -24,9 +25,9 @@ rule cev_export_run:
         summary=f"{CEV_A4_RUNS}/{{model}}/summary.csv",
         manifest=f"{CEV_A4_RUNS}/{{model}}/manifest.json",
     wildcard_constraints:
-        model=r"S\d+",
+        model="|".join(A4_METALV_MODELS),
     params:
-        out_dir=lambda wc: f"{CEV_A4_RUNS}/{wc.model}",
+        out_dir=lambda wc, output: os.path.dirname(output.z),
     resources:
         mem_mb=CEV_RES["export"]["mem_mb"],
         runtime=CEV_RES["export"]["runtime"],
@@ -37,17 +38,17 @@ rule cev_export_run:
 
 
 rule cev_export_check:
-    """The S123 export must equal the published canonical model byte for byte."""
+    """The reference-model export must equal the published model byte for byte."""
     input:
-        z=f"{CEV_A4_RUNS}/S123/Z.csv",
-        summary=f"{CEV_A4_RUNS}/S123/summary.csv",
-        ref_z=ancient(f"{CEV_A4_CFG['canonical_s123']}/Z.csv"),
-        ref_summary=ancient(f"{CEV_A4_CFG['canonical_s123']}/summary.csv"),
+        z=f"{CEV_A4_RUNS}/{CEV_A4_REF}/Z.csv",
+        summary=f"{CEV_A4_RUNS}/{CEV_A4_REF}/summary.csv",
+        ref_z=ancient(f"{CEV_A4_CFG['reference_dir']}/Z.csv"),
+        ref_summary=ancient(f"{CEV_A4_CFG['reference_dir']}/summary.csv"),
     output:
-        f"{CEV_A4}/checks/export_S123.ok",
+        f"{CEV_A4}/checks/export_{CEV_A4_REF}.ok",
     shell:
         "cmp {input.z} {input.ref_z} && cmp {input.summary} {input.ref_summary} && "
-        "echo 'S123 Z.csv and summary.csv match {CEV_A4_CFG[canonical_s123]}' > {output}"
+        "echo '{CEV_A4_REF} Z.csv and summary.csv match {CEV_A4_CFG[reference_dir]}' > {output}"
 
 
 # ============================================================
