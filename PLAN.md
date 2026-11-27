@@ -34,7 +34,7 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 ### Phase 2: Evaluation framework, applied to the existing sets
 - [x] 2.1 `cev.py` metrics and unit tests (toy data).
 - [x] 2.2 Computational metrics on Z_4reps, Z_6reps and the hierarchical grid (`cev_evaluate`).
-- [ ] 2.2b Revise the computational metrics after the 2026-11-26 review (see Key facts, "Metric review"):
+- [x] 2.2b Revise the computational metrics after the 2026-11-26 review (see Key facts, "Metric review"):
   - A new "reproducible LV" definition: reciprocal best hit, cos ≥ 0.5, and top-gene Jaccard above the gene-permutation null, in ≥ `ceil(0.4 × n_runs) − 1` other runs.
   - `overlap_to_consensus` replaces `jac_to_consensus`.
   - Drop `iq` and `silhouette`.
@@ -90,6 +90,22 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
   - Drop `iq` and `silhouette`.
   - Adopt the new reproducible-LV definition (7,981 LVs vs 8,727).
   - Added step 2.2b (metric revision) and step 2.2c (clustering on top-gene overlap, which the user wants prioritized, before 2.3).
+- 2026-11-26: Step 2.2b done. Changes:
+  - `cev.pool_best_hits` now also returns the best hit's pool row (`arg`) and its top-gene Jaccard. New functions: `reciprocal`, `jaccard_null` (`rng.permuted` within each top-gene row of run b), `overlap`, and `top1_share`. `reproducible` takes optional `recip` / `jac` / `jac_thr`.
+  - Dropped `iq_silhouette`, `indicator`, `jac_to_consensus`, `iq` and `silhouette`.
+  - `cev_pool_hits` now computes the reproducible mask once and writes `best_hits.npz` (`hits, arg, jac, recip, repro, …`) plus `null.json` (null quantiles, observed Jaccard quantiles, counts at each stage). `cev_evaluate` reads `repro` from that file. `cev_aggregate` also writes `report/headline.csv`.
+  - Config: `eval.reproducible` gained `jac_null_q 0.999, null_pairs 3, null_seed 3`, and there is a new `eval.headline`.
+  - Ran 10 unit tests (all pass), then the whole chain (84 cev jobs, 1 min 53 s, 4.6 GB peak).
+  - Results:
+    - Null p99.9 = 0.0306 (max 0.036).
+    - The reproducible cascade is **8,727 → 8,071 → 7,981**, exactly as in the exploration.
+    - 1.4% of reciprocal cos ≥ 0.5 hits have Jaccard within the null.
+    - `cev_set_check` and `cev_reproduction` still pass.
+  - Headline:
+    - Z_4reps: 1,058 LVs, overlap 0.554, redundant 0.187, recall_c0.9 0.428.
+    - Z_6reps: 618, 0.612, 0.100, 0.324.
+    - At about 1,040 LVs, average c070_f03 vs complete c050_f04: overlap 0.597 vs 0.554, redundant 0.182 vs 0.187, recall 0.451 vs 0.428.
+  - Informativeness (Spearman ρ over the 32 grid sets): `median_overlap_to_consensus` is still the cohesion axis (ρ 0.99 with mean_cos and cos_to_consensus). It becomes independent only for the 2.2c sets. New diagnostic `frac_single_gene` (share of consensus LVs with top1_share > 0.5) is 0.44–0.63, higher than the pool's 28%, and has ρ 0.94 with n_lvs. See Key facts.
 ---
 
 ## Context
@@ -181,6 +197,7 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
     - Between-consensus separation does carry information: `frac_redundant_c0.5`, and the share of covered pool LVs matching ≥ 2 consensus LVs (ρ 0.96 with `frac_redundant_c0.5`, so the same thing). It separates complete from average linkage (13–29% vs 2–18%).
   - Cohesion metrics are partly circular for cosine-built sets: complete linkage guarantees `min_cos` ≥ the cutoff.
   - Purity barely varies: 8% of Z_4reps clusters have a duplicate run.
+  - After 2.2b (32 grid sets): `median_overlap_to_consensus` has ρ 0.99 with `median_mean_cos` and `cos_to_consensus`, and −0.71 with `n_lvs`. For cosine-built sets it is the cohesion axis under another name. It is headlined because it stays non-circular for the 2.2c (Jaccard-built) sets, where cosine becomes the independent check.
 - **Null calibration and reproducible LVs (r2 0.15 pool, 15,163 LVs).** The null shuffles gene order within every LV of one run, which keeps each LV's loading distribution and sparsity; it was run on 3 run pairs, seed 0.
   - Null best-hit cosine: median 0.103, p99 0.545, p99.9 0.841, max 0.93. So cos 0.5 is about the 1%-by-chance level for one run pair, and requiring 3 other runs makes chance matches negligible.
   - Observed best-hit cosine: median 0.454.
@@ -200,6 +217,19 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
 - **Single-gene-dominated LVs.** 28% of pool LVs carry > 50% of their squared norm on one gene (median share 0.24, p90 0.79). CLAMP loadings are non-negative and about 90% zeros.
   - Cosine between such LVs is driven by that gene: the null best hits at cos ≥ 0.5 come from LVs with a median top-gene share of 0.73.
   - 39% of the reproducible LVs (3,387 of 8,727) are single-gene dominated.
+  - Consensus sets are *more* single-gene dominated than the pool (2.2b `frac_single_gene`):
+    - 0.44–0.63 across the grid, against 28% of pool LVs;
+    - Z_4reps 0.57, Z_6reps 0.46;
+    - ρ 0.94 with n_lvs, so larger and looser sets admit more of them.
+  - Jaccard of reciprocal best hits by cosine bin (2.2b):
+    | Cosine bin | Median Jaccard | p10 |
+    |---|---|---|
+    | [0.3, 0.5) | 0.082 | 0.031 |
+    | [0.5, 0.7) | 0.146 | 0.048 |
+    | [0.7, 0.9) | 0.289 | 0.118 |
+    | ≥ 0.9 | 0.418 | 0.242 |
+
+    Even near-identical-cosine pairs share less than half of their top-185 genes. Over all reciprocal hits, Jaccard quantiles are p25 0.079, p50 0.167, p75 0.321; over those with cos ≥ 0.5, p25 0.138, p50 0.25, p75 0.40.
   - So the legacy method (cosine on raw loadings) partly clusters by top gene. This motivates 2.2c, and it is why the fidelity metric uses top-gene overlap rather than cosine.
 - **Builder exactness.** Set Z is float32. Compare it to CSVs in float32 (exact equality), not with an absolute float64 tolerance: loadings reach about 350, so the float32→float64 rounding is about 1e-5.
 - **Every cev rule lists `run.py` (and most list `cev.py`) as an input**, so an edit reruns the whole cev chain. That's about 3 min today. Recheck this before the Phase 3 GPU ensembles: wrap those inputs in `ancient()` for the expensive rules if needed.
@@ -326,7 +356,7 @@ What to reuse:
 - **Robustness:** `run_subsets(models, n_splits, seed)` (full, half{i}{a,b}, loro_{model}), `compare_sets` (Hungarian match for split-half, per-LV recovery for LORO), `gene_perm_null`, `label_perm_null`, `synthetic(...)`. Subset sets are built by the normal set rules, not inside these functions.
 - **Storage:** sets store `Z.npy` (float32) plus `lvs.csv`. Write a CSV only where R needs it (`run_ora.R`, `run_analysis.R`).
 
-### Step 2.2b: metric revision
+### Step 2.2b: metric revision (done; see Log)
 
 - **`cev.pool_best_hits`** also returns the best-hit index for each (LV, other run), so reciprocity can be checked: LV a's best hit b in run B has a as its best hit in run A. It also returns the top-gene Jaccard of each best-hit pair.
 - **`cev.jaccard_null(B, runs, pairs, seed)`** shuffles the gene order within every top-gene row of run b and takes the best-hit Jaccard of each run-a LV, over `null_pairs` run pairs chosen by `null_seed`. It returns the `jac_null_q` quantile.
@@ -399,7 +429,7 @@ consensus_eval:
   consensus: {method: eac_average, k: [600, 800, 1000, ..., 3000], select: ari_median}
   # 2.2c adds e.g. topj: {linkage: [complete, average], min_jac: [tbd], min_frac: [0.3, 0.4, 0.5, 0.6], noise_r2: [0.15], combine: [median]}
   eval: {pool_r2: 0.15, cos_thresholds: [0.5, 0.7, 0.9], match_cos: 0.9,
-         reproducible: {cos: 0.5, min_frac: 0.4, reciprocal: true, jac_null_q: 0.999, null_pairs: 3, null_seed: 3},
+         reproducible: {cos: 0.5, min_frac: 0.4, jac_null_q: 0.999, null_pairs: 3, null_seed: 3},
          headline: [n_lvs, median_overlap_to_consensus, frac_redundant_c0.5, recall_c0.9],
          split_half: {n_splits: 10, seed: 1}, loro: true, null: {n_perm: 3, seed: 2},
          synthetic: {n_modules: 600, p_present: [0.5, 0.9], member_cos: [0.6, 0.95],
