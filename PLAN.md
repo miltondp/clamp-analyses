@@ -79,6 +79,39 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
 - **Input manifests:** `workflow/config/reference_inputs.json`, downloaded by
   `scripts/inputs/reference_inputs.py` via `workflow/rules/reference_inputs.smk`.
 
+### Module-evaluation metrics (Saelens 2018)
+- **Paper:** Saelens, Cannoodt & Saeys, Nat Commun 2018, doi:10.1038/s41467-018-03424-4. It
+  benchmarks 42 module-detection methods against known regulatory networks; decomposition (ICA)
+  methods came out best.
+- **Local copy, untracked:** `lib/module-evaluation/` holds `paper.pdf`, the supplement and the
+  code (`code/lib/modulescomparison.py`).
+- **Scores:**
+  - For E. coli, yeast and synthetic data: recovery/relevance (best-match Jaccard in each
+    direction) and recall/precision (extended BCubed).
+  - For human data, whose regulatory gold standard is incomplete like ours: **aucodds**
+    (`modbindevalscorer`, `cal_aucodds`).
+    - For each module × regulator pair: a 2×2 table over the genes, the odds ratio
+      (tp·tn)/(fp·fn) and the Fisher right-tail p.
+    - Holm–Šidák correction within each module, across regulators.
+    - Only pairs with q < 0.05 keep their OR; the rest are set to 0. The code uses 0.05; the paper
+      text says 0.1.
+    - Per regulator: the maximum OR over modules.
+    - aucodds: the fraction of regulators with log10 OR ≥ c, integrated (trapz) over
+      c ∈ linspace(0, 3, 100) and divided by 3.
+  - **F-aucodds** (`cal_faucodds`): the harmonic mean of aucodds over regulators and aucodds over
+    modules (each module's maximum OR). The second half penalizes hub and uninformative modules.
+- Modules smaller than 5 genes are dropped.
+- Every score is reported as a fold over the same score for permuted known modules (500
+  permutations). Our Z-row permutation is the equivalent.
+- **How decomposition methods get crisp modules:** genes above 3 SD per component
+  (`_ica_zscore`), fdrtool q per component (optionally split by sign), or a percentage cutoff per
+  tail (`code/lib/methods/clustering.py`).
+- **Decision (2026-11-27):**
+  - Adopt aucodds and F-aucodds only. Recovery/relevance is capped when the sizes differ (a
+    75-gene LV module vs GATA1's 550 targets), and BCubed needs its Cython ported.
+  - Define LV modules two ways, as a sensitivity check: the top 1% per tail (the ORA query) and
+    loadings beyond 3 SD per tail.
+
 ## Method spec
 - **Universe:** Z genes ∩ K562GW genes, mapping Ensembl→symbol via the gencode v41 file. Log the
   overlap, and add HGNC alias rescue only if fewer than about 85% of genes match.
@@ -147,14 +180,39 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
   - Write `scripts/perturbseq/signed_z.py` and add rules `perturbseq_signed_z` and
     `perturbseq_ora`, which call `run_ora.R` per method, tail and strategy.
   - Add a permutation-null ORA on shuffled Z.
-- [x] **Step 6: response capture.**
-  - Write `scripts/perturbseq/response_capture.py` (observed values plus permutation null, with
-    `--seed`), with tests.
-  - Add rule `perturbseq_response`.
+- **Step 6: gene-side response and module metrics.**
+  - [x] **6.1 Response capture.**
+    - Write `scripts/perturbseq/response_capture.py` (observed values plus permutation null, with
+      `--seed`), with tests.
+    - Add rule `perturbseq_response`.
+  - [x] **6.2 Remove the shared knockdown response.** No peer-knockdown null (decided 2026-11-27).
+    - `response_capture.py --remove-pcs` projects the top-n logFC components out before
+      correlating. Config `response.remove_pcs`; currently 0 (raw) and 1.
+    - New hub statistic `top_lv_share`.
+  - [x] **6.3 Review Saelens et al. 2018** and choose metrics to reuse. See "Module-evaluation
+    metrics (Saelens 2018)" under Key facts.
+  - [ ] **6.4 aucodds / F-aucodds.**
+    - New `scripts/perturbseq/module_scores.py` (with tests) and rule `perturbseq_module_scores`
+      per strategy and model, plus an aggregate `module_scores_summary.csv`.
+    - Reuse `ora_null.Ora`: its sparse regulon membership, annotated universe (N) and `query()`.
+    - LV modules, per LV and tail, two definitions:
+      - (a) the top `ceil(top_pct × universe)` positive loadings, i.e. the ORA query;
+      - (b) loadings > mean + 3 SD (pos) or < mean − 3 SD (neg) of the LV.
+      - Both drop modules smaller than 5 genes.
+    - 2×2 tables within the annotated universe. The Fisher right tail is the hypergeometric sf, as
+      in `Ora`. Holm–Šidák runs within each module across regulons, and only pairs with q < 0.05
+      keep their OR. Use OR = inf when fp·fn = 0 and tp > 0.
+    - Report aucodds over regulons, aucodds over modules and F-aucodds, per definition.
+    - Null: the same 100 Z-row permutations (seed 123). Report observed, null mean,
+      observed − null and fold (observed / null mean, the paper's normalization).
+    - Config: `perturbseq.modules: {zscore_sd: 3, min_size: 5, q: 0.05, log10_or_max: 3}`.
+    - Check against the paper's code: on a toy example, aucodds must equal `cal_aucodds` /
+      `cal_faucodds` (a pure-numpy port; no need to build their Cython).
 - [ ] **Step 7: report.**
   - Notebook `nbs/03_model_biology/00_pseudobulk/07_perturbseq.ipynb`, run by rule
-    `perturbseq_report`. It shows per-method observed − null for both metrics, next to the
-    cell-type mean r, plus the top CLAMPfull LV↔regulon hits with their cell-type assignment.
+    `perturbseq_report`. It shows per-method observed − null for regulon ORA, response capture
+    (raw and with the shared response removed) and aucodds / F-aucodds, next to the cell-type
+    mean r, plus the top CLAMPfull LV↔regulon hits with their cell-type assignment.
   - Add aggregate `perturbseq_pseudobulk` and hook it into `biology_pseudobulk`.
   - The stratification needs OneK1K CLAMPfull LV↔cell-type assignments. Add a small OneK1K-only
     rule that reuses `assign_with_margins()` from `scripts/pseudobulk/common.R` on
@@ -337,3 +395,48 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     `lv-qtl-exploration`'s `07_module_mapping.py` found necessary. Otherwise report a hub-excluded
     view. Median max |r| is usable as is; "% captured" is not.
   - Next: Step 7.
+- 2026-11-27: **Step 6 split into substeps; 6.2 and 6.3 done.**
+  - Step 6.1 (response capture) was committed as is. The user chose to remove the top shared
+    component instead of using a peer-knockdown null.
+  - 6.2:
+    - `residualize()` centers each perturbation with a mean that leaves its own gene out, zeroes
+      the own-gene entry, and projects the top-n left singular vectors out. A unit test caught an
+      own-gene leak through the column mean.
+    - `top_lv_share` is the % of perturbations whose best LV is the most common one.
+    - 34 tests pass. The forced rerun of 11 jobs took 1.6 min.
+    - `remove_pcs = 0` reproduces Step 6.1 exactly (difference 0).
+  - **Removing PC1 (22.8% of the logFC variance) does not break up the hubs:**
+
+    | Method | Median max \|r\| Δ, raw → PC1 removed | top_lv_share, raw → PC1 removed |
+    |---|---|---|
+    | PLIER | 0.151 → 0.123 | 60.6 → 57.8 |
+    | CLAMPfull | 0.134 → 0.109 | 60.4 → 63.6 |
+    | CLAMPbase | 0.126 → 0.096 | 62.1 → 53.6 |
+    | NMF | 0.124 → 0.094 | 51.6 → 37.1 |
+    | flashier | 0.117 → 0.094 | 49.9 → 41.4 |
+    | ICA | 0.097 → 0.079 | 17.4 → 24.9 |
+    | CoGAPS | 0.097 → 0.074 | 27.8 → 20.3 |
+    | PCA | 0.095 → 0.071 | 56.8 → 46.5 |
+    | MOFA-FLEX | 0.084 → 0.068 | 25.9 → 20.1 |
+    | GSSig | 0.058 → 0.045 | 40.3 → 29.0 |
+
+    Donor-bulk CLAMPfull: Δ 0.144 → 0.100; top_lv_share 54.4 → 49.6. The method ranking does not
+    change.
+  - "% captured" stays saturated (87–100%); the null is still 4.0%.
+  - CLAMPfull with PC1 removed: GATA1 and LDB1 still pick LV37, but with weaker r (−0.19 and
+    −0.15, from −0.46 and −0.42). TAL1, LMO2, MYB and MYC move to other LVs (LV1, LV7, LV108,
+    LV65).
+  - **The shared response is at least two-dimensional.** A scratch run (5 perms, not in `output/`)
+    removed 0/1/2/3/5/10 PCs, which take out 0/23/33/38/43/49% of the variance. Top-LV share:
+
+    | Method | 0 | 1 | 2 | 3 | 5 | 10 |
+    |---|---|---|---|---|---|---|
+    | CLAMPfull | 60 | 64 | 23 | 19 | 18 | 10 |
+    | PLIER | 61 | 58 | 24 | 30 | 33 | 18 |
+    | ICA | 17 | 25 | 10 | 9 | 12 | 9 |
+
+    Median max |r| drops steadily: CLAMPfull 0.17 → 0.14 → 0.09 → 0.08 → 0.07 → 0.06. With PCs 1–2
+    removed, CLAMPfull's best LVs go from 34 distinct to 44, and PLIER's from 30 to 49.
+  - **Open decision:** add `remove_pcs: 2` (and maybe 3) to the config? One PC is not enough to
+    remove the shared response.
+  - Next: decide `remove_pcs`, then Step 6.4.
