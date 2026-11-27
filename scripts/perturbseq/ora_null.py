@@ -188,23 +188,32 @@ def lv_hits(z, ora, observed):
     return pd.concat(frames, ignore_index=True)
 
 
+def permuted(values, n_perm, seed):
+    """(perm, matrix) for permutations 1..n_perm of the gene labels (rows) of a genes x LVs matrix.
+
+    The benchmark's one permutation stream: response_capture.py draws its null from it too.
+    """
+    rng = np.random.default_rng(seed)
+    for perm in range(1, n_perm + 1):
+        yield perm, values[rng.permutation(values.shape[0])]
+
+
 def permutation_rows(ora, values, n_perm, seed):
     """Statistics for permutations 1..n_perm of the gene labels (rows) of a genes x LVs matrix."""
-    rng = np.random.default_rng(seed)
     rows = []
-    for perm in range(1, n_perm + 1):
-        shuffled = values[rng.permutation(values.shape[0])]
+    for perm, shuffled in permuted(values, n_perm, seed):
         hits = {t: ora.test(v)["hits"] for t, v in tail_values(shuffled).items()}
         rows.append({"perm": perm, **statistics(hits)})
     return rows
 
 
-def summarize(null, meta=None, statistics=STATISTICS):
-    """One row per statistic: observed (perm 0) against the permutations, led by the `meta` columns."""
+def summarize(null, meta=None, columns=STATISTICS):
+    """One row per statistic in `columns`: observed (perm 0) against the permutations, led by the
+    `meta` columns."""
     observed = null.loc[null.perm == 0].iloc[0]
     perms = null.loc[null.perm > 0]
     rows = []
-    for stat in statistics:
+    for stat in columns:
         values = perms[stat].to_numpy()
         rows.append({
             **(meta or {}),

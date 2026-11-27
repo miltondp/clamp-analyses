@@ -168,17 +168,27 @@ rule perturbseq_ora_null:
         "--out-dir {params.out_dir:q} > {log:q} 2>&1"
 
 
+def ps_per_model(pattern):
+    """`pattern` expanded over every strategy's models."""
+    return [expand(pattern, strategy=s, model=cfg["models"]) for s, cfg in PS_STRATEGIES.items()]
+
+
+# Shell command that stacks the {input} CSVs into {output}.
+PS_CONCAT_CSV = (
+    "python -c \"import sys, pandas as pd; "
+    "pd.concat([pd.read_csv(f) for f in sys.argv[2:]]).to_csv(sys.argv[1], index=False)\" "
+    "{output:q} {input:q}"
+)
+
+
 rule perturbseq_ora_summary:
     input:
-        [expand(rules.perturbseq_ora_null.output.summary, strategy=s, model=cfg["models"])
-         for s, cfg in PS_STRATEGIES.items()],
+        ps_per_model(rules.perturbseq_ora_null.output.summary),
     output:
         os.path.join(PS_CFG["output_root"], "ora_summary.csv"),
     conda: "clamp-analyses"
     shell:
-        "python -c \"import sys, pandas as pd; "
-        "pd.concat([pd.read_csv(f) for f in sys.argv[2:]]).to_csv(sys.argv[1], index=False)\" "
-        "{output:q} {input:q}"
+        PS_CONCAT_CSV
 
 
 # Step 6: perturbation-response capture. max |r| between each perturbation's logFC (raw, and without
@@ -200,7 +210,7 @@ rule perturbseq_response:
     params:
         out_dir=lambda wc, output: os.path.dirname(output.summary),
         alpha=PS_CFG["response"]["alpha"],
-        remove_pcs=" ".join(str(n) for n in PS_CFG["response"]["remove_pcs"]),
+        remove_pcs=PS_CFG["response"]["remove_pcs"],  # a list: the shell formatter space-joins it
     wildcard_constraints:
         **PS_WC,
     resources:
@@ -216,12 +226,9 @@ rule perturbseq_response:
 
 rule perturbseq_response_summary:
     input:
-        [expand(rules.perturbseq_response.output.summary, strategy=s, model=cfg["models"])
-         for s, cfg in PS_STRATEGIES.items()],
+        ps_per_model(rules.perturbseq_response.output.summary),
     output:
         os.path.join(PS_CFG["output_root"], "response_summary.csv"),
     conda: "clamp-analyses"
     shell:
-        "python -c \"import sys, pandas as pd; "
-        "pd.concat([pd.read_csv(f) for f in sys.argv[2:]]).to_csv(sys.argv[1], index=False)\" "
-        "{output:q} {input:q}"
+        PS_CONCAT_CSV

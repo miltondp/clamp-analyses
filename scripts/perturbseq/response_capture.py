@@ -35,8 +35,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_regulons import log, self_cells  # noqa: E402
-from ora_null import summarize  # noqa: E402
+from build_regulons import log, read_gene_level, self_cells  # noqa: E402
+from ora_null import permuted, summarize  # noqa: E402
 from signed_z import read_z  # noqa: E402
 
 STATISTICS = ("median_max_abs_r", "mean_max_abs_r", "pct_captured", "top_lv_share")
@@ -50,15 +50,15 @@ class Response:
         x = np.asarray(logfc, float)
         if not np.isfinite(x).all():
             raise ValueError("logFC has non-finite values")
-        self.n_genes = x.shape[0]
+        n_genes = x.shape[0]
         self.x = x - x.mean(axis=0)  # r is shift-invariant; centering keeps the sums well conditioned
-        self.scale_x = (self.n_genes * (x ** 2).sum(axis=0))[:, None]
+        self.scale_x = (n_genes * (x ** 2).sum(axis=0))[:, None]
         self.rows = np.asarray(self_rows)
         self.masked = self.rows >= 0
         cols = np.flatnonzero(self.masked)
         self.xs = np.zeros(x.shape[1])
         self.xs[cols] = self.x[self.rows[cols], cols]
-        self.n = (self.n_genes - self.masked)[:, None].astype(float)
+        self.n = (n_genes - self.masked)[:, None].astype(float)
         self.sx = (self.x.sum(axis=0) - self.xs)[:, None]
         self.sxx = ((self.x ** 2).sum(axis=0) - self.xs ** 2)[:, None]
 
@@ -115,16 +115,15 @@ def best(r):
 
 
 def null_best(response, z, n_perm, seed):
-    """(1 + n_perm) x perturbations max |r| and best-LV index; row 0 is observed, then gene-label
-    permutations of Z."""
-    rng = np.random.default_rng(seed)
-    values, lvs = [], []
-    for perm in range(n_perm + 1):
-        zp = z if perm == 0 else z[rng.permutation(z.shape[0])]
+    """(1 + n_perm) x perturbations max |r| and best-LV index (row 0 is observed, then gene-label
+    permutations of Z), and the observed best LV's signed r."""
+    max_abs, idx, signed = best(response.r(z))
+    values, lvs = [max_abs], [idx]
+    for _, zp in permuted(z, n_perm, seed):
         max_abs, idx, _ = best(response.r(zp))
         values.append(max_abs)
         lvs.append(idx)
-    return np.vstack(values), np.vstack(lvs)
+    return np.vstack(values), np.vstack(lvs), signed
 
 
 def leave_one_out_p(values):
@@ -153,31 +152,22 @@ def run_statistics(values, lvs, alpha):
     }), p[0]
 
 
-def read_logfc(path):
-    frame = pd.read_csv(path, sep="\t", index_col=0)
-    frame.index = frame.index.astype(str)
-    frame.columns = frame.columns.astype(str)
-    return frame
-
-
 def capture(z, logfc, self_rows, n_pcs, args):
     """Per-perturbation table, per-permutation statistics and summary for one --remove-pcs value."""
     x, removed = residualize(logfc.to_numpy(), self_rows, n_pcs)
     response = Response(x, self_rows)
     log(f"remove_pcs={n_pcs}: removed {removed:.1%} of the logFC variance")
 
-    values = z.to_numpy(float)
-    max_abs, idx, signed = best(response.r(values))
-    null, lvs = null_best(response, values, args.n_perm, args.seed)
+    null, lvs, signed = null_best(response, z.to_numpy(float), args.n_perm, args.seed)
     stats, perm_p = run_statistics(null, lvs, args.alpha)
 
     perturbations = pd.DataFrame({
         "remove_pcs": n_pcs,
         "perturbation": logfc.columns,
         "self_masked": response.masked,
-        "best_LV": np.asarray(z.columns)[idx],
+        "best_LV": np.asarray(z.columns)[lvs[0]],
         "best_r": signed,
-        "max_abs_r": max_abs,
+        "max_abs_r": null[0],
         "null_mean": null[1:].mean(axis=0),
         "null_p95": np.quantile(null[1:], 0.95, axis=0),
         "perm_p": perm_p,
@@ -189,14 +179,14 @@ def capture(z, logfc, self_rows, n_pcs, args):
         "removed_variance": removed, "latent_variables": z.shape[1],
         "perturbations": logfc.shape[1], "self_masked": int(response.masked.sum()),
         "n_perm": args.n_perm, "seed": args.seed, "alpha": args.alpha,
-    }, statistics=STATISTICS)
+    }, columns=STATISTICS)
     log(summary[["statistic", "observed", "null_mean", "null_p95", "perm_p"]].to_string(index=False))
     return perturbations, stats, summary
 
 
 def run(args):
     z = read_z(args.z)
-    logfc = read_logfc(args.logfc)
+    logfc = read_gene_level(args.logfc)
     if set(z.index) != set(logfc.index):
         raise ValueError(f"Z ({len(z)}) and logFC ({len(logfc)}) gene sets differ")
     logfc = logfc.loc[z.index]
@@ -209,10 +199,9 @@ def run(args):
 
     results = [capture(z, logfc, self_rows, n, args) for n in args.remove_pcs]
     perturbations, stats, summary = (pd.concat(parts, ignore_index=True) for parts in zip(*results))
-    if args.sizes:
-        sizes = pd.read_csv(args.sizes, usecols=["perturbation", "n_de_universe"])
-        perturbations.insert(2, "n_de", perturbations.perturbation.map(
-            sizes.set_index("perturbation")["n_de_universe"]))
+    sizes = pd.read_csv(args.sizes, usecols=["perturbation", "n_de_universe"])
+    perturbations.insert(2, "n_de", perturbations.perturbation.map(
+        sizes.set_index("perturbation")["n_de_universe"]))
 
     out = Path(args.out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -225,7 +214,7 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--z", required=True, help="Z restricted to the regulon universe (signed_z.py's pos.csv)")
     parser.add_argument("--logfc", required=True, help="build_regulons.py's logfc.tsv.gz")
-    parser.add_argument("--sizes", help="build_regulons.py's sizes.csv, to add each perturbation's DE count")
+    parser.add_argument("--sizes", required=True, help="build_regulons.py's sizes.csv, to add each perturbation's DE count")
     parser.add_argument("--strategy", required=True)
     parser.add_argument("--model", required=True)
     # No defaults: the values live in workflow/config/perturbseq.yaml.
