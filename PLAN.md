@@ -17,11 +17,11 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 - [x] 0.1 Create the missing envs (`snakemake`, `gpu-kmeans`), register the kernel, and run `scripts/check_setup.py` (it also runs both `--check` pin scripts).
 - [x] 0.2 Symlink `data/clamp_archs4` to the `ai-comp-exp` fits (md5 check skipped at the user's request; see Log).
 - [x] 0.3 ~~Rsync the noise outputs and the legacy `00_mgm` outputs from pivlab01.~~ They aren't there. Instead, staged the old 4-rep and 6-rep consensus folders, the canonical S123 Z/summary and `gene_properties.csv` under `data/legacy_archs4/`. The 6-rep `noise_flags.csv` is the flag source (see Key facts).
-- [ ] 0.4 Export Z.csv, summary.csv and manifest.json from the 10 `.rds` files (`cev_export_run`). Check that the S123 export equals `data/legacy_archs4/canonical_S123/{Z,summary}.csv` byte for byte.
+- [x] 0.4 Export Z.csv, summary.csv and manifest.json from the 10 `.rds` files (`cev_export_run`). Check that the S123 export equals `data/legacy_archs4/canonical_S123/{Z,summary}.csv` byte for byte.
 - [ ] 0.5 Build the GO BP gmt for ORA if it is missing (`generate_archs4_go_bp_gmt`).
 
 ### Phase 1: Reproduce the existing consensus sets (stop if this fails)
-- [ ] 1.1 Scaffold the new area: config, `.smk`, Snakefile include and target, staging rules.
+- [ ] 1.1 Scaffold the new area: config, `.smk`, Snakefile include and target, staging rules. (Partly done in 0.4: the config, `.smk`, include, `consensus_eval_archs4` aggregate and public `consensus_evaluation` target exist; extend them.)
 - [ ] 1.2 Check that the exported `Z_all.npz` has the same (model, LV) keys as the legacy `noise_flags.csv`, plus 18,423 genes with no NaNs (`cev_zcache_check`). There's no legacy `Z_all.npz` to compare against.
 - [ ] 1.3 Check that `cl_c050_m4_r015` equals `Z_4reps.csv` exactly, and that its members equal `data/legacy_archs4/consensus_4reps/mgm_mapping.csv`.
 - [ ] 1.4 Check that `cl_c050_m6_r025` equals `Z_6reps.csv`, and that its members equal `data/legacy_archs4/consensus_6reps/mgm_mapping.csv`. If they differ, the member lists show where.
@@ -68,6 +68,7 @@ This is a living plan on branch `consensus-lvs`. Work through it one step at a t
 
 - 2026-11-26: Step 0.3 closed, as the user chose: fetched the 6-rep folder without `B.csv` to `data/legacy_archs4/consensus_6reps/` (231 MB, 53 files; `Z.csv` md5 checked). The flag source is now the legacy `noise_flags.csv`. Revised 1.2 and 1.4, the `cev_flags` and `cev_zcache_check` rules, and the config sketch to match.
 - 2026-11-26: Searched pico (dbmila) at the user's suggestion and found the 4-rep consensus folder (`Z.csv` = `Z_4reps.csv`, true members), the canonical S123 Z/summary and the gene-level `gene_properties.csv`. Staged all three under `data/legacy_archs4/` (see Key facts). Added member checks to 1.3, an export byte-check to 0.4, and config keys. Leakage is no longer blocked.
+- 2026-11-26: Step 0.4 done. Added `scripts/consensus_eval/export_run.R`, a minimal `workflow/config/consensus_eval.yaml`, `workflow/rules/consensus_eval.smk` (`cev_export_run`, `cev_export_check`, `consensus_eval_archs4`), and the Snakefile configfile/include plus the public `consensus_evaluation` target (pulled forward from 1.1). The dry run listed only the 10 `cev_export_run` jobs, `cev_export_check` and the target. Ran in about 1.5 min with 6 jobs in parallel. Output is `{root}/archs4/runs/S*/{Z.csv, summary.csv, manifest.json}` (966 MB). `cev_export_check` passed: S123 `Z.csv` and `summary.csv` are byte-identical to `data/legacy_archs4/canonical_S123/`, even though the local `seed123.rds` (re-saved Sep 17) is 9,479 bytes larger than the original fit's rds. The manifest md5 is read from `MD5SUM.txt`, not recomputed: the user had already verified the rds md5s, so don't re-check them.
 ---
 
 ## Context
@@ -134,7 +135,7 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
   - A model counts as complete only when all of these exist and are non-empty: rds, B.csv, Z.csv, summary.csv, manifest.json, complete.
   - A partly filled folder raises `ValueError` while the job graph is being built.
   - The new area therefore stages its own files under its own root and never fills those folders.
-- **What the `.rds` contains.** A list with `B, Z, U, C, L1, L2, Z2, heldOutGenes, Uauc, Up, summary, priorMat, withPrior, call`. `fit_clampfull.R:179-215` writes `write.csv(Z)` with gene rownames, `write.csv(B)`, and `write.csv(summary, row.names=FALSE)` with `LV_index` renamed to `LV`. Exporting the same way reproduces those files exactly. B is about 1,728 × 580k, about 18 GB as CSV. It isn't needed, so skip it.
+- **What the `.rds` contains.** A list with `B, Z, U, C, L1, L2, Z2, heldOutGenes, Uauc, Up, summary, priorMatCV, priorMat, withPrior` (+ `call` in S123 only). Z is already an 18,423 × 1,728 data.frame with gene rownames, B a 1,728 × 605,614 data.frame, and summary has `LV`; L2 ≈ 456.94 in every run (one run differs at the 11th digit). Loading takes about 40 s and 12 GB RSS. `fit_clampfull.R:179-215` writes `write.csv(Z)` with gene rownames, `write.csv(B)`, and `write.csv(summary, row.names=FALSE)` with `LV_index` renamed to `LV`. Exporting the same way reproduces those files exactly. B is about 1,728 × 580k, about 18 GB as CSV. It isn't needed, so skip it.
 - **Legacy model order:** `S123, S1001..S1007, S456, S789` (`A4_METALV_SEEDS` is sorted with key `(s<1000, s)`). The order decides linkage tie-breaks and metaLV numbering, so it is required for exact reproduction.
 - **ORA** queries the top `ceil(18423 × 0.01)` = **185** positive genes. `run_ora.R` takes `--model-manifest`, like the existing metaLV ORA rules (n_samples is metadata only). The GO BP gmt isn't available locally yet; `generate_archs4_go_bp_gmt` builds it.
 - **Local profile limits.** `large_fit_slot=0` blocks only `fit_canonical_clampfull` (archs4). ARCHS4 stability fits request `mem_mb=400000`, more than the local 96000, so they can't be scheduled locally (good). GTEx seed fits request 48 GB and *can* run, so dry-run first.
@@ -213,7 +214,7 @@ These are in `/home/miltondp/projects/pivlab/ai-comp-exp/data/clamp_archs4/`.
 
 Steps 0.1–0.3 are done; the Log and Key facts record how (`data/clamp_archs4` is a symlink because `data/` is gitignored, which keeps the personal path out of tracked config).
 
-4. Export with `cev_export_run` (R, `clamp-analyses`, about 32 GB RAM, two at a time). It writes `runs/S{seed}/{Z.csv, summary.csv, manifest.json}`. `manifest.json` uses the `fit_clampfull.R:217-226` keys (`samples` = ncol(B), `latent_variables`, `genes`) plus L2 and md5, so `cev_ora` can pass `--model-manifest` exactly like the existing metaLV ORA rules. No B.csv. Check first how the rds files were made: if they came from `write_clamp_model` (`scripts/archs4/common.R:122-145`) and not from `fit_clampfull.R`, summary.csv is written with row names and a re-export won't match byte for byte.
+4. (Done.) Export with `cev_export_run` (R, `clamp-analyses`; readRDS takes about 40 s and peaks at 12 GB, so the rule requests 16 GB). It writes `runs/S{seed}/{Z.csv, summary.csv, manifest.json}`. `manifest.json` uses the `fit_clampfull.R:217-226` keys (`samples` = ncol(B), `latent_variables`, `genes`) plus L2 and md5, so `cev_ora` can pass `--model-manifest` exactly like the existing metaLV ORA rules. No B.csv. All 10 rds files were saved by `fit_clampfull.R` after its conversions (Z is a data.frame with gene rownames, summary already has `LV`), so the export is plain `write.csv` and matches byte for byte.
 5. Build the GO BP gmt with the existing rule `generate_archs4_go_bp_gmt`.
 
 ### New files
