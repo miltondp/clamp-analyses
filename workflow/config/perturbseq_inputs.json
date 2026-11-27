@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "note": "Only the listed members are extracted from the archive. Member SHA-256 values apply to the extracted files; the archive md5 and bytes are the upstream Zenodo values, and its SHA-256 was computed locally on a copy whose md5 matches. Verification date is not the historical download date.",
+  "archive": {
+    "resource": "Ota et al. 2025 code and data release (Zenodo)",
+    "version": "v3",
+    "url": "https://zenodo.org/records/17174974/files/m_ota_causal_geneRegulation_paper_v3.zip?download=1",
+    "related_url": "https://zenodo.org/records/17174974",
+    "doi": [
+      "10.1038/s41586-025-09866-3",
+      "10.1016/j.cell.2022.05.013"
+    ],
+    "path": "data/perturbseq/ota2025/downloads/m_ota_causal_geneRegulation_paper_v3.zip",
+    "bytes": 7730808463,
+    "md5": "148ecd79c5601783ae0db7726f0c356a",
+    "sha256": "eff4ce5c4cf5082a014edbb4862f1e2a4097a8d99270efea8c3b5e7ec1b739db",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "verification_date": "2026-11-26"
+  },
+  "members": {
+    "k562gw_logfc": {
+      "member": "data/Perturbseq/geneLevel/K562GW/limma_logFC_sum.txt",
+      "path": "data/perturbseq/ota2025/K562GW/limma_logFC_sum.txt",
+      "bytes": 1603982225,
+      "sha256": "51d7979ee53812b47421d2715d8fc9b2c6b2085dda6c7d2d6542871e588924df"
+    },
+    "k562gw_p": {
+      "member": "data/Perturbseq/geneLevel/K562GW/limma_P_sum.txt",
+      "path": "data/perturbseq/ota2025/K562GW/limma_P_sum.txt",
+      "bytes": 1469255457,
+      "sha256": "f472482f7431c878ff90cb91cec7fce7970edf509a5b0142cb4c2b23fe8af1f9"
+    },
+    "gencode_v41_ids": {
+      "member": "data/gencode_v41_gname_gid_ALL_sorted_onlyID",
+      "path": "data/perturbseq/ota2025/gencode_v41_gname_gid_ALL_sorted_onlyID",
+      "bytes": 1635111,
+      "sha256": "a134c75e80d2e9fc69403f454877b6e5dcaa78de6924c8fe504c296047b2217a"
+    }
+  }
+}

@@ -64,6 +64,7 @@ except for the HeartMap download below.
 | GTEx | [GTEx v8](https://gtexportal.org/home/downloads/adult-gtex/bulk_tissue_expression); expression and annotations |
 | ARCHS4 | [Human gene expression v2.5](https://s3.dev.maayanlab.cloud/archs4/files/human_gene_v2.5.h5); filtering and normalization |
 | recount2 | [Archived expression and metadata](https://ndownloader.figshare.com/files/10881866); extraction and preprocessing |
+| Perturb-seq: K562 genome-wide CRISPRi | [Ota et al. 2025 release](https://zenodo.org/records/17174974) (7.7 GB ZIP; only the gene-level limma matrices and the GENCODE ID map are extracted). `--config perturbseq_source_root=<extracted release>` links an existing verified copy instead |
 | Projection datasets | GSE133218, GSE193336 and E-MTAB-6701; acquisition and processing in `workflow/config/projections.yaml` |
 
 For HeartMap, open [study SCP3689 in the Single Cell Portal](https://singlecell.broadinstitute.org/single_cell/study/SCP3689).

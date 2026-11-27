@@ -1,0 +1,19 @@
+perturbseq:
+  # Perturb-seq regulator->target benchmark of the OneK1K (PBMC_1k1k) LVs; see PLAN.md.
+  # Source: Ota et al. 2025 reprocessing of the Replogle 2022 K562 genome-wide CRISPRi screen.
+  inputs_manifest: workflow/config/perturbseq_inputs.json
+  data_root: data/perturbseq/ota2025
+  output_root: output/03_model_biology/00_pseudobulk/07_perturbseq
+  dataset: PBMC_1k1k
+  models: [CLAMPfull, CLAMPbase, PLIER, PCA, NMF, ICA, flashier, MOFA_FLEX_PRIOR, GSS, CoGAPS]
+  seed: 123
+  n_perm: 100
+  regulons: {q: 0.05, min_size: 10, max_size: 500, jaccard: 0.5}
+  response: {min_de: 20}
+  # Same ORA settings as the ARCHS4 meta-LV ORA (archs4.yaml: archs4.ora).
+  ora: {top_pct: 0.01, pvalue_cutoff: 0.05, qvalue_cutoff: 0.2, fdr: 0.05}
+
+# Optional: root of an already-extracted copy of the Ota et al. release (the folder that holds
+# data/Perturbseq/...). Verified files are symlinked instead of downloading the 7.7 GB ZIP.
+# Set it per run: --config perturbseq_source_root=/path/to/extracted
+perturbseq_source_root: ""
