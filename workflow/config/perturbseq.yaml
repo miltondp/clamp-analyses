@@ -22,6 +22,15 @@ perturbseq:
     alpha: 0.05
     remove_pcs: [0, 1, 2]
     resources: {mem_mb: 8000, runtime: 60}
+  # aucodds / F-aucodds (module_scores.py; Saelens et al. 2018). Each LV tail gives a `top` module
+  # (the ORA query, ora.top_pct) and a `zscore` module (beyond zscore_sd SDs). Modules below min_size
+  # genes are dropped; ORs with Holm-Sidak q > q are set to 0; log10 OR cutoffs span [0, log10_or_max].
+  modules:
+    zscore_sd: 3
+    min_size: 5
+    q: 0.05
+    log10_or_max: 3
+    resources: {mem_mb: 8000, runtime: 60}
   # Same ORA settings as the ARCHS4 meta-LV ORA (archs4.yaml: archs4.ora).
   ora:
     top_pct: 0.01

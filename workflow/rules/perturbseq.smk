@@ -232,3 +232,49 @@ rule perturbseq_response_summary:
     conda: "clamp-analyses"
     shell:
         PS_CONCAT_CSV
+
+
+# Step 6.4: aucodds / F-aucodds (Saelens et al. 2018) of the LV modules against the regulons, with
+# the same gene-label permutation null.
+PS_MODULES = os.path.join(PS_CFG["output_root"], "modules", "{strategy}", "{model}")
+
+
+rule perturbseq_module_scores:
+    input:
+        z=rules.perturbseq_signed_z.output.pos,
+        gmt=rules.perturbseq_regulons.output.gmt,
+    output:
+        null=os.path.join(PS_MODULES, "null.csv.gz"),
+        module_hits=os.path.join(PS_MODULES, "module_hits.csv"),
+        regulon_hits=os.path.join(PS_MODULES, "regulon_hits.csv"),
+        summary=os.path.join(PS_MODULES, "summary.csv"),
+    log:
+        os.path.join(PS_MODULES, "module_scores.log"),
+    params:
+        out_dir=lambda wc, output: os.path.dirname(output.summary),
+        mod=PS_CFG["modules"],
+        ora=PS_CFG["ora"],
+        reg=PS_CFG["regulons"],
+    wildcard_constraints:
+        **PS_WC,
+    resources:
+        mem_mb=int(PS_CFG["modules"]["resources"]["mem_mb"]),
+        runtime=int(PS_CFG["modules"]["resources"]["runtime"]),
+    conda: "clamp-analyses"
+    shell:
+        "python scripts/perturbseq/module_scores.py --z {input.z:q} --gmt {input.gmt:q} "
+        "--strategy {wildcards.strategy} --model {wildcards.model} "
+        "--top-pct {params.ora[top_pct]} --min-size {params.reg[min_size]} --max-size {params.reg[max_size]} "
+        "--module-min-size {params.mod[min_size]} --zscore-sd {params.mod[zscore_sd]} --q {params.mod[q]} "
+        "--log10-or-max {params.mod[log10_or_max]} --n-perm {PS_CFG[n_perm]} --seed {PS_CFG[seed]} "
+        "--out-dir {params.out_dir:q} > {log:q} 2>&1"
+
+
+rule perturbseq_module_scores_summary:
+    input:
+        ps_per_model(rules.perturbseq_module_scores.output.summary),
+    output:
+        os.path.join(PS_CFG["output_root"], "module_scores_summary.csv"),
+    conda: "clamp-analyses"
+    shell:
+        PS_CONCAT_CSV
