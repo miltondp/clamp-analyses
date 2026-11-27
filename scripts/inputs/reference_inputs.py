@@ -44,9 +44,10 @@ def link_verified(key, asset, destination, candidates):
     for candidate in candidates:
         if candidate.is_file():
             verify(candidate, asset)
+            target = candidate.resolve()
             destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.symlink_to(candidate.resolve())
-            print(f'LINKED {key}: {destination} -> {candidate.resolve()}')
+            destination.symlink_to(target)
+            print(f'LINKED {key}: {destination} -> {target}')
             return True
     return False
 

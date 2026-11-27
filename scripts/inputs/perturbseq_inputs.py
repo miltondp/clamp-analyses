@@ -41,8 +41,11 @@ def stage(manifest, root=ROOT, archive=None, source_root=None, check=False):
         if destination.exists():
             verify(destination, member)
             print(f'OK {key}: {destination}')
-        elif check or not (source_root and link_verified(key, member, destination, [source_root / safe_member(member['member'])])):
-            pending[key] = (member, destination)
+            continue
+        # --check never links: it only reports what is missing.
+        if not check and source_root and link_verified(key, member, destination, [source_root / safe_member(member['member'])]):
+            continue
+        pending[key] = (member, destination)
     if not pending:
         return
     if check:
