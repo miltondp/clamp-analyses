@@ -199,12 +199,12 @@ def permutation_rows(ora, values, n_perm, seed):
     return rows
 
 
-def summarize(null, meta=None):
+def summarize(null, meta=None, statistics=STATISTICS):
     """One row per statistic: observed (perm 0) against the permutations, led by the `meta` columns."""
     observed = null.loc[null.perm == 0].iloc[0]
     perms = null.loc[null.perm > 0]
     rows = []
-    for stat in STATISTICS:
+    for stat in statistics:
         values = perms[stat].to_numpy()
         rows.append({
             **(meta or {}),

@@ -179,3 +179,48 @@ rule perturbseq_ora_summary:
         "python -c \"import sys, pandas as pd; "
         "pd.concat([pd.read_csv(f) for f in sys.argv[2:]]).to_csv(sys.argv[1], index=False)\" "
         "{output:q} {input:q}"
+
+
+# Step 6: perturbation-response capture. max |r| between each perturbation's logFC and the LVs,
+# against the same gene-label permutation null as the ORA.
+PS_RESPONSE = os.path.join(PS_CFG["output_root"], "response", "{strategy}", "{model}")
+
+
+rule perturbseq_response:
+    input:
+        z=rules.perturbseq_signed_z.output.pos,
+        logfc=rules.perturbseq_regulons.output.logfc,
+        sizes=rules.perturbseq_regulons.output.sizes,
+    output:
+        perturbations=os.path.join(PS_RESPONSE, "perturbations.csv"),
+        null=os.path.join(PS_RESPONSE, "null.csv.gz"),
+        summary=os.path.join(PS_RESPONSE, "summary.csv"),
+    log:
+        os.path.join(PS_RESPONSE, "response_capture.log"),
+    params:
+        out_dir=lambda wc, output: os.path.dirname(output.summary),
+        alpha=PS_CFG["response"]["alpha"],
+    wildcard_constraints:
+        **PS_WC,
+    resources:
+        mem_mb=int(PS_CFG["response"]["resources"]["mem_mb"]),
+        runtime=int(PS_CFG["response"]["resources"]["runtime"]),
+    conda: "clamp-analyses"
+    shell:
+        "python scripts/perturbseq/response_capture.py --z {input.z:q} --logfc {input.logfc:q} "
+        "--sizes {input.sizes:q} --strategy {wildcards.strategy} --model {wildcards.model} "
+        "--n-perm {PS_CFG[n_perm]} --seed {PS_CFG[seed]} --alpha {params.alpha} "
+        "--out-dir {params.out_dir:q} > {log:q} 2>&1"
+
+
+rule perturbseq_response_summary:
+    input:
+        [expand(rules.perturbseq_response.output.summary, strategy=s, model=cfg["models"])
+         for s, cfg in PS_STRATEGIES.items()],
+    output:
+        os.path.join(PS_CFG["output_root"], "response_summary.csv"),
+    conda: "clamp-analyses"
+    shell:
+        "python -c \"import sys, pandas as pd; "
+        "pd.concat([pd.read_csv(f) for f in sys.argv[2:]]).to_csv(sys.argv[1], index=False)\" "
+        "{output:q} {input:q}"
