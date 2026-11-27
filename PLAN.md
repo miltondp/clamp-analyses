@@ -136,7 +136,7 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
   - Split the LVs into those assigned to a cell type (CLAMPfull, from
     `clampfull_lv_assignments.csv`) and the rest. This separates composition from regulation.
   - `clampfull_lv_assignments.csv` comes from `benchmark_pseudobulk`, which needs all 6 datasets.
-    Use a OneK1K-only assignment rule instead (see Step 7).
+    Use a OneK1K-only assignment rule instead (see Step 8).
   - Report how much the regulons overlap the GO BP prior (Jaccard).
 
 ## Steps (one per session)
@@ -209,12 +209,90 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     - Config: `perturbseq.modules: {zscore_sd: 3, min_size: 5, q: 0.05, log10_or_max: 3}`.
     - Check against the paper's code: on a toy example, aucodds must equal `cal_aucodds` /
       `cal_faucodds` (a pure-numpy port; no need to build their Cython).
-- [ ] **Step 7: report.**
+- **Step 7: robustness (decided 2026-11-27).** This comes before the report, so the report is
+  written once with error bars. The refits don't depend on any metric definition and scoring is
+  cheap, so the fits can start before 7.3 is settled.
+  - [ ] **7.1 Fit variants in Snakemake.**
+    - Add a seed and k variant of the OneK1K fits, with outputs next to the main fits, so the
+      existing Perturb-seq rules score the variants unchanged, e.g. a fit wildcard on `{model}` or
+      a parallel `models/` root.
+    - Seeds and k values go in config (`perturbseq.yaml` or `pseudobulk.yaml`), not in scripts.
+    - The main fits (seed 123, k = 130) must stay untouched; check with a dry-run.
+    - **What exists (checked 2026-11-27), all in `workflow/rules/pseudobulk.smk`:**
+      - Fits write `{PROD}/{dataset}/models/<M>/{B,Z}.csv`, where
+        `PROD = config["paths"]["production"]`.
+      - Rules and the scripts they call:
+        - `clamp_pseudobulk` (`clamp.R`): fits **CLAMPbase and CLAMPfull in one job**.
+        - `plier_pseudobulk` (`plier.R`).
+        - `pca_nmf_ica_pseudobulk` (`pca_nmf_ica.py`): fits all three by default; `--method` and
+          `--flat-output` fit just one into a given directory.
+        - `flashier_pseudobulk` (`flashier.R`), `mofa_flex_pseudobulk` (`mofa_flex.py`),
+          `gss_pseudobulk` (`gss.R`) and `cogaps_pseudobulk` (`cogaps.R`).
+      - **k is a file, not a number:** each fit gets `--k {PROD}/{dataset}/preprocessing/k.csv`
+        (one column `k`, value 130; read by `read_k()` in `scripts/pseudobulk/common.R`). It comes
+        from `preprocess.R`: elbow × 2, capped at `svd_k = floor((min(genes, samples) − 1) / 4)`.
+        OneK1K has 776 samples, so svd_k = 193. **k = 200 is above that cap.** Either use 190, or
+        first check that no fit script depends on svd_k. A k variant needs its own small k file
+        (a tiny rule).
+      - Seed config keys: `clamp.seed` (CLAMP), `mofa_flex.seed`, `cogaps.seed`, and
+        `preprocess.seed`, which is shared by PLIER, PCA/NMF/ICA, flashier and GSS. All are 123
+        and reach the scripts as `--seed`.
+    - **Pitfall: the regulon universe.** `perturbseq_regulons` builds the universe from every Z of a
+      strategy (`ps_z_files()` → `build_regulons.read_universe()`, which requires identical gene
+      sets). Don't add the variants to the `main` model list: their newer Z files would make
+      Snakemake (mtime triggers) rebuild the regulons and everything downstream. Instead, score
+      the variants against the existing `main` regulons. One option is a separate `{strategy}`
+      such as `variants` that reuses the `main` GMT and logFC; another is extending
+      `ps_model_dir()` / `PS_WC` to accept variant model names (e.g. `CLAMPfull__seed124`) under
+      a parallel root. Check that the variants have the same genes as `main` (preprocessing is
+      the same, so they should).
+    - `signed_z.py` also needs each variant's `B.csv` (it reads the sample count from it).
+    - Quick seed-dependence check for PLIER and flashier: refit once with another seed and compare
+      Z with the seed-123 fit (column-matched |r|). Skip their refits if Z is identical or nearly
+      so.
+    - The OneK1K cell-type mean r for 7.4 was a scratch script in Step 2 (`score_per_ct()`,
+      `scripts/pseudobulk/common.R`). Turn it into a small rule so the variants get it too.
+  - [ ] **7.2 Launch the refits** (dry-run first; run on a lab server if local is too slow).
+    - Seeds: 5 per stochastic method, namely CLAMPfull, CLAMPbase, ICA, CoGAPS and MOFA-FLEX.
+      Add PLIER and flashier only if a quick check shows they depend on the seed. PCA is exact
+      and NMF uses `nndsvd`, a deterministic start, so neither needs seed refits.
+    - k sensitivity: k = 50 and 200 for CLAMPfull, PLIER, ICA and NMF.
+    - Cost estimate, from Step 2's timings: CoGAPS about 1 h 10 min and MOFA-FLEX about 1 h per
+      fit; CLAMP about 8 min; ICA is quick.
+  - [ ] **7.3 Settle the metric definitions,** then add a regulon bootstrap.
+    - Keep plain aucodds / F-aucodds, as in Saelens. **No hub-excluded variant** (decided
+      2026-11-27): the harmonic mean already follows the smaller, module half; a hub is one module
+      of about 130 there; and hubs such as CLAMPfull LV37 are strong, real matches (OR in the
+      hundreds against GATA1, LDB1 and MYB). Hub concentration (the share of regulons whose best
+      match is the top LV) is reported as a description, not as a metric.
+    - **F-aucodds stays the primary metric.** No composite score: the report shows ORA % of LVs,
+      F-aucodds and two-direction response capture side by side (decided 2026-11-27).
+    - **Two-direction response capture** (new). Add the LV side: for each LV, its max |r| over
+      perturbations. Report it alongside the existing perturbation side, plus their harmonic mean,
+      as F-aucodds does. This is the threshold-free counterpart of F-aucodds; it adds the penalty
+      for uninformative LVs and so addresses the hub blind spot. Reuse `response_capture.py`, the
+      same null and every `remove_pcs` setting.
+    - **Signed regulons** (sensitivity). Split each regulon into up and down targets by logFC sign,
+      keeping the size filter per signed set. Rerun the ORA and F-aucodds on them. Right now the
+      regulons are unsigned: `build_regulons.py` uses q < 0.05 regardless of direction.
+    - The 2×2 naming follows the paper's code (fp = regulon only, fn = module only), which is the
+      reverse of the usual convention. Results don't change (OR uses fp·fn; Fisher is symmetric
+      under transposition), so it stays as is.
+    - Regulon bootstrap on the existing fits: resample regulons (and perturbations, for response
+      capture) to get CIs per fit. This covers which regulators the screen has, not fit
+      variability.
+  - [ ] **7.4 Score every variant** with the three Perturb-seq metrics and the OneK1K cell-type
+    mean r (`score_per_ct()` in `scripts/pseudobulk/common.R`, as in Step 2). Summarize as mean ±
+    SD per method over seeds, plus k curves. The seed refits also give seed variability for the
+    Fig. 2A cell-type benchmark, which is itself recorded from one fit per method.
+- [ ] **Step 8: report.**
   - Notebook `nbs/03_model_biology/00_pseudobulk/07_perturbseq.ipynb`, run by rule
     `perturbseq_report`. It shows per-method observed − null for regulon ORA, response capture
     (raw and with the shared response removed) and aucodds / F-aucodds, next to the cell-type
     mean r, plus the top CLAMPfull LV↔regulon hits with their cell-type assignment.
     `remove_pcs = 2` is the headline response view; 0 and 1 are shown for comparison.
+  - Show the Step 7 seed variability (mean ± SD) and k curves, and hub concentration as a
+    description.
   - Add aggregate `perturbseq_pseudobulk` and hook it into `biology_pseudobulk`.
   - The stratification needs OneK1K CLAMPfull LV↔cell-type assignments. Add a small OneK1K-only
     rule that reuses `assign_with_margins()` from `scripts/pseudobulk/common.R` on
@@ -223,12 +301,19 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
   - Sanity checks:
     - The null hit rate is about the FDR level.
     - Known K562 programs (ribosome/mito, GATA1/TAL1) map to interpretable LVs.
-- [ ] **Step 8: discuss results and decide on extensions.** Candidates:
+- [ ] **Step 9: discuss results and decide on extensions.** Candidates:
   - Jurkat for metric 2.
   - RPE1 and HepG2 as non-blood negative controls.
   - PBMC_Perez2022 replication.
   - Regulator co-membership: is the regulator in its LV's top genes?
   - Primary CD4+ T-cell Perturb-seq.
+  - Rank-based F-aucodds (threshold-free on the LV side). Keep the FDR regulons; for each
+    LV × regulon pair, use the AUROC of the regulon genes in the LV's loading ranking (a GSEA-like
+    test), then combine the per-regulon and per-LV best matches as F-aucodds does. This removes the
+    top 1% vs 3 SD choice. Do it sooner if the two module definitions disagree in the refits.
+  - Optional: donor-resampling variability for CLAMPfull from the grouped-CV folds
+    (`scripts/pseudobulk/clampfull_grouped_cv.R` saves `train_Z.csv` per fold, each with its own
+    seed). First check whether that rule can run for OneK1K alone, without all 6 datasets.
   - Whether the result goes into the manuscript.
 
 ## Log
@@ -324,7 +409,7 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
       constraint.
     - `run_ora.R` writes a **truncated header-only gzip** when no LV has hits, because data.table's
       `fwrite(compress="gzip")` leaves it unterminated. `ora_null.py` therefore uses `summary.csv`'s
-      `result_rows == 0` instead of reading the file, and Step 7 readers must do the same.
+      `result_rows == 0` instead of reading the file, and Step 8 (report) readers must do the same.
       `run_ora.R` itself is unchanged, since ARCHS4 shares it.
   - **The negative tail is empty for CLAMPfull, CLAMPbase, PLIER, NMF and CoGAPS** (nonnegative Z).
     It has hits only for ICA, PCA, flashier, MOFA-FLEX and GSS.
@@ -527,3 +612,19 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     module) next to F-aucodds. Lead with F-aucodds and the module half, and treat fold as
     secondary.
   - Next: Step 7.
+- 2026-11-27: **Plan restructured (agreed with the user).**
+  - Robustness becomes Step 7, before the report: seed refits, k sensitivity and a regulon
+    bootstrap. The report becomes Step 8 and the extensions Step 9, with the CLAMPfull donor folds
+    optional there.
+  - There is no hub-excluded regulon aucodds; plain F-aucodds is kept, as in Saelens (see 7.3).
+    This replaces the "Open for Step 7" note above.
+  - Every metric so far is from **one fit per method** (seed 123, k = 130). The 100 permutations
+    are an evaluation null, not fit variability.
+  - Metric discussion closed:
+    - F-aucodds stays the primary metric.
+    - Two-direction response capture and signed regulons go into 7.3; rank-based F-aucodds goes
+      to Step 9.
+    - The fp/fn naming stays as in the paper.
+  - Order: 7.1, then launch 7.2 (about 12 h of fits, independent of any metric), then do 7.3
+    while the fits run, then 7.4.
+  - Next: 7.1.
