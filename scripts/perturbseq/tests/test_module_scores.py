@@ -8,15 +8,11 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 from scipy.stats import fisher_exact, hypergeom
+from statsmodels.stats.multitest import multipletests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import module_scores as ms
 import ora_null as on
-
-try:
-    from statsmodels.stats.multitest import multipletests
-except ImportError:  # pragma: no cover
-    multipletests = None
 
 CUTOFFS = np.linspace(0, 3, 100)
 
@@ -73,7 +69,7 @@ def toy(seed=0, n_genes=60, max_size=100):
     member[2, rng.choice(n_genes, 8, replace=False)] = True  # noise
     member[3, [gi[g] for g in terms["R3"]] + list(rng.choice(n_genes, 10, replace=False))] = True
     member[4, rng.choice(n_genes, 5, replace=False)] = True
-    return genes, ora, member
+    return genes, terms, ora, member
 
 
 def args(**kw):
@@ -85,7 +81,7 @@ class RightTailTests(unittest.TestCase):
     def test_matches_scipy(self):
         sizes = np.array([5, 10, 82, 550, 1000])
         for n in (1, 5, 75, 300):
-            ours = ms.right_tail(7483, sizes, n)
+            ours = on.right_tail(7483, sizes, n)
             ref = hypergeom.sf(np.arange(n + 1) - 1, 7483, sizes[:, None], n)
             ok = ref > 1e-280
             np.testing.assert_allclose(ours[ok], ref[ok], rtol=1e-9)
@@ -94,7 +90,6 @@ class RightTailTests(unittest.TestCase):
 
 
 class HolmSidakTests(unittest.TestCase):
-    @unittest.skipIf(multipletests is None, "statsmodels not installed")
     def test_matches_statsmodels(self):
         rng = np.random.default_rng(1)
         p = np.concatenate([rng.uniform(size=(20, 30)) ** 4, np.ones((20, 5)), np.full((20, 1), 1e-300)], axis=1)
@@ -105,10 +100,9 @@ class HolmSidakTests(unittest.TestCase):
 
 
 class AgainstPaperTests(unittest.TestCase):
-    @unittest.skipIf(multipletests is None, "statsmodels not installed")
     def test_scores_match_paper_scorer(self):
         for seed in range(5):
-            genes, ora, member = toy(seed)
+            genes, _, ora, member = toy(seed)
             res = ms.enrichment(member, ora)
             q = ms.holm_sidak(res["p"])
             odds = np.where(q <= 0.05, res["odds"], 0.0)
@@ -123,7 +117,7 @@ class AgainstPaperTests(unittest.TestCase):
             self.assertGreater(ours["faucodds"], 0)
 
     def test_p_values_are_fisher_right_tail(self):
-        genes, ora, member = toy(2)
+        genes, _, ora, member = toy(2)
         res = ms.enrichment(member, ora)
         for i, j in [(0, 0), (1, 1), (2, 3), (3, 3), (4, 5)]:
             tp = res["tp"][i, j]
@@ -168,14 +162,14 @@ class DefinitionTests(unittest.TestCase):
         np.testing.assert_array_equal(neg[1], x < x.mean() - 3 * x.std())
 
     def test_nonnegative_z_has_no_negative_top_modules(self):
-        genes, ora, _ = toy(0)
+        genes, _, ora, _ = toy(0)
         z = np.abs(np.random.default_rng(4).normal(size=(len(genes), 3)))
         res, labels = ms.score_definition(z, ora, "top", args())
         self.assertEqual(labels["tail"].tolist(), ["pos"] * 3)
         self.assertEqual(res["n"].tolist(), [ora.query_target] * 3)
 
     def test_small_modules_are_dropped(self):
-        genes, ora, _ = toy(0)
+        genes, _, ora, _ = toy(0)
         z = np.zeros((len(genes), 2))
         z[:4, 0] = 10  # 4 genes beyond 3 SD: below module_min_size 5
         z[:5, 1] = 10  # 5 genes: kept
@@ -186,9 +180,7 @@ class DefinitionTests(unittest.TestCase):
 
 class RunTests(unittest.TestCase):
     def test_run_writes_outputs_and_observed_is_perm_zero(self):
-        genes, ora, member = toy(0, n_genes=200, max_size=1000)
-        terms = {t: list(np.asarray(genes)[ora.membership[:, j].toarray().ravel() > 0])
-                 for j, t in enumerate(ora.terms)}
+        genes, terms, ora, member = toy(0, n_genes=200, max_size=1000)
         rng = np.random.default_rng(5)
         z = rng.normal(size=(len(genes), 4))
         z[member[0], 0] += 20  # LV1 carries R0

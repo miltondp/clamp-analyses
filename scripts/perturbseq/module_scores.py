@@ -17,7 +17,7 @@ standard (their human data) with `modbindevalscorer` and `cal_faucodds`. This is
 * Holm-Sidak within each module, across all eligible regulons; ORs with q > q are set to 0.
 * aucodds over regulons: each regulon's max OR over modules; aucodds over modules: each module's
   max OR over regulons. aucodds is the fraction of maxima with log10 OR >= c, integrated over
-  c in linspace(0, log10_or_max, 100) and divided by log10_or_max (a max of 0 counts as 1e-10).
+  c in linspace(0, log10_or_max, 100) and divided by log10_or_max (a max of 0 is below every c).
 * F-aucodds: the harmonic mean of the two aucodds. The module half penalizes hub and uninformative
   modules, which the regulon half and the ORA's "% regulons recovered" do not see.
 
@@ -34,11 +34,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy.special import gammaln
+from scipy import sparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_regulons import log, read_gmt  # noqa: E402
-from ora_null import TAILS, Ora, permuted, summarize, tail_values  # noqa: E402
+from ora_null import Ora, permuted, summarize, tail_values  # noqa: E402
 from signed_z import read_z  # noqa: E402
 
 DEFINITIONS = ("top", "zscore")
@@ -47,19 +47,18 @@ SCORES = ("aucodds_regulons", "aucodds_modules", "faucodds")
 
 def zscore_modules(values, sd):
     """LVs x genes boolean: loadings above each column's mean + sd x SD (non-finite never members)."""
-    values = np.asarray(values, float)
-    finite = np.isfinite(values)
-    x = np.where(finite, values, np.nan)
-    cut = np.nanmean(x, axis=0) + sd * np.nanstd(x, axis=0)
-    return (finite & (np.where(finite, values, -np.inf) > cut)).T
+    x = np.asarray(values, float)
+    x = np.where(np.isfinite(x), x, np.nan)
+    with np.errstate(invalid="ignore"):
+        return (x > np.nanmean(x, axis=0) + sd * np.nanstd(x, axis=0)).T
 
 
 def modules(values, ora, definition, zscore_sd):
-    """LVs x genes boolean membership for one tail of a genes x LVs matrix."""
+    """Sparse LVs x genes membership for one tail of a genes x LVs matrix."""
     if definition == "top":
-        return ora.query(values).toarray() > 0
+        return ora.query(values)
     if definition == "zscore":
-        return zscore_modules(values, zscore_sd)
+        return sparse.csr_matrix(zscore_modules(values, zscore_sd), dtype=np.int32)
     raise ValueError(f"Unknown module definition {definition}")
 
 
@@ -77,58 +76,23 @@ def holm_sidak(p):
     return out
 
 
-class RightTail:
-    """Cached P(X >= k) for X ~ Hypergeom(N, M, n), per module size n, over (regulon, k = 0..n).
+def enrichment(member, ora):
+    """2x2 statistics of each module (rows of `member`, annotated genes only) against each regulon.
 
-    Module sizes take few distinct values and barely move under permutation, so each table is built
-    once and reused by every permutation.
+    Unannotated genes are in no regulon, so they only need leaving out of the module size n.
     """
-
-    def __init__(self, ora):
-        self.ora = ora
-        self.tables = {}
-
-    def __call__(self, n):
-        """regulons x (k = 0..n) table."""
-        if n not in self.tables:
-            self.tables[n] = right_tail(self.ora.N, self.ora.sizes, n)
-        return self.tables[n][self.ora.size_idx]
-
-
-def log_choose(a, b):
-    with np.errstate(invalid="ignore"):
-        out = gammaln(a + 1) - gammaln(b + 1) - gammaln(a - b + 1)
-    return np.where((b >= 0) & (b <= a), out, -np.inf)
-
-
-def right_tail(N, sizes, n):
-    """P(X >= k), k = 0..n, for X ~ Hypergeom(N, M, n), one row per M in `sizes`.
-
-    The pmf comes from log binomials and the tail is summed from the top, so small tails keep their
-    relative precision (scipy's hypergeom.sf is far slower for whole tables).
-    """
-    k = np.arange(n + 1)[None, :]
-    m = np.asarray(sizes, float)[:, None]
-    pmf = np.exp(log_choose(m, k) + log_choose(N - m, n - k) - log_choose(float(N), float(n)))
-    return np.minimum(np.cumsum(pmf[:, ::-1], axis=1)[:, ::-1], 1.0)
-
-
-def enrichment(member, ora, right_tail=None):
-    """2x2 statistics of each module (rows of `member`, annotated genes only) against each regulon."""
-    right_tail = right_tail or RightTail(ora)
-    member = member & ora.annotated[None, :]
-    tp = np.asarray(ora.membership.T @ member.T.astype(np.int32)).T
-    n = member.sum(axis=1)[:, None]
+    member = sparse.csr_matrix(member, dtype=np.int32)
+    tp = (member @ ora.membership).toarray()
+    n = np.asarray(member @ ora.annotated.astype(np.int32)).ravel()[:, None]
     m = ora.M[None, :]
     fp, fn = m - tp, n - tp
     tn = ora.N - m - n + tp
     with np.errstate(divide="ignore", invalid="ignore"):
         odds = np.where(fp * fn > 0, tp * tn / (fp * fn).astype(float), np.where(tp > 0, np.inf, 0.0))
     p = np.empty(tp.shape)
-    terms = np.arange(tp.shape[1])
     for size in np.unique(n):
         rows = np.flatnonzero(n.ravel() == size)
-        p[rows] = right_tail(int(size))[terms[None, :], tp[rows]]
+        p[rows] = ora.sf(int(size))[ora.size_idx[None, :], tp[rows]]
     return {"tp": tp, "n": n.ravel(), "odds": odds, "p": p}
 
 
@@ -139,7 +103,7 @@ def aucodds(max_odds, log10_or_max):
         return 0.0
     cutoffs = np.linspace(0, log10_or_max, 100)
     with np.errstate(divide="ignore"):
-        log_odds = np.log10(np.where(max_odds == 0, 1e-10, max_odds))
+        log_odds = np.log10(max_odds)  # OR 0 -> -inf, below every cutoff
     still = (log_odds[None, :] >= cutoffs[:, None]).mean(axis=1)
     return float(np.trapezoid(still, cutoffs) / log10_or_max)
 
@@ -148,20 +112,15 @@ def harmonic(a, b):
     return 0.0 if a == 0 or b == 0 else 2 / (1 / a + 1 / b)
 
 
-def score_definition(values, ora, definition, args, right_tail=None):
+def score_definition(values, ora, definition, args):
     """Filtered odds (modules x regulons) and module labels for one module definition."""
     blocks, labels = [], []
     for tail, v in tail_values(values).items():
         member = modules(v, ora, definition, args.zscore_sd)
-        size = (member & ora.annotated[None, :]).sum(axis=1)
+        size = np.asarray(member @ ora.annotated.astype(np.int32)).ravel()
         keep = np.flatnonzero(size >= args.module_min_size)
-        if len(keep):
-            blocks.append(enrichment(member[keep], ora, right_tail))
-            labels.append(pd.DataFrame({"lv_index": keep, "tail": tail}))
-    if not blocks:
-        empty = np.zeros((0, len(ora.terms)))
-        return {"odds": empty, "q": empty, "tp": empty, "n": np.zeros(0)}, pd.DataFrame(
-            {"lv_index": [], "tail": []})
+        blocks.append(enrichment(member[keep], ora))
+        labels.append(pd.DataFrame({"lv_index": keep, "tail": tail}))
     res = {key: np.concatenate([b[key] for b in blocks]) for key in ("tp", "n", "odds", "p")}
     res["q"] = holm_sidak(res["p"])
     res["odds"] = np.where(res["q"] <= args.q, res["odds"], 0.0)
@@ -169,40 +128,44 @@ def score_definition(values, ora, definition, args, right_tail=None):
 
 
 def scores(odds, log10_or_max):
-    if odds.shape[0] == 0:
-        return dict.fromkeys(SCORES, 0.0)
-    regulons = aucodds(odds.max(axis=0), log10_or_max)
-    mods = aucodds(odds.max(axis=1), log10_or_max)
+    regulons = aucodds(odds.max(axis=0, initial=0.0), log10_or_max)
+    mods = aucodds(odds.max(axis=1, initial=0.0), log10_or_max)
     return {"aucodds_regulons": regulons, "aucodds_modules": mods, "faucodds": harmonic(regulons, mods)}
 
 
-def statistics(values, ora, args, right_tail=None):
+def statistics(values, ora, args):
     row, details = {}, {}
     for definition in DEFINITIONS:
-        res, labels = score_definition(values, ora, definition, args, right_tail)
+        res, labels = score_definition(values, ora, definition, args)
         for key, value in scores(res["odds"], args.log10_or_max).items():
             row[f"{definition}_{key}"] = value
         details[definition] = (res, labels)
     return row, details
 
 
+def best_match(res, axis):
+    """Index of the best match along `axis` of the filtered odds, whether it is significant (odds > 0)
+    and a getter for any modules x regulons array at those cells."""
+    odds = res["odds"]
+    idx = np.expand_dims(odds.argmax(axis=axis), axis)
+    at = lambda a: np.take_along_axis(a, idx, axis=axis).squeeze(axis)  # noqa: E731
+    return idx.squeeze(axis), at(odds) > 0, at
+
+
 def module_hits(z, ora, details):
     frames = []
     for definition, (res, labels) in details.items():
-        odds = res["odds"]
-        best = odds.argmax(axis=1) if odds.shape[1] else np.zeros(0, int)
-        rows = np.arange(len(best))
-        found = odds[rows, best] > 0 if len(best) else np.zeros(0, bool)
+        best, found, at = best_match(res, axis=1)
         frames.append(pd.DataFrame({
             "definition": definition,
             "LV": z.columns[labels["lv_index"].to_numpy(int)],
             "tail": labels["tail"].to_numpy(),
             "size": res["n"].astype(int),
-            "n_regulons": (odds > 0).sum(axis=1),
+            "n_regulons": (res["odds"] > 0).sum(axis=1),
             "best_regulon": np.where(found, ora.terms[best], ""),
-            "best_odds": np.where(found, odds[rows, best], np.nan),
-            "best_q": np.where(found, res["q"][rows, best], np.nan),
-            "best_tp": np.where(found, res["tp"][rows, best], 0).astype(int),
+            "best_odds": np.where(found, at(res["odds"]), np.nan),
+            "best_q": np.where(found, at(res["q"]), np.nan),
+            "best_tp": np.where(found, at(res["tp"]), 0).astype(int),
         }))
     return pd.concat(frames, ignore_index=True)
 
@@ -210,21 +173,18 @@ def module_hits(z, ora, details):
 def regulon_hits(z, ora, details):
     frames = []
     for definition, (res, labels) in details.items():
-        odds = res["odds"]
-        if odds.shape[0] == 0:
+        if len(labels) == 0:  # argmax over no modules
             continue
-        best = odds.argmax(axis=0)
-        cols = np.arange(len(ora.terms))
-        found = odds[best, cols] > 0
+        best, found, at = best_match(res, axis=0)
         frames.append(pd.DataFrame({
             "definition": definition,
             "regulon": ora.terms,
             "size": ora.M,
-            "n_modules": (odds > 0).sum(axis=0),
+            "n_modules": (res["odds"] > 0).sum(axis=0),
             "best_LV": np.where(found, z.columns[labels["lv_index"].to_numpy(int)][best], ""),
             "best_tail": np.where(found, labels["tail"].to_numpy()[best], ""),
-            "best_odds": np.where(found, odds[best, cols], np.nan),
-            "best_tp": np.where(found, res["tp"][best, cols], 0).astype(int),
+            "best_odds": np.where(found, at(res["odds"]), np.nan),
+            "best_tp": np.where(found, at(res["tp"]), 0).astype(int),
         }))
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
@@ -244,14 +204,13 @@ def summary_table(null, details, meta):
 
 def run(args):
     z = read_z(args.z)
-    # Query size and regulon set as in the ORA; Ora's fdr is unused here.
-    ora = Ora(z.index, read_gmt(args.gmt), args.top_pct, args.min_size, args.max_size, fdr=args.q)
+    # Query size and regulon set as in the ORA (Ora's fdr only applies to Ora.test).
+    ora = Ora(z.index, read_gmt(args.gmt), args.top_pct, args.min_size, args.max_size, fdr=None)
     log(f"{z.shape[1]} LVs, {len(ora.genes)} genes ({ora.N} annotated), {len(ora.terms)} regulons, "
         f"top query {ora.query_target}")
 
     values = z.to_numpy(float)
-    right_tail = RightTail(ora)
-    observed, details = statistics(values, ora, args, right_tail)
+    observed, details = statistics(values, ora, args)
     for definition, (res, labels) in details.items():
         sizes = res["n"]
         log(f"{definition}: {len(labels)} modules"
@@ -259,7 +218,7 @@ def run(args):
                if len(sizes) else ""))
     rows = [{"perm": 0, **observed}]
     for perm, shuffled in permuted(values, args.n_perm, args.seed):
-        rows.append({"perm": perm, **statistics(shuffled, ora, args, right_tail)[0]})
+        rows.append({"perm": perm, **statistics(shuffled, ora, args)[0]})
     null = pd.DataFrame(rows)
 
     out = Path(args.out_dir)

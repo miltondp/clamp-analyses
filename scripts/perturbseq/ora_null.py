@@ -30,7 +30,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from scipy.stats import hypergeom
+from scipy.special import gammaln
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_regulons import bh_columns, log, read_gmt  # noqa: E402
@@ -38,6 +38,24 @@ from signed_z import read_z  # noqa: E402
 
 TAILS = ("pos", "neg")
 STATISTICS = ("lv_pct_pos", "lv_pct_neg", "lv_pct_any", "regulon_pct_pos", "regulon_pct_any")
+
+
+def log_choose(a, b):
+    with np.errstate(invalid="ignore"):
+        out = gammaln(a + 1) - gammaln(b + 1) - gammaln(a - b + 1)
+    return np.where((b >= 0) & (b <= a), out, -np.inf)
+
+
+def right_tail(N, sizes, n):
+    """P(X >= k), k = 0..n, for X ~ Hypergeom(N, M, n), one row per M in `sizes`.
+
+    The pmf comes from log binomials and the tail is summed from the top, so small tails keep their
+    relative precision (scipy's hypergeom.sf is far slower for whole tables).
+    """
+    k = np.arange(n + 1)[None, :]
+    m = np.asarray(sizes, float)[:, None]
+    pmf = np.exp(log_choose(m, k) + log_choose(N - m, n - k) - log_choose(float(N), float(n)))
+    return np.minimum(np.cumsum(pmf[:, ::-1], axis=1)[:, ::-1], 1.0)
 
 
 class Ora:
@@ -71,13 +89,12 @@ class Ora:
         self._sf = {}
 
     def sf(self, n):
-        """P(X >= k) per (distinct regulon size, k = 0..query_target) for n annotated query genes.
+        """P(X >= k) per (distinct regulon size, k = 0..n) for n annotated query genes.
 
-        Cached per n: n stays within a few genes of query_target, so only a few tables are built.
+        Cached per n: query sizes take few distinct values, so only a few tables are built.
         """
         if n not in self._sf:
-            k = np.arange(self.query_target + 1)
-            self._sf[n] = hypergeom.sf(k - 1, self.N, self.sizes[:, None], n)
+            self._sf[n] = right_tail(self.N, self.sizes, n)
         return self._sf[n]
 
     def query(self, values):
