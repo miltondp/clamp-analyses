@@ -212,7 +212,7 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
 - **Step 7: robustness (decided 2026-11-27).** This comes before the report, so the report is
   written once with error bars. The refits don't depend on any metric definition and scoring is
   cheap, so the fits can start before 7.3 is settled.
-  - [ ] **7.1 Fit variants in Snakemake.**
+  - [x] **7.1 Fit variants in Snakemake.**
     - Add a seed and k variant of the OneK1K fits, with outputs next to the main fits, so the
       existing Perturb-seq rules score the variants unchanged, e.g. a fit wildcard on `{model}` or
       a parallel `models/` root.
@@ -279,9 +279,13 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
         default is `nndsvd`, so production is unchanged. The production fit is not one of the
         random-start fits, so the report shows it next to their spread. A single random-start run
         is not cNMF, which builds a consensus over many replicates.
-      - Still to check: ICA (`FastICA(random_state=seed)`, a random start), CoGAPS (a sampler with
-        `--seed`), MOFA-FLEX (`TrainingOptions(seed=...)`), flashier (`set.seed`; does the
-        result depend on it?) and GSS (`set.seed`; does it?). PCA needs no refits.
+      - ICA (`FastICA(random_state=seed)`, a random start), CoGAPS (a sampler with `seed=`) and
+        MOFA-FLEX (`TrainingOptions(seed=...)`) all take the seed: refit them (checked
+        2026-11-27). **GSS is deterministic:** `gss.R` is `prcomp` + `hclust`, and its
+        `set.seed` is never used, so no refits. flashier: `set.seed` before `flash_greedy`; see the
+        quick check in the Log (deterministic). PCA needs no refits.
+      - **k = 200 is fine:** `clamp.R` and `plier.R` use `svd_k = max(floor(...), k, 2)`, and no
+        other fit script reads svd_k.
     - `signed_z.py` also needs each variant's `B.csv` (it reads the sample count from it).
     - Quick seed-dependence check for flashier and GSS: refit once with another seed and compare Z
       with the seed-123 fit (column-matched |r|). Skip their refits if Z is identical or nearly so.
@@ -679,3 +683,41 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
   - Production fits stay unchanged. Each method's source of randomness was checked in the code
     (see 7.1); ICA, CoGAPS, MOFA-FLEX, flashier and GSS still need checking.
   - Next: 7.1.
+- 2026-11-27: **Step 7.1 done.**
+  - Config `perturbseq.variants` (`perturbseq.yaml`): seeds 124–128 for CLAMPfull, CLAMPbase, PLIER,
+    ICA, NMF, CoGAPS and MOFA-FLEX; k = 50 and 200 for CLAMPfull, PLIER, ICA and NMF. k variants use
+    the production seed (123) and settings (NMF `nndsvd`), so each k curve passes through the
+    production fit. Fits go to `output/01_model_building/00_pseudobulk/variants/PBMC_1k1k/{seed<s>,k<k>}/models/<M>/`.
+  - Rules (`perturbseq.smk`):
+    - `perturbseq_variant_{clamp,plier,flashier,mofa_flex,cogaps}` reuse the production rules via
+      `use rule … with:`. `with:` replaces a whole directive, so `ps_override()` rebuilds `input`
+      and `params` from the production rule and changes only the out dirs, `seed` and `k`.
+    - `perturbseq_variant_ica_nmf` (`pca_nmf_ica.py --method --flat-output`; new `--nmf-init`,
+      default `nndsvd`), `perturbseq_variant_k` (k file) and the aggregate
+      `perturbseq_variant_fits`.
+    - Scoring: strategy `variants`, model `<M>__<variant>` (e.g. `ICA__k50`). `ps_model_dir()`
+      maps it to the variant root, and `ps_regulon_file()` sends the GMT, logFC and sizes to `main`.
+      `variants` is not in `PS_STRATEGIES`, so the main summaries leave it out; the variant
+      summaries are 7.4.
+    - `perturbseq_celltype_score` / `perturbseq_celltype_summary`
+      (`scripts/perturbseq/celltype_score.R`, `score_per_ct()`), for main and variants.
+  - Regulon universe: `build_regulons.py --universe <preprocessing/row_stats.csv>` replaces `--z`.
+    Main has 13,488 genes and donor bulk 13,733; each equals every Z of its strategy (checked).
+    `signed_z.py --genes` fails unless a Z has exactly those genes.
+  - `plier.R`: `stopifnot(nrow(svdres$v) == n_samples)`. PLIER drops a supplied SVD only on that
+    mismatch (checked in its source), and the seed would then have no effect.
+  - Checks:
+    - 45 Perturb-seq and 41 repo tests pass.
+    - A dry-run of the ORA, response and module summaries reports nothing to rerun: the new
+      row_stats input is older than the regulons.
+    - `perturbseq_variant_fits` dry-run: 38 fits + 2 k files (41 jobs with the aggregate). Every
+      output is under `variants/`, and the commands carry the right `--seed`, k file and
+      `--nmf-init`.
+    - `ICA__k50` dry-runs through signed_z, ORA, ORA null, response, module scores and cell-type
+      score against the `main` regulons.
+    - `perturbseq_celltype_summary` on the production fits reproduces the Step 2 mean r for all 10
+      methods (CLAMPfull 0.7533 … MOFA-FLEX 0.2099).
+    - **flashier is deterministic:** the seed124 refit (about 23 min) gives a Z identical to
+      production (all 130 columns, |r| = 1). It is not refitted; GSS isn't either, by the code.
+  - Next: 7.2 (dry-run `perturbseq_variant_fits`, then launch; about 5 × (1 h 10 min CoGAPS + 1 h
+    MOFA-FLEX + 44 min PLIER + 8 min CLAMP) plus the k fits).
