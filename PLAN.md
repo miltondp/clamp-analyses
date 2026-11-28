@@ -237,25 +237,62 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
       - Seed config keys: `clamp.seed` (CLAMP), `mofa_flex.seed`, `cogaps.seed`, and
         `preprocess.seed`, which is shared by PLIER, PCA/NMF/ICA, flashier and GSS. All are 123
         and reach the scripts as `--seed`.
-    - **Pitfall: the regulon universe.** `perturbseq_regulons` builds the universe from every Z of a
-      strategy (`ps_z_files()` → `build_regulons.read_universe()`, which requires identical gene
-      sets). Don't add the variants to the `main` model list: their newer Z files would make
-      Snakemake (mtime triggers) rebuild the regulons and everything downstream. Instead, score
-      the variants against the existing `main` regulons. One option is a separate `{strategy}`
-      such as `variants` that reuses the `main` GMT and logFC; another is extending
-      `ps_model_dir()` / `PS_WC` to accept variant model names (e.g. `CLAMPfull__seed124`) under
-      a parallel root. Check that the variants have the same genes as `main` (preprocessing is
-      the same, so they should).
+    - **Regulon universe from the preprocessing gene list (decided 2026-11-27).** The regulons
+      themselves are Perturb-seq only: BH over all 8,248 screen genes, then q < 0.05. Z only
+      supplies the gene universe (the enrichment background and the 10–1000 size filter), and all
+      methods share that list because they share one preprocessing step. Right now
+      `perturbseq_regulons` reads every Z of a strategy just to get it (`ps_z_files()` →
+      `build_regulons.read_universe()`).
+      - Change the rule's input to one preprocessing gene list: for main,
+        `{PROD}/PBMC_1k1k/preprocessing/row_stats.csv` (13,488 genes, the same as every main Z);
+        for donor bulk, its own preprocessing file (find it in `donor_bulk.smk`).
+      - Move the "Z has exactly these genes" check to `signed_z.py`, so every Z, main or variant,
+        is checked against the universe source.
+      - That file is older than the regulons, so the mtime triggers should rebuild nothing. Confirm
+        with a dry-run that no regulon, ORA, response or module job is scheduled. Then the variants
+        can't affect the regulons.
+      - Score the variants under their own names, e.g. a separate `{strategy}` such as `variants`
+        that reuses the `main` GMT and logFC, or variant model names (`CLAMPfull__seed124`) under a
+        parallel root. Keep them out of the `main` summaries.
+    - **Randomness per method (checked 2026-11-27; production fits stay unchanged):**
+      - CLAMP (`clamp.R`): `set.seed(seed)`, then `rsvd::rsvd(norm, k = svd_k)`, passed as
+        `svdres` to `CLAMPbase` and `CLAMPfull`. **`CLAMPfull` runs with `doCrossval = TRUE`**
+        (its default; `clamp.R` doesn't set it). For each GO BP pathway it hides a random 20% of
+        the annotated genes from the prior (`sample(iipos, length(iipos)/5)`) and keeps them for
+        held-out validation (the pathway AUC/FDR in `summary.csv`). That samples the prior, not the
+        data: Y is the same for every method. The sampling uses the global RNG seeded by
+        `clamp.R`'s `set.seed(seed)`; CLAMPfull's own `seed = 123456` argument isn't used there.
+        So CLAMPfull's seed spread has two sources (the rsvd start and the held-out annotations),
+        while PLIER's has one. Say so in the report. **Seed variants = production settings with
+        another `--seed`.**
+      - PLIER (`plier.R`): the same pattern (`set.seed` → `rsvd` → `svdres`). PLIER only uses
+        that SVD when `nrow(svdres$v) == ncol(Y)` (true here); otherwise it falls back to its own
+        rsvd with a fixed `set.seed(123456)`, which would make the seed a no-op. Assert this in
+        7.1. PLIER's own random start (`rseed`, which shuffles the initial B and Z) **stays off**
+        (decided), and its `seed` argument only feeds cross-validation (off). **Seed variants =
+        production settings with another `--seed`, as for CLAMP.**
+      - NMF (`pca_nmf_ica.py`): production `init="nndsvd"` is deterministic and stays. **Variants
+        use `init="random"` with `random_state = seed`**; everything else as in production
+        (`max_iter=1000`). That follows cNMF (Kotliar 2019,
+        `~/projects/pivlab/ai-comp-exp/bib/Kotliar2019/`: scikit-learn NMF with defaults except
+        random initialization, replicates with different seeds). Add an `--nmf-init` option whose
+        default is `nndsvd`, so production is unchanged. The production fit is not one of the
+        random-start fits, so the report shows it next to their spread. A single random-start run
+        is not cNMF, which builds a consensus over many replicates.
+      - Still to check: ICA (`FastICA(random_state=seed)`, a random start), CoGAPS (a sampler with
+        `--seed`), MOFA-FLEX (`TrainingOptions(seed=...)`), flashier (`set.seed`; does the
+        result depend on it?) and GSS (`set.seed`; does it?). PCA needs no refits.
     - `signed_z.py` also needs each variant's `B.csv` (it reads the sample count from it).
-    - Quick seed-dependence check for PLIER and flashier: refit once with another seed and compare
-      Z with the seed-123 fit (column-matched |r|). Skip their refits if Z is identical or nearly
-      so.
+    - Quick seed-dependence check for flashier and GSS: refit once with another seed and compare Z
+      with the seed-123 fit (column-matched |r|). Skip their refits if Z is identical or nearly so.
     - The OneK1K cell-type mean r for 7.4 was a scratch script in Step 2 (`score_per_ct()`,
       `scripts/pseudobulk/common.R`). Turn it into a small rule so the variants get it too.
   - [ ] **7.2 Launch the refits** (dry-run first; run on a lab server if local is too slow).
-    - Seeds: 5 per stochastic method, namely CLAMPfull, CLAMPbase, ICA, CoGAPS and MOFA-FLEX.
-      Add PLIER and flashier only if a quick check shows they depend on the seed. PCA is exact
-      and NMF uses `nndsvd`, a deterministic start, so neither needs seed refits.
+    - Seeds: 5 per method at production settings for CLAMPfull and CLAMPbase (one job fits both),
+      PLIER, ICA, CoGAPS and MOFA-FLEX. Add flashier and GSS only if the quick check shows they
+      depend on the seed.
+    - NMF: 5 random-start fits (`init="random"`). Production NMF (`nndsvd`) is not refitted.
+    - PCA: no refits.
     - k sensitivity: k = 50 and 200 for CLAMPfull, PLIER, ICA and NMF.
     - Cost estimate, from Step 2's timings: CoGAPS about 1 h 10 min and MOFA-FLEX about 1 h per
       fit; CLAMP about 8 min; ICA is quick.
@@ -314,6 +351,12 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
   - Optional: donor-resampling variability for CLAMPfull from the grouped-CV folds
     (`scripts/pseudobulk/clampfull_grouped_cv.R` saves `train_Z.csv` per fold, each with its own
     seed). First check whether that rule can run for OneK1K alone, without all 6 datasets.
+  - **Prior configuration differs between CLAMPfull and PLIER** (found 2026-11-27).
+    `clamp.R` leaves CLAMPfull's `doCrossval = TRUE`, so it trains on 80% of each pathway's
+    genes, while `plier.R` sets `doCrossval = FALSE`, so PLIER uses 100%. Not known whether this
+    is deliberate. It doesn't affect the Perturb-seq non-circularity (the regulons aren't from GO),
+    but it affects head-to-head comparisons, Fig. 2A included. This is a production question for
+    the main branch, not this one.
   - Whether the result goes into the manuscript.
 
 ## Log
@@ -627,4 +670,12 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
     - The fp/fn naming stays as in the paper.
   - Order: 7.1, then launch 7.2 (about 12 h of fits, independent of any metric), then do 7.3
     while the fits run, then 7.4.
+  - Next: 7.1.
+- 2026-11-27: **7.1 and 7.2 refined (agreed with the user).**
+  - The regulon universe comes from the preprocessing gene list, not from every Z.
+  - PLIER gets production-setting seed refits: the seed reaches the rsvd start, as in CLAMP, and
+    PLIER's `rseed` random start stays off.
+  - NMF variants use `init="random"`, as in cNMF; production NMF stays on `nndsvd`.
+  - Production fits stay unchanged. Each method's source of randomness was checked in the code
+    (see 7.1); ICA, CoGAPS, MOFA-FLEX, flashier and GSS still need checking.
   - Next: 7.1.
