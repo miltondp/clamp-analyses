@@ -11,9 +11,8 @@ perturbseq:
       models: [CLAMPfull, CLAMPbase, PLIER, PCA, NMF, ICA, flashier, MOFA_FLEX_PRIOR, GSS, CoGAPS]
     donor_bulk:
       models: [CLAMPfull]
-  # Step 7 robustness: refits of the OneK1K models, written to {root}/{dataset}/{variant}/models/<M>/
-  # and scored as strategy `variants` with model names <M>__<variant> (e.g. CLAMPfull__seed124),
-  # against the `main` regulons. The production fits (seed 123, k from preprocessing) are untouched.
+  # Step 7 robustness: refits of the OneK1K models, written to {root}/{dataset}/models/<M>__<variant>/
+  # (e.g. CLAMPfull__seed124) and scored as strategy `variants` against the `main` regulons. The production fits (seed 123, k from preprocessing) are untouched.
   # seed<s>: production settings with --seed s (NMF uses a seeded random start instead of nndsvd).
   # k<k>: production settings and seed with k LVs (NMF stays on nndsvd).
   # GSS (prcomp + hclust) and flashier are deterministic (a seed124 flashier refit gave an identical

@@ -687,7 +687,7 @@ Folder: `/home/miltondp/projects/pivlab/other/lv-qtl-exploration/data/ota2025`.
   - Config `perturbseq.variants` (`perturbseq.yaml`): seeds 124–128 for CLAMPfull, CLAMPbase, PLIER,
     ICA, NMF, CoGAPS and MOFA-FLEX; k = 50 and 200 for CLAMPfull, PLIER, ICA and NMF. k variants use
     the production seed (123) and settings (NMF `nndsvd`), so each k curve passes through the
-    production fit. Fits go to `output/01_model_building/00_pseudobulk/variants/PBMC_1k1k/{seed<s>,k<k>}/models/<M>/`.
+    production fit. Fits go to `output/01_model_building/00_pseudobulk/variants/PBMC_1k1k/models/<M>__{seed<s>,k<k>}/` (k files in `variants/PBMC_1k1k/k<k>/`).
   - Rules (`perturbseq.smk`):
     - `perturbseq_variant_{clamp,plier,flashier,mofa_flex,cogaps}` reuse the production rules via
       `use rule … with:`. `with:` replaces a whole directive, so `ps_override()` rebuilds `input`

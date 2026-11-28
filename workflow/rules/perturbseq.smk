@@ -26,38 +26,33 @@ rule ota2025_k562gw:
 
 
 PS_STRATEGIES = PS_CFG["strategies"]
-# Each strategy reads the fits written by its fitting area (pseudobulk.smk, donor_bulk.smk).
-PS_Z_ROOTS = {
-    "main": config["paths"]["production"],
-    "donor_bulk": config["donor_bulk"]["paths"]["production"],
-}
 PS_REGULONS = os.path.join(PS_CFG["output_root"], "regulons", "{strategy}")
 
-# Step 7: seed and k refits of the main fits, scored as strategy `variants` (model <M>__<variant>)
-# against the main regulons. They are not in PS_STRATEGIES, so the main summaries leave them out.
+# Step 7: seed and k refits of the main fits (model <M>__<variant>), scored against the main regulons.
 PS_VAR = PS_CFG["variants"]
-PS_VAR_ROOT = PS_VAR["root"]
 PS_VARIANT_MODELS = (
     [f"{m}__seed{s}" for s in PS_VAR["seeds"] for m in PS_VAR["seed_models"]]
     + [f"{m}__k{k}" for k in PS_VAR["ks"] for m in PS_VAR["k_models"]]
 )
-
-
-def ps_regulon_strategy(strategy):
-    """The strategy whose regulons (and gene universe) a strategy is scored against."""
-    return "main" if strategy == "variants" else strategy
+# Every scored strategy: where its fits live ({root}/{dataset}/models/<model>/), its models, and the
+# strategy whose regulons (and gene universe) it is scored against. Only PS_STRATEGIES feed the
+# summaries, so the variants stay out of them.
+PS_SCORED = {
+    "main": dict(root=config["paths"]["production"], regulons="main",
+                 models=PS_STRATEGIES["main"]["models"]),
+    "donor_bulk": dict(root=config["donor_bulk"]["paths"]["production"], regulons="donor_bulk",
+                       models=PS_STRATEGIES["donor_bulk"]["models"]),
+    "variants": dict(root=PS_VAR["root"], regulons="main", models=PS_VARIANT_MODELS),
+}
 
 
 def ps_model_dir(strategy, model):
-    if strategy == "variants":
-        base, variant = model.split("__")
-        return os.path.join(PS_VAR_ROOT, PS_CFG["dataset"], variant, "models", base)
-    return os.path.join(PS_Z_ROOTS[strategy], PS_CFG["dataset"], "models", model)
+    return os.path.join(PS_SCORED[strategy]["root"], PS_CFG["dataset"], "models", model)
 
 
-def ps_genes_file(strategy):
-    """The strategy's preprocessing gene list: the regulon universe source, which every Z must match."""
-    return os.path.join(PS_Z_ROOTS[ps_regulon_strategy(strategy)], PS_CFG["dataset"],
+def ps_genes_file(wildcards):
+    """The preprocessing gene list behind a strategy's regulons: their universe, which every Z must match."""
+    return os.path.join(PS_SCORED[PS_SCORED[wildcards.strategy]["regulons"]]["root"], PS_CFG["dataset"],
                         "preprocessing", "row_stats.csv")
 
 
@@ -65,7 +60,7 @@ def ps_regulon_file(name):
     """Input function: a perturbseq_regulons output (`gmt`, `logfc`, `sizes`) for the scored strategy."""
     def _file(wildcards):
         return getattr(rules.perturbseq_regulons.output, name).format(
-            strategy=ps_regulon_strategy(wildcards.strategy))
+            strategy=PS_SCORED[wildcards.strategy]["regulons"])
     return _file
 
 
@@ -75,7 +70,7 @@ rule perturbseq_regulons:
         p=rules.ota2025_k562gw.output.p,
         ids=rules.ota2025_k562gw.output.ids,
         # Regulons depend on the screen and the preprocessing gene list only, never on a fit.
-        universe=lambda wc: ps_genes_file(wc.strategy),
+        universe=ps_genes_file,
     output:
         gmt=os.path.join(PS_REGULONS, "regulons.gmt"),
         clusters=os.path.join(PS_REGULONS, "clusters.csv"),
@@ -108,9 +103,8 @@ PS_SIGNED = os.path.join(PS_CFG["output_root"], "signed_z", "{strategy}", "{mode
 PS_TAILS = ["pos", "neg"]
 # projections.smk constrains {model} globally; these rules override it with the Perturb-seq models.
 PS_WC = dict(
-    strategy="|".join([*PS_STRATEGIES, "variants"]),
-    model="|".join(sorted({m for cfg in PS_STRATEGIES.values() for m in cfg["models"]}
-                          | set(PS_VARIANT_MODELS))),
+    strategy="|".join(PS_SCORED),
+    model="|".join(sorted({m for cfg in PS_SCORED.values() for m in cfg["models"]})),
 )
 
 
@@ -118,7 +112,7 @@ rule perturbseq_signed_z:
     input:
         z=lambda wc: os.path.join(ps_model_dir(wc.strategy, wc.model), "Z.csv"),
         b=lambda wc: os.path.join(ps_model_dir(wc.strategy, wc.model), "B.csv"),
-        genes=lambda wc: ps_genes_file(wc.strategy),
+        genes=ps_genes_file,
         universe=ps_regulon_file("logfc"),
     output:
         pos=os.path.join(PS_SIGNED, "pos.csv"),
@@ -310,17 +304,27 @@ rule perturbseq_module_scores_summary:
         PS_CONCAT_CSV
 
 
-# Step 7.1: seed and k refits of the main OneK1K fits (PLAN.md). Each reuses its production rule
-# (shell, conda, resources and the other params inherited) and overrides only the outputs, the
-# output directories, --seed and the k file. `use rule ... with:` replaces a whole directive, so
-# ps_override() rebuilds it from the production rule.
-PS_VAR_MODELS = os.path.join(PS_VAR_ROOT, "{dataset}", "{variant}", "models")
+# Step 7.1: seed and k refits of the main OneK1K fits (PLAN.md), in models/<M>__<variant>/ under the
+# variants root. Each reuses its production rule (shell, conda, resources and the other params
+# inherited) and overrides only the outputs, the output directories, --seed and the k file.
+# `use rule ... with:` replaces a whole directive, so ps_override() rebuilds it from the production rule.
 PS_VAR_WC = dict(dataset=PS_CFG["dataset"], variant=r"seed\d+|k\d+")
 
 
 def ps_override(named, **changes):
     out = dict(named.items())
     out.update(changes)
+    return out
+
+
+def ps_variant_outputs(rule):
+    """`rule`'s outputs, moved from {PROD}/{dataset}/models/<M>/ to the variant's models/<M>__{variant}/."""
+    prefix = f"{PROD}/{{dataset}}/models/"
+    out = {}
+    for name, path in rule.output.items():
+        assert str(path).startswith(prefix), path
+        model, rest = str(path)[len(prefix):].split("/", 1)
+        out[name] = os.path.join(PS_VAR["root"], "{dataset}", "models", f"{model}__{{variant}}", rest)
     return out
 
 
@@ -335,17 +339,16 @@ def ps_variant_seed(production_seed):
 def ps_variant_k(wildcards):
     """The k file: the variant's own for k<k>, the production one for seed<s>."""
     if wildcards.variant.startswith("k"):
-        return os.path.join(PS_VAR_ROOT, wildcards.dataset, wildcards.variant, "k.csv")
-    return expand(rules.preprocess_pseudobulk.output.k, dataset=wildcards.dataset)[0]
+        return os.path.join(PS_VAR["root"], wildcards.dataset, wildcards.variant, "k.csv")
+    return rules.preprocess_pseudobulk.output.k.format(dataset=wildcards.dataset)
 
 
-def ps_variant_dir(model):
-    return lambda wc: os.path.join(PS_VAR_ROOT, wc.dataset, wc.variant, "models", model)
+localrules: perturbseq_variant_k
 
 
 rule perturbseq_variant_k:
     output:
-        os.path.join(PS_VAR_ROOT, "{dataset}", "k{k}", "k.csv"),
+        os.path.join(PS_VAR["root"], "{dataset}", "k{k}", "k.csv"),
     wildcard_constraints:
         dataset=PS_CFG["dataset"],
         k=r"\d+",
@@ -357,17 +360,12 @@ use rule clamp_pseudobulk as perturbseq_variant_clamp with:
     input:
         **ps_override(rules.clamp_pseudobulk.input, k=ps_variant_k),
     output:
-        base_B=os.path.join(PS_VAR_MODELS, "CLAMPbase", "B.csv"),
-        base_Z=os.path.join(PS_VAR_MODELS, "CLAMPbase", "Z.csv"),
-        base_rds=os.path.join(PS_VAR_MODELS, "CLAMPbase", "CLAMPbase.rds"),
-        full_B=os.path.join(PS_VAR_MODELS, "CLAMPfull", "B.csv"),
-        full_Z=os.path.join(PS_VAR_MODELS, "CLAMPfull", "Z.csv"),
-        full_rds=os.path.join(PS_VAR_MODELS, "CLAMPfull", "CLAMPfull.rds"),
-        l2=os.path.join(PS_VAR_MODELS, "CLAMPfull", "L2.csv"),
-        summary=os.path.join(PS_VAR_MODELS, "CLAMPfull", "summary.csv"),
+        **ps_variant_outputs(rules.clamp_pseudobulk),
     params:
-        **ps_override(rules.clamp_pseudobulk.params, base_dir=ps_variant_dir("CLAMPbase"),
-                      full_dir=ps_variant_dir("CLAMPfull"), seed=ps_variant_seed(config["clamp"]["seed"])),
+        **ps_override(rules.clamp_pseudobulk.params,
+                      base_dir=lambda wc, output: os.path.dirname(output.base_Z),
+                      full_dir=lambda wc, output: os.path.dirname(output.full_Z),
+                      seed=ps_variant_seed(rules.clamp_pseudobulk.params.seed)),
     wildcard_constraints:
         **PS_VAR_WC,
 
@@ -376,27 +374,10 @@ use rule plier_pseudobulk as perturbseq_variant_plier with:
     input:
         **ps_override(rules.plier_pseudobulk.input, k=ps_variant_k),
     output:
-        B=os.path.join(PS_VAR_MODELS, "PLIER", "B.csv"),
-        Z=os.path.join(PS_VAR_MODELS, "PLIER", "Z.csv"),
-        rds=os.path.join(PS_VAR_MODELS, "PLIER", "PLIER.rds"),
-        summary=os.path.join(PS_VAR_MODELS, "PLIER", "summary.csv"),
+        **ps_variant_outputs(rules.plier_pseudobulk),
     params:
-        **ps_override(rules.plier_pseudobulk.params, out_dir=ps_variant_dir("PLIER"),
-                      seed=ps_variant_seed(config["preprocess"]["seed"])),
-    wildcard_constraints:
-        **PS_VAR_WC,
-
-
-use rule flashier_pseudobulk as perturbseq_variant_flashier with:
-    input:
-        **ps_override(rules.flashier_pseudobulk.input, k=ps_variant_k),
-    output:
-        B=os.path.join(PS_VAR_MODELS, "flashier", "B.csv"),
-        Z=os.path.join(PS_VAR_MODELS, "flashier", "Z.csv"),
-        rds=os.path.join(PS_VAR_MODELS, "flashier", "flashier_model.rds"),
-    params:
-        **ps_override(rules.flashier_pseudobulk.params, out_dir=ps_variant_dir("flashier"),
-                      seed=ps_variant_seed(config["preprocess"]["seed"])),
+        **ps_override(rules.plier_pseudobulk.params, out_dir=lambda wc, output: os.path.dirname(output.Z),
+                      seed=ps_variant_seed(rules.plier_pseudobulk.params.seed)),
     wildcard_constraints:
         **PS_VAR_WC,
 
@@ -405,12 +386,10 @@ use rule mofa_flex_pseudobulk as perturbseq_variant_mofa_flex with:
     input:
         **ps_override(rules.mofa_flex_pseudobulk.input, k=ps_variant_k),
     output:
-        B=os.path.join(PS_VAR_MODELS, "MOFA_FLEX_PRIOR", "B.csv"),
-        Z=os.path.join(PS_VAR_MODELS, "MOFA_FLEX_PRIOR", "Z.csv"),
-        model=os.path.join(PS_VAR_MODELS, "MOFA_FLEX_PRIOR", "model.pkl"),
+        **ps_variant_outputs(rules.mofa_flex_pseudobulk),
     params:
-        **ps_override(rules.mofa_flex_pseudobulk.params, out_dir=ps_variant_dir("MOFA_FLEX_PRIOR"),
-                      seed=ps_variant_seed(config["mofa_flex"]["seed"])),
+        **ps_override(rules.mofa_flex_pseudobulk.params, out_dir=lambda wc, output: os.path.dirname(output.Z),
+                      seed=ps_variant_seed(rules.mofa_flex_pseudobulk.params.seed)),
     wildcard_constraints:
         **PS_VAR_WC,
 
@@ -419,36 +398,36 @@ use rule cogaps_pseudobulk as perturbseq_variant_cogaps with:
     input:
         **ps_override(rules.cogaps_pseudobulk.input, k=ps_variant_k),
     output:
-        B=os.path.join(PS_VAR_MODELS, "CoGAPS", "B.csv"),
-        Z=os.path.join(PS_VAR_MODELS, "CoGAPS", "Z.csv"),
-        rds=os.path.join(PS_VAR_MODELS, "CoGAPS", "cogaps_model.rds"),
+        **ps_variant_outputs(rules.cogaps_pseudobulk),
     params:
-        **ps_override(rules.cogaps_pseudobulk.params, out_dir=ps_variant_dir("CoGAPS"),
-                      seed=ps_variant_seed(config["cogaps"]["seed"])),
+        **ps_override(rules.cogaps_pseudobulk.params, out_dir=lambda wc, output: os.path.dirname(output.Z),
+                      seed=ps_variant_seed(rules.cogaps_pseudobulk.params.seed)),
     wildcard_constraints:
         **PS_VAR_WC,
 
 
 # The production rule fits PCA, NMF and ICA in one job, so ICA and NMF variants get their own rule
 # with the same script. NMF seed variants use a seeded random start (as in cNMF replicates); NMF k
-# variants keep the production nndsvd init.
+# variants keep the production nndsvd init. One method takes minutes and well under 1 GB, so the
+# resources are far below the production job's.
 rule perturbseq_variant_ica_nmf:
     input:
         norm=rules.pca_nmf_ica_pseudobulk.input.norm,
         k=ps_variant_k,
     output:
-        B=os.path.join(PS_VAR_MODELS, "{method}", "B.csv"),
-        Z=os.path.join(PS_VAR_MODELS, "{method}", "Z.csv"),  # the script also writes <method>_model.pkl
+        B=os.path.join(PS_VAR["root"], "{dataset}", "models", "{method}__{variant}", "B.csv"),
+        # The script also writes <method>_model.pkl.
+        Z=os.path.join(PS_VAR["root"], "{dataset}", "models", "{method}__{variant}", "Z.csv"),
     params:
         out_dir=lambda wc, output: os.path.dirname(output.Z),
-        seed=ps_variant_seed(config["preprocess"]["seed"]),
+        seed=ps_variant_seed(rules.pca_nmf_ica_pseudobulk.params.seed),
         nmf_init=lambda wc: "random" if wc.method == "NMF" and wc.variant.startswith("seed") else "nndsvd",
     wildcard_constraints:
         **PS_VAR_WC,
         method="ICA|NMF",
     resources:
-        mem_mb=48000,
-        runtime=720,
+        mem_mb=8000,
+        runtime=120,
     conda: "clamp-analyses"
     shell:
         "python scripts/pseudobulk/pca_nmf_ica.py --norm {input.norm} --k {input.k} "
@@ -456,13 +435,9 @@ rule perturbseq_variant_ica_nmf:
         "--seed {params.seed} --nmf-init {params.nmf_init}"
 
 
-def ps_variant_fit_files(wildcards=None):
-    return [os.path.join(ps_model_dir("variants", m), "Z.csv") for m in PS_VARIANT_MODELS]
-
-
 rule perturbseq_variant_fits:
     input:
-        ps_variant_fit_files(),
+        [os.path.join(ps_model_dir("variants", m), "Z.csv") for m in PS_VARIANT_MODELS],
 
 
 # OneK1K cell-type mean r of each fit (score_per_ct(), as in the Fig. 2A benchmark), for production

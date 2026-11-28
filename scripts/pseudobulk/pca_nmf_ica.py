@@ -44,8 +44,7 @@ def main() -> None:
         "--nmf-init",
         choices=("nndsvd", "random"),
         default="nndsvd",
-        help="NMF initialization (default: nndsvd, the deterministic production setting; random is "
-             "a seeded random start, as in cNMF replicates).",
+        help="NMF initialization (nndsvd: deterministic, production; random: seeded by --seed).",
     )
     args = parser.parse_args()
     if args.flat_output and args.method == "all":
