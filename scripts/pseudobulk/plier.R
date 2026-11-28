@@ -28,22 +28,26 @@ n_genes <- nrow(norm)
 n_samples <- ncol(norm)
 svd_k <- max(floor((min(n_genes, n_samples) - 1) / 4), k, 2L)
 svdres <- rsvd::rsvd(norm, k = svd_k)
-# PLIER only uses svdres when V has one row per sample; otherwise it reruns rsvd with a fixed
-# set.seed(123456) and --seed would silently have no effect.
-stopifnot(nrow(svdres$v) == n_samples)
 
 matched <- CLAMP::getMatchedPathwayMat(pathways, genes)
 chatObj <- CLAMP::getChat(matched)
 message("Prior matched: ", nrow(matched), " genes x ", ncol(matched), " pathways")
 
 message("Running PLIER ...")
-plier_res <- PLIER::PLIER(
-  norm,
-  as.matrix(matched),
-  svdres     = svdres,
-  Chat       = as.matrix(chatObj),
-  doCrossval = FALSE,
-  k          = k
+# If PLIER drops svdres it reruns rsvd under a fixed set.seed(123456), so --seed would silently have
+# no effect; its "Computing SVD" message marks that path.
+plier_res <- withCallingHandlers(
+  PLIER::PLIER(
+    norm,
+    as.matrix(matched),
+    svdres     = svdres,
+    Chat       = as.matrix(chatObj),
+    doCrossval = FALSE,
+    k          = k
+  ),
+  message = function(m) {
+    if (startsWith(conditionMessage(m), "Computing SVD")) stop("PLIER ignored svdres; --seed would have no effect")
+  }
 )
 
 colnames(plier_res$Z) <- paste0("LV", seq_len(ncol(plier_res$Z)))
