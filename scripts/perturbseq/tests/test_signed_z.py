@@ -23,6 +23,13 @@ class SignedZTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sz.restrict(z, ["A", "B"])
 
+    def test_check_genes_requires_the_exact_gene_set(self):
+        z = pd.DataFrame({"LV1": [1.0, 2.0]}, index=["B", "A"])
+        sz.check_genes(z, ["A", "B"])
+        for genes in (["A"], ["A", "B", "C"]):
+            with self.assertRaises(ValueError):
+                sz.check_genes(z, genes)
+
     def test_main_writes_both_tails_and_sample_count(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
@@ -31,8 +38,9 @@ class SignedZTests(unittest.TestCase):
             z.to_csv(tmp / "Z.csv")
             pd.DataFrame({"gene": ["C", "A"], "KD1": [0.1, 0.2]}).to_csv(
                 tmp / "logfc.tsv.gz", sep="\t", index=False)
+            pd.DataFrame({"mean": [1.0, 2.0, 3.0]}, index=["C", "B", "A"]).to_csv(tmp / "row_stats.csv")
             pd.DataFrame([[1, 2, 3]], index=["LV1"], columns=["s1", "s2", "s3"]).to_csv(tmp / "B.csv")
-            sz.main(["--z", str(tmp / "Z.csv"), "--universe", str(tmp / "logfc.tsv.gz"),
+            sz.main(["--z", str(tmp / "Z.csv"), "--genes", str(tmp / "row_stats.csv"), "--universe", str(tmp / "logfc.tsv.gz"),
                      "--b", str(tmp / "B.csv"), "--out-pos", str(tmp / "out/pos.csv"),
                      "--out-neg", str(tmp / "out/neg.csv"), "--out-manifest", str(tmp / "out/manifest.json")])
             pos = pd.read_csv(tmp / "out/pos.csv", index_col=0, float_precision="round_trip")

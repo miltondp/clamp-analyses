@@ -40,6 +40,13 @@ def main() -> None:
         action="store_true",
         help="Write a selected method directly into --models-dir instead of a method subdirectory.",
     )
+    parser.add_argument(
+        "--nmf-init",
+        choices=("nndsvd", "random"),
+        default="nndsvd",
+        help="NMF initialization (default: nndsvd, the deterministic production setting; random is "
+             "a seeded random start, as in cNMF replicates).",
+    )
     args = parser.parse_args()
     if args.flat_output and args.method == "all":
         parser.error("--flat-output requires one explicit --method (PCA, NMF, or ICA)")
@@ -64,7 +71,7 @@ def main() -> None:
 
     if args.method in ("all", "NMF"):
         nonnegative = norm.sub(norm.min(axis=1), axis=0).T.to_numpy()
-        nmf = NMF(n_components=k, init="nndsvd", random_state=args.seed, max_iter=1000)
+        nmf = NMF(n_components=k, init=args.nmf_init, random_state=args.seed, max_iter=1000)
         nmf_scores = nmf.fit_transform(nonnegative)
         save_model(root, "NMF", nmf_scores, nmf.components_, samples, genes, nmf,
                    "LV", "nmf_model.pkl", args.flat_output)

@@ -28,6 +28,9 @@ n_genes <- nrow(norm)
 n_samples <- ncol(norm)
 svd_k <- max(floor((min(n_genes, n_samples) - 1) / 4), k, 2L)
 svdres <- rsvd::rsvd(norm, k = svd_k)
+# PLIER only uses svdres when V has one row per sample; otherwise it reruns rsvd with a fixed
+# set.seed(123456) and --seed would silently have no effect.
+stopifnot(nrow(svdres$v) == n_samples)
 
 matched <- CLAMP::getMatchedPathwayMat(pathways, genes)
 chatObj <- CLAMP::getChat(matched)

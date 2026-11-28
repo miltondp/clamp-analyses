@@ -5,9 +5,11 @@
 loadings, so it needs Z restricted to the screen's genes, once as Z (`pos`) and once as -Z (`neg`).
 For nonnegative methods the `neg` tail has no positive loadings, and run_ora.R tests no LV in it.
 
-Inputs: --z (genes x LVs CSV, gene in the first column), --universe (a file whose first column lists
-the universe genes, such as build_regulons.py's logfc.tsv.gz) and --b (LVs x samples CSV, for the
-sample count). Outputs: --out-pos, --out-neg and --out-manifest (JSON with `samples`, read by
+Inputs: --z (genes x LVs CSV, gene in the first column), --genes (the strategy's preprocessing gene
+list, e.g. preprocessing/row_stats.csv; Z must have exactly these genes, because build_regulons.py
+takes the regulon universe from it rather than from the Z files), --universe (a file whose first
+column lists the universe genes, such as build_regulons.py's logfc.tsv.gz) and --b (LVs x samples
+CSV, for the sample count). Outputs: --out-pos, --out-neg and --out-manifest (JSON with `samples`, read by
 run_ora.R's --model-manifest).
 """
 import argparse
@@ -30,6 +32,15 @@ def read_universe(path):
     return pd.read_csv(path, sep=sep, usecols=[0]).iloc[:, 0].astype(str)
 
 
+def check_genes(z, genes):
+    """Fails unless Z's genes are exactly `genes` (in any order)."""
+    genes = set(genes)
+    extra, missing = set(z.index) - genes, genes - set(z.index)
+    if extra or missing:
+        raise ValueError(f"Z genes differ from the gene list: {len(extra)} extra (e.g. {sorted(extra)[:5]}), "
+                         f"{len(missing)} missing (e.g. {sorted(missing)[:5]})")
+
+
 def restrict(z, universe):
     """Z rows in the universe, in Z's own row order; fails if a universe gene is missing from Z."""
     universe = set(universe)
@@ -47,6 +58,7 @@ def count_samples(b_path):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--z", required=True)
+    parser.add_argument("--genes", required=True)
     parser.add_argument("--universe", required=True)
     parser.add_argument("--b", required=True)
     parser.add_argument("--out-pos", required=True)
@@ -55,6 +67,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     z = read_z(args.z)
+    check_genes(z, read_universe(args.genes))
     signed = restrict(z, read_universe(args.universe))
     for path in (args.out_pos, args.out_neg, args.out_manifest):
         Path(path).parent.mkdir(parents=True, exist_ok=True)

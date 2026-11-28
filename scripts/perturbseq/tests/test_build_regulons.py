@@ -94,8 +94,7 @@ class BuildTests(unittest.TestCase):
 
         # Universe: Z genes T0..T27 plus genes the screen did not measure.
         z_genes = symbols[:28] + ["ZONLY1", "ZONLY2"]
-        for name in ("z1.csv", "z2.csv"):
-            pd.DataFrame({"LV1": 0.0, "LV2": 1.0}, index=z_genes).to_csv(self.root / name)
+        pd.DataFrame({"mean": 1.0, "variance": 1.0}, index=z_genes).to_csv(self.root / "row_stats.csv")
 
     def write(self, name, values, rows, cols):
         frame = pd.DataFrame(values, index=pd.Index(rows, name="GENE"), columns=cols)
@@ -106,7 +105,7 @@ class BuildTests(unittest.TestCase):
         br.main([
             "--logfc", str(self.root / "lfc.tsv"), "--pvalues", str(self.root / "p.tsv"),
             "--id-map", str(self.root / "ids.tsv"),
-            "--z", str(self.root / "z1.csv"), str(self.root / "z2.csv"),
+            "--universe", str(self.root / "row_stats.csv"),
             "--q", "0.05", "--min-size", "10", "--max-size", "500", "--jaccard", "0.5", "--min-de", "15",
             "--out-dir", str(out), *extra,
         ])
@@ -143,8 +142,8 @@ class BuildTests(unittest.TestCase):
         self.assertFalse(bool(sizes.loc["BIG", "regulon"]))
         self.assertEqual(set(br.read_gmt(out / "regulons.gmt")), {"DUP"})
 
-    def test_mismatched_z_gene_sets_fail(self):
-        pd.DataFrame({"LV1": [0.0]}, index=["T0"]).to_csv(self.root / "z2.csv")
+    def test_duplicate_universe_genes_fail(self):
+        pd.DataFrame({"mean": [0.0, 1.0]}, index=["T0", "T0"]).to_csv(self.root / "row_stats.csv")
         with self.assertRaises(ValueError):
             self.run_build()
 

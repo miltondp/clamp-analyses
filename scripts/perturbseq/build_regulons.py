@@ -6,7 +6,8 @@ named by symbol): limma log2FC and raw P versus non-targeting controls. P is BH-
 perturbation over every measured target, then:
 
 * targets are mapped to symbols (unmapped and ambiguous symbols are dropped);
-* the universe is the Z genes (identical across every --z file) that the screen measured;
+* the universe is the --universe genes (the strategy's preprocessing gene list, which every fit's Z
+  shares; signed_z.py checks each Z against it) that the screen measured;
 * a regulon is a perturbation's q < --q targets, minus the perturbed gene itself, within the
   universe, kept when its size is in [--min-size, --max-size];
 * near-duplicate regulons (Jaccard > --jaccard; e.g. ribosomal and other essential knockdowns) are
@@ -67,16 +68,12 @@ def target_symbols(ensembl, id_map):
     }
 
 
-def read_universe(z_paths):
-    """The gene set every Z file shares; fails if the files disagree."""
-    def genes(path):
-        return set(pd.read_csv(path, usecols=[0]).iloc[:, 0].astype(str))
-
-    first = genes(z_paths[0])
-    for path in z_paths[1:]:
-        if genes(path) != first:
-            raise ValueError(f"{path} has a different gene set from {z_paths[0]}")
-    return first
+def read_universe(path):
+    """The genes in the first column of a CSV (e.g. preprocessing/row_stats.csv); fails on duplicates."""
+    genes = pd.read_csv(path, usecols=[0]).iloc[:, 0].astype(str)
+    if genes.duplicated().any():
+        raise ValueError(f"{path} has duplicate genes")
+    return set(genes)
 
 
 def self_cells(frame):
@@ -182,7 +179,7 @@ def build(args):
     q.index = logfc.index = pd.Index(symbols[keep].values, name="gene")
     measured = set(q.index)
 
-    z_genes = read_universe(args.z)
+    z_genes = read_universe(args.universe)
     universe = sorted(measured & z_genes)
     log(f"Universe: {len(universe)} genes ({len(universe) / len(measured):.1%} of mapped screen targets)")
 
@@ -256,7 +253,8 @@ def parse_args(argv=None):
     parser.add_argument("--logfc", required=True)
     parser.add_argument("--pvalues", required=True)
     parser.add_argument("--id-map", required=True, help="Ensembl<TAB>symbol, no header")
-    parser.add_argument("--z", required=True, nargs="+", help="Z.csv files defining the gene universe")
+    parser.add_argument("--universe", required=True,
+                        help="CSV whose first column lists the gene universe (preprocessing/row_stats.csv)")
     # No defaults: the values live in workflow/config/perturbseq.yaml.
     parser.add_argument("--q", type=float, required=True)
     parser.add_argument("--min-size", type=int, required=True)
