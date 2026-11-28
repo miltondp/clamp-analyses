@@ -24,6 +24,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from signed_z import read_universe  # noqa: E402
+
 
 def log(message):
     print(message, file=sys.stderr, flush=True)
@@ -66,14 +69,6 @@ def target_symbols(ensembl, id_map):
         "unmapped": int(symbols.isna().sum()),
         "ambiguous_rows": int(ambiguous.sum()),
     }
-
-
-def read_universe(path):
-    """The genes in the first column of a CSV (e.g. preprocessing/row_stats.csv); fails on duplicates."""
-    genes = pd.read_csv(path, usecols=[0]).iloc[:, 0].astype(str)
-    if genes.duplicated().any():
-        raise ValueError(f"{path} has duplicate genes")
-    return set(genes)
 
 
 def self_cells(frame):
@@ -179,7 +174,7 @@ def build(args):
     q.index = logfc.index = pd.Index(symbols[keep].values, name="gene")
     measured = set(q.index)
 
-    z_genes = read_universe(args.universe)
+    z_genes = set(read_universe(args.universe))
     universe = sorted(measured & z_genes)
     log(f"Universe: {len(universe)} genes ({len(universe) / len(measured):.1%} of mapped screen targets)")
 

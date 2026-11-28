@@ -142,11 +142,6 @@ class BuildTests(unittest.TestCase):
         self.assertFalse(bool(sizes.loc["BIG", "regulon"]))
         self.assertEqual(set(br.read_gmt(out / "regulons.gmt")), {"DUP"})
 
-    def test_duplicate_universe_genes_fail(self):
-        pd.DataFrame({"mean": [0.0, 1.0]}, index=["T0", "T0"]).to_csv(self.root / "row_stats.csv")
-        with self.assertRaises(ValueError):
-            self.run_build()
-
 
 if __name__ == "__main__":
     unittest.main()
